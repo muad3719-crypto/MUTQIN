@@ -1,0 +1,92 @@
+/* =====================================================
+   هوية "مُتقِن" البصرية — متغيّرات جاهزة للاستخدام
+   Mutqin Brand Identity — Developer Tokens
+   ===================================================== */
+
+/* الخطوط (أضف هذا السطر في <head> قبل الـ CSS):
+   <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+*/
+
+:root{
+  /* ---- الألوان ---- */
+  --mtqn-emerald-dark: #04361F;  /* الأخضر الزمردي الغامق — العناوين الكبيرة */
+  --mtqn-emerald:      #04532F;  /* الأخضر الأساسي — الأزرار والشعار */
+  --mtqn-jade:         #006850;  /* الأخضر اليشمي */
+  --mtqn-gold:         #D4AF37;  /* الذهبي — التمييز والإطارات */
+  --mtqn-gold-deep:    #9A7A1E;  /* ذهبي غامق للنصوص الصغيرة */
+  --mtqn-ivory:        #FBF7DA;  /* العاجي — الخلفية الأساسية */
+  --mtqn-ivory-soft:   #FBF9E9;  /* عاجي أفتح للبطاقات */
+  --mtqn-text:         #3D6B52;  /* لون النص الثانوي */
+  --mtqn-surface:      #FFFFFF;  /* أسطح البطاقات */
+
+  /* ---- الخطوط ---- */
+  --mtqn-font-display: 'Amiri', serif;     /* العناوين والاقتباسات */
+  --mtqn-font-body:    'Cairo', sans-serif; /* النصوص وواجهة الاستخدام */
+
+  /* ---- الزوايا والظلال ---- */
+  --mtqn-radius:       20px;
+  --mtqn-radius-pill:  44px;
+  --mtqn-shadow:       0 22px 50px -34px rgba(4,54,31,0.5);
+}
+
+/* ---- أساسيات ---- */
+body{
+  direction: rtl;
+  margin: 0;
+  font-family: var(--mtqn-font-body);
+  background: var(--mtqn-ivory);
+  color: var(--mtqn-emerald-dark);
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, .mtqn-display{ font-family: var(--mtqn-font-display); font-weight: 700; }
+
+/* ---- مكونات جاهزة ---- */
+
+/* زر أساسي */
+.mtqn-btn{
+  display: inline-block;
+  background: var(--mtqn-emerald);
+  color: var(--mtqn-ivory);
+  font-family: var(--mtqn-font-body);
+  font-weight: 700;
+  font-size: 16px;
+  padding: 16px 34px;
+  border-radius: var(--mtqn-radius-pill);
+  border: 1px solid var(--mtqn-emerald);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all .2s;
+}
+.mtqn-btn:hover{ background: var(--mtqn-gold); border-color: var(--mtqn-gold); color: var(--mtqn-emerald-dark); }
+
+/* زر ثانوي */
+.mtqn-btn--ghost{
+  background: transparent;
+  color: var(--mtqn-emerald);
+  border: 1.5px solid rgba(4,83,47,0.25);
+}
+.mtqn-btn--ghost:hover{ background: rgba(4,83,47,0.05); border-color: var(--mtqn-emerald); color: var(--mtqn-emerald); }
+
+/* شارة / وسم */
+.mtqn-badge{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(212,175,55,0.16);
+  border: 1px solid rgba(212,175,55,0.4);
+  color: var(--mtqn-gold-deep);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: var(--mtqn-radius-pill);
+}
+
+/* بطاقة */
+.mtqn-card{
+  background: var(--mtqn-surface);
+  border: 1px solid rgba(212,175,55,0.3);
+  border-radius: var(--mtqn-radius);
+  padding: 38px;
+  transition: all .25s;
+}
+.mtqn-card:hover{ border-color: var(--mtqn-gold); box-shadow: var(--mtqn-shadow); }

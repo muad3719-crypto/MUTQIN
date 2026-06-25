@@ -1,0 +1,77 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\TeacherController;
+use App\Http\Controllers\Api\StudentController;
+use App\Http\Controllers\Api\CenterController;
+use App\Http\Controllers\Api\AttendanceController;
+use App\Http\Controllers\Api\MemorizationController;
+use App\Http\Controllers\Api\WeeklyTestController;
+use App\Http\Controllers\Api\ReportController;
+
+// مسارات غير محمية (Public Routes)
+Route::post('/auth/login', [AuthController::class, 'login']); // دخول موحّد للأدوار الثلاثة (admin/teacher/parent)
+Route::get('/public/stats', [DashboardController::class, 'publicStats']); // إحصائيات عامة للصفحة الرئيسية
+Route::get('/public/demo-accounts', [DashboardController::class, 'demoAccounts']); // حسابات تجريبية لصفحة الدخول
+
+// مسارات محمية بـ Sanctum (Protected Routes)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::get('/auth/user', [AuthController::class, 'user']);
+
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+
+    // فهرس الأثمان — بحث/إكمال تلقائي (قراءة فقط) لمساعدة الحفظ والاختبارات
+    Route::get('/athman/search', [\App\Http\Controllers\Api\AthmanController::class, 'search']);
+    Route::get('/athman/hizb/{n}', [\App\Http\Controllers\Api\AthmanController::class, 'hizb']);
+    Route::get('/athman/{id}', [\App\Http\Controllers\Api\AthmanController::class, 'show']);
+
+    // مسارات ولي الأمر (محميّة بـ parent middleware — دور parent + صلاحية parent)
+    Route::middleware('parent')->group(function () {
+        Route::get('/parent/children', [StudentController::class, 'parentChildren']);
+        Route::get('/parent/students/{id}', [StudentController::class, 'parentStudentDetails']);
+    });
+
+    // مسارات المدير فقط (Admin Only)
+    Route::middleware('admin')->group(function () {
+        Route::apiResource('teachers', TeacherController::class);
+        Route::get('/centers/{id}/has-primary', [TeacherController::class, 'hasPrimary']); // هل للمركز محفّظ أساسي؟
+        Route::apiResource('centers', CenterController::class);
+        Route::post('/students', [StudentController::class, 'store']); // نقل مسار إضافة طالب ليكون للمدير فقط
+        Route::get('/parents/search', [StudentController::class, 'searchParents']); // بحث أولياء الأمور (لاختيار ولي موجود)
+
+        // جاهزية الأوقاف: الطلاب بلا رقم وطني
+        Route::get('/reports/admin/missing-national-id', [ReportController::class, 'missingNationalId']);
+
+        // تقارير المدير (PDF)
+        Route::get('/reports/admin/center/{id}/pdf', [\App\Http\Controllers\Api\ReportPdfController::class, 'center']);
+        Route::get('/reports/admin/teachers/pdf', [\App\Http\Controllers\Api\ReportPdfController::class, 'teachers']);
+        Route::get('/reports/admin/at-risk/pdf', [\App\Http\Controllers\Api\ReportPdfController::class, 'atRisk']);
+        Route::get('/reports/admin/overview/pdf', [\App\Http\Controllers\Api\ReportPdfController::class, 'overview']);
+    });
+
+    // مسارات المعلم والمدير (Teacher & Admin)
+    Route::middleware('teacher')->group(function () {
+        Route::apiResource('students', StudentController::class)->except(['store']); // استثناء إضافة طالب للمعلم
+
+        Route::get('/attendance', [AttendanceController::class, 'index']);
+        Route::post('/attendance', [AttendanceController::class, 'store']);
+        Route::get('/attendance/report', [AttendanceController::class, 'report']);
+        Route::post('/attendance/import', [\App\Http\Controllers\Api\AttendanceImportController::class, 'import']);
+
+        Route::get('/memorizations/surahs', [MemorizationController::class, 'surahs']);
+        Route::get('/memorizations/students-progress', [MemorizationController::class, 'studentsProgress']); // تقدّم الطلاب حسب الجزء
+        Route::apiResource('memorizations', MemorizationController::class)->only(['index', 'store', 'destroy']);
+
+        Route::apiResource('weekly-tests', WeeklyTestController::class)->only(['index', 'store', 'destroy', 'show']); // تفعيل مسار عرض تفاصيل الاختبار الفردي للأثمان
+
+        Route::get('/reports/weekly', [ReportController::class, 'weekly']);
+        Route::get('/reports/student/{id}', [ReportController::class, 'student']);
+
+        // تقارير المعلم (PDF) — الطالب الواحد يحترم حارس «طلابه فقط»
+        Route::get('/reports/student/{id}/pdf', [\App\Http\Controllers\Api\ReportPdfController::class, 'student']);
+        Route::get('/reports/teacher/pdf', [\App\Http\Controllers\Api\ReportPdfController::class, 'teacherGroup']);
+    });
+});

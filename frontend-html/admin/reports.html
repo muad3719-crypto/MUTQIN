@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>التقارير | مُتقِن</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+<link href="../css/theme.css" rel="stylesheet">
+</head>
+<body>
+<div id="app-shell"></div>
+
+<script src="../js/config.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/layout.js"></script>
+<script>
+(async function () {
+    const user = Auth.requireAuth(['admin']);
+    if (!user) return;
+    const pc = Layout.mount({ user, active: 'reports', title: 'التقارير' });
+
+    const MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+    const now = new Date(), curM = now.getMonth() + 1, curY = now.getFullYear();
+    const monthOpts = MONTHS.map((m, i) => `<option value="${i+1}" ${i+1===curM?'selected':''}>${m}</option>`).join('');
+    const yearOpts = [0,1,2].map(k => curY-k).map(y => `<option value="${y}">${y}</option>`).join('');
+    const filters = (p) => `
+        <label class="mq-label" style="margin:0;">الشهر</label>
+        <select class="mq-input" id="${p}-m" style="max-width:140px;">${monthOpts}</select>
+        <label class="mq-label" style="margin:0;">السنة</label>
+        <select class="mq-input" id="${p}-y" style="max-width:110px;">${yearOpts}</select>`;
+    const my = (p) => `month=${document.getElementById(p+'-m').value}&year=${document.getElementById(p+'-y').value}`;
+
+    pc.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+
+        <div class="mq-card"><div class="mq-card-body">
+          <h3 class="mq-card-title" style="margin-bottom:6px;">🏫 تقرير المركز الشامل</h3>
+          <p style="color:#7A8F82;font-size:13px;margin:0 0 16px;">عدد المعلمين والطلاب، متوسط الحضور، الاختبارات ونِسب النجاح.</p>
+          <label class="mq-label">المركز</label>
+          <select class="mq-input" id="ct-id" style="margin-bottom:12px;"><option value="all">كل المراكز</option></select>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;">${filters('ct')}</div>
+          <button class="mq-btn mq-btn-primary mq-btn-block" id="btn-center">${UI.ic('report',17)} فتح تقرير المركز (PDF)</button>
+        </div></div>
+
+        <div class="mq-card"><div class="mq-card-body">
+          <h3 class="mq-card-title" style="margin-bottom:6px;">👨‍🏫 أداء المعلمين</h3>
+          <p style="color:#7A8F82;font-size:13px;margin:0 0 16px;">مقارنة المعلمين: عدد الطلاب، نسبة حضورهم، الاختبارات ونسبة النجاح.</p>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;">${filters('tp')}</div>
+          <button class="mq-btn mq-btn-primary mq-btn-block" id="btn-teachers">${UI.ic('report',17)} فتح تقرير الأداء (PDF)</button>
+        </div></div>
+
+        <div class="mq-card"><div class="mq-card-body">
+          <h3 class="mq-card-title" style="margin-bottom:6px;">⚠️ الطلاب المتعثّرون</h3>
+          <p style="color:#7A8F82;font-size:13px;margin:0 0 16px;">طلاب بحضور أقل من 70% أو رسوب متكرّر — مع سبب التعثّر.</p>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;">${filters('ar')}</div>
+          <button class="mq-btn mq-btn-primary mq-btn-block" id="btn-atrisk">${UI.ic('report',17)} فتح تقرير المتعثّرين (PDF)</button>
+        </div></div>
+
+        <div class="mq-card"><div class="mq-card-body">
+          <h3 class="mq-card-title" style="margin-bottom:6px;">📊 الإحصائيات العامة</h3>
+          <p style="color:#7A8F82;font-size:13px;margin:0 0 16px;">ملخّص النظام: المراكز، المعلمون، الطلاب، الاختبارات ونسبة النجاح.</p>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;">${filters('ov')}</div>
+          <button class="mq-btn mq-btn-primary mq-btn-block" id="btn-overview">${UI.ic('report',17)} فتح التقرير العام (PDF)</button>
+        </div></div>
+
+      </div>`;
+
+    // تعبئة قائمة المراكز
+    try {
+        const res = await API.get('/centers?all=1');
+        const centers = res.data.data || res.data || [];
+        document.getElementById('ct-id').innerHTML = '<option value="all">كل المراكز</option>'
+            + centers.map(c => `<option value="${c.id}">${UI.escapeHtml(c.name)}</option>`).join('');
+    } catch (e) { UI.toast(e.message, 'danger'); }
+
+    document.getElementById('btn-center').onclick = () =>
+        UI.openPdf(`/reports/admin/center/${document.getElementById('ct-id').value}/pdf?${my('ct')}`);
+    document.getElementById('btn-teachers').onclick = () => UI.openPdf(`/reports/admin/teachers/pdf?${my('tp')}`);
+    document.getElementById('btn-atrisk').onclick = () => UI.openPdf(`/reports/admin/at-risk/pdf?${my('ar')}`);
+    document.getElementById('btn-overview').onclick = () => UI.openPdf(`/reports/admin/overview/pdf?${my('ov')}`);
+})();
+</script>
+</body>
+</html>

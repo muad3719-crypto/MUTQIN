@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>المعلمون | مُتقِن</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+<link href="../css/theme.css" rel="stylesheet">
+</head>
+<body>
+<div id="app-shell"></div>
+
+<script src="../js/config.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/layout.js"></script>
+<script>
+(function () {
+    const user = Auth.requireAuth(['admin']);
+    if (!user) return;
+    const pc = Layout.mount({ user, active: 'teachers', title: 'إدارة المعلمين' });
+    let centers = [];
+
+    const typeOpts = [{ value: 'محفظ أساسي', label: 'محفظ أساسي' }, { value: 'محفظ معاون', label: 'محفظ معاون' }];
+    const centerOpts = () => centers.map(c => ({ value: c.id, label: c.name }));
+
+    function addFields() {
+        return [
+            { name: 'name', label: 'الاسم الكامل', required: true },
+            { name: 'email', label: 'البريد الإلكتروني', type: 'email', required: true },
+            { name: 'phone', label: 'رقم الهاتف' },
+            { name: 'center_id', label: 'المركز', type: 'select', required: true, options: centerOpts() },
+            { name: 'type', label: 'نوع المحفظ', type: 'select', required: true, options: typeOpts },
+            { name: 'password', label: 'كلمة المرور', type: 'password', required: true },
+            { name: 'password_confirmation', label: 'تأكيد كلمة المرور', type: 'password', required: true },
+        ];
+    }
+    function editFields(t) {
+        return [
+            { name: 'name', label: 'الاسم الكامل', required: true, value: t.name },
+            { name: 'email', label: 'البريد الإلكتروني', type: 'email', required: true, value: t.email },
+            { name: 'phone', label: 'رقم الهاتف', value: t.phone },
+            { name: 'center_id', label: 'المركز', type: 'select', required: true, options: centerOpts(), value: t.center_id },
+            { name: 'type', label: 'نوع المحفظ', type: 'select', required: true, options: typeOpts, value: t.type },
+            { name: 'password', label: 'كلمة مرور جديدة (اختياري)', type: 'password' },
+            { name: 'password_confirmation', label: 'تأكيد كلمة المرور', type: 'password' },
+        ];
+    }
+
+    // قاعدة: محفّظ أساسي واحد لكل مركز — يعطّل خيار «محفظ أساسي» في الواجهة إن كان للمركز أساسي.
+    // ignoreId: معرّف المحفّظ عند التعديل (لا نعطّل الخيار إن كان هو نفسه أساسي المركز).
+    function wireSinglePrimary(ignoreId) {
+        return (form) => {
+            const centerSel = form.querySelector('[name="center_id"]');
+            const typeSel = form.querySelector('[name="type"]');
+            if (!centerSel || !typeSel) return;
+            const primaryOpt = Array.from(typeSel.options).find(o => o.value === 'محفظ أساسي');
+            const hintBox = form.querySelector('[data-error="type"]');
+
+            async function refresh() {
+                if (!centerSel.value) return;
+                try {
+                    const res = await API.get('/centers/' + centerSel.value + '/has-primary');
+                    const d = res.data || {};
+                    const taken = d.has_primary && !(ignoreId && d.primary_teacher && d.primary_teacher.id == ignoreId);
+                    if (primaryOpt) {
+                        primaryOpt.disabled = taken;
+                        if (taken && typeSel.value === 'محفظ أساسي') typeSel.value = 'محفظ معاون';
+                    }
+                    if (hintBox) {
+                        hintBox.style.color = '#9A7A1E';
+                        hintBox.textContent = taken
+                            ? 'لهذا المركز محفّظ أساسي (' + (d.primary_teacher?.name || '') + ') — يمكن إضافة معاونين فقط.'
+                            : '';
+                    }
+                } catch (e) { /* تجاهل: الـ Backend يفرض القاعدة على أي حال */ }
+            }
+            centerSel.addEventListener('change', refresh);
+            refresh();
+        };
+    }
+
+    async function load() {
+        pc.innerHTML = '<div class="mq-card"><div class="mq-card-body">جارٍ التحميل...</div></div>';
+        try {
+            const [tRes, cRes] = await Promise.all([API.get('/teachers?all=1'), API.get('/centers?all=1')]);
+            const teachers = tRes.data.data || tRes.data || [];
+            centers = cRes.data.data || cRes.data || [];
+
+            const rows = teachers.map(t => `
+                <tr>
+                  <td><div style="display:flex;align-items:center;gap:10px;">
+                    <span class="mq-avatar">${UI.initial(t.name)}</span>
+                    <div><div style="font-weight:600;">${UI.escapeHtml(t.name)}</div>
+                    <div style="font-size:12px;color:#9DB3A6;direction:ltr;text-align:right;">${UI.escapeHtml(t.email)}</div></div></div></td>
+                  <td>${UI.escapeHtml(t.phone || '—')}</td>
+                  <td>${UI.badge((t.students_count ?? 0) + ' طالب', 'primary')}</td>
+                  <td>${UI.escapeHtml(t.type || '—')}</td>
+                  <td><div class="mq-actions">
+                    ${UI.actionBtn('edit', `data-edit="${t.id}"`)}
+                    ${UI.actionBtn('del', `data-del="${t.id}"`)}
+                  </div></td>
+                </tr>`).join('') || `<tr><td colspan="5" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد معلمون</td></tr>`;
+
+            pc.innerHTML = `
+                <div class="mq-toolbar">
+                  <div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="بحث..."></div>
+                  <button class="mq-btn mq-btn-primary" id="add">${UI.ic('plus', 17)} معلم جديد</button>
+                </div>
+                <div class="mq-card"><table class="mq-table" id="tbl">
+                  <thead><tr><th>المعلم</th><th>الهاتف</th><th>الطلاب</th><th>النوع</th><th>الإجراءات</th></tr></thead>
+                  <tbody>${rows}</tbody></table></div>`;
+
+            UI.bindTableSearch('search', 'tbl');
+            document.getElementById('add').onclick = () => UI.formModal({
+                title: 'إضافة معلم', fields: addFields(), onMount: wireSinglePrimary(null),
+                onSubmit: async (v, h) => { await API.post('/teachers', v); UI.toast('تم إضافة المعلم'); h.close(); load(); }
+            });
+            pc.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => {
+                const t = teachers.find(x => x.id == b.dataset.edit);
+                UI.formModal({ title: 'تعديل المعلم', submitText: 'حفظ التعديلات', fields: editFields(t), onMount: wireSinglePrimary(t.id),
+                    onSubmit: async (v, h) => { await API.put('/teachers/' + t.id, v); UI.toast('تم التحديث'); h.close(); load(); } });
+            });
+            pc.querySelectorAll('[data-del]').forEach(b => b.onclick = () =>
+                UI.confirmDelete('حذف هذا المعلم سيحذف ارتباط طلابه. تأكيد؟', async () => { await API.del('/teachers/' + b.dataset.del); UI.toast('تم الحذف'); load(); }));
+        } catch (e) { UI.toast(e.message, 'danger'); }
+    }
+    load();
+})();
+</script>
+</body>
+</html>

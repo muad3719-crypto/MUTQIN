@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الحضور | مُتقِن</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+<link href="../css/theme.css" rel="stylesheet">
+<style>
+  .att-radios{display:flex;gap:8px;justify-content:center;}
+  .att-radios label{cursor:pointer;}
+  .att-radios input{display:none;}
+  .att-pill{padding:5px 14px;border-radius:20px;font-size:12.5px;font-weight:700;border:1.5px solid #ddd;color:#888;}
+  input[value="present"]:checked + .att-pill{background:#04532F;border-color:#04532F;color:#fff;}
+  input[value="absent"]:checked + .att-pill{background:#B23A48;border-color:#B23A48;color:#fff;}
+  input[value="late"]:checked + .att-pill{background:#9A7A1E;border-color:#9A7A1E;color:#fff;}
+</style>
+</head>
+<body>
+<div id="app-shell"></div>
+
+<script src="../js/config.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/layout.js"></script>
+<script>
+(function () {
+    const user = Auth.requireAuth(['teacher', 'admin']);
+    if (!user) return;
+    const pc = Layout.mount({ user, active: 'attendance', title: 'تسجيل الحضور والغياب' });
+    let date = new Date().toISOString().slice(0, 10);
+
+    async function load() {
+        pc.innerHTML = '<div class="mq-card"><div class="mq-card-body">جارٍ التحميل...</div></div>';
+        try {
+            const res = await API.get('/attendance?date=' + date);
+            const students = res.data.students || [];
+            const att = res.data.attendances || {};
+
+            const radios = (id) => ['present', 'absent', 'late'].map(st => {
+                const cur = att[id] || 'present';
+                const lbl = { present: 'حاضر', absent: 'غائب', late: 'متأخر' }[st];
+                return `<label><input type="radio" name="att_${id}" value="${st}" ${cur === st ? 'checked' : ''}><span class="att-pill">${lbl}</span></label>`;
+            }).join('');
+
+            const rows = students.map(s => `
+                <tr><td><div style="display:flex;align-items:center;gap:10px;"><span class="mq-avatar">${UI.initial(s.name)}</span>${UI.escapeHtml(s.name)}</div></td>
+                <td><div class="att-radios">${radios(s.id)}</div></td></tr>`).join('') ||
+                `<tr><td colspan="2" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد طلاب</td></tr>`;
+
+            pc.innerHTML = `
+                <div class="mq-card" style="margin-bottom:20px;"><div class="mq-card-body" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                  <label class="mq-label" style="margin:0;">📅 التاريخ:</label>
+                  <input type="date" id="date" class="mq-input" value="${date}" style="max-width:200px;">
+                  <button class="mq-btn mq-btn-outline" id="go">عرض</button>
+                  <button class="mq-btn mq-btn-gold mq-btn-sm" id="import" style="gap:7px;">${UI.ic('upload', 16)} رفع ملف الحضور</button>
+                  <span style="flex:1;"></span>
+                  <button class="mq-btn mq-btn-outline mq-btn-sm" id="all-present">✅ الكل حاضر</button>
+                  <button class="mq-btn mq-btn-outline mq-btn-sm" id="all-absent">❌ الكل غائب</button>
+                </div></div>
+                <div class="mq-card"><table class="mq-table"><thead><tr><th style="width:55%;">الطالب</th><th style="text-align:center;">الحالة</th></tr></thead>
+                  <tbody>${rows}</tbody></table>
+                  <div style="padding:18px 24px;border-top:1px solid rgba(212,175,55,.3);display:flex;justify-content:flex-end;">
+                    <button class="mq-btn mq-btn-primary" id="save">💾 حفظ الحضور</button></div></div>`;
+
+            document.getElementById('go').onclick = () => { date = document.getElementById('date').value; load(); };
+            document.getElementById('import').onclick = () => UI.runAttendanceImport(() => load());
+            document.getElementById('all-present').onclick = () => pc.querySelectorAll('input[value="present"]').forEach(r => r.checked = true);
+            document.getElementById('all-absent').onclick = () => pc.querySelectorAll('input[value="absent"]').forEach(r => r.checked = true);
+            document.getElementById('save').onclick = async () => {
+                const attendance = {};
+                students.forEach(s => {
+                    const sel = pc.querySelector(`input[name="att_${s.id}"]:checked`);
+                    if (sel) attendance[s.id] = sel.value;
+                });
+                try { await API.post('/attendance', { date, attendance }); UI.toast('تم حفظ الحضور بنجاح'); }
+                catch (e) { UI.toast(e.message, 'danger'); }
+            };
+        } catch (e) { UI.toast(e.message, 'danger'); }
+    }
+    load();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>طلابي | مُتقِن</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+<link href="../css/theme.css" rel="stylesheet">
+</head>
+<body>
+<div id="app-shell"></div>
+
+<script src="../js/config.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/layout.js"></script>
+<script>
+(async function () {
+    const user = Auth.requireAuth(['teacher', 'admin']);
+    if (!user) return;
+    const pc = Layout.mount({ user, active: 'students', title: 'طلابي' });
+
+    // ===== نافذة تفاصيل الطالب الكاملة =====
+    async function openDetails(id) {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:1500;background:rgba(4,54,31,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:24px;';
+        overlay.innerHTML = `<div class="mq-card" style="width:100%;max-width:1040px;max-height:92vh;overflow:auto;margin:0;"><div class="mq-card-body" style="text-align:center;color:#7A8F82;">جارٍ تحميل بيانات الطالب...</div></div>`;
+        document.body.appendChild(overlay);
+        const close = () => overlay.remove();
+        overlay.addEventListener('mousedown', e => { if (e.target === overlay) close(); });
+
+        try {
+            const res = await API.get('/students/' + id);
+            const s = res.data.student || {};
+            const memos = res.data.memorizations || [];
+            const atts = res.data.attendances || [];
+            const tests = res.data.weeklyTests || [];
+
+            const info = (lbl, val) => `<div style="padding:11px 13px;background:#FBF9EE;border-radius:10px;">
+                <div style="font-size:11px;color:#7A8F82;margin-bottom:2px;">${lbl}</div>
+                <div style="font-size:14px;font-weight:700;color:#04361F;">${UI.escapeHtml(val ?? '—')}</div></div>`;
+
+            const memoRows = memos.map(m => `<tr>
+                <td>${UI.fmtDate(m.date)}</td><td style="font-weight:600;">${UI.escapeHtml(m.surah_name)}</td>
+                <td>${m.page_from && m.page_to ? m.page_from + '–' + m.page_to : '—'}</td><td>${UI.qualityBadge(m.quality)}</td></tr>`).join('')
+                || `<tr><td colspan="4" style="text-align:center;color:#9DB3A6;padding:16px;">لا توجد سجلات</td></tr>`;
+
+            const attRows = atts.map(a => `<tr>
+                <td>${UI.fmtDate(a.date)}</td><td>${UI.attendanceBadge(a.status)}</td></tr>`).join('')
+                || `<tr><td colspan="2" style="text-align:center;color:#9DB3A6;padding:16px;">لا توجد سجلات</td></tr>`;
+
+            // عمود الأثمان: يعرض نصوص الأثمان المختبَرة (نقطة خضراء=ناجح، حمراء=راسب) بدل العدد
+            const thumnList = (qs) => (qs && qs.length)
+                ? qs.map(q => `<div style="display:flex;align-items:flex-start;gap:7px;margin:3px 0;">
+                     <span style="flex:none;width:7px;height:7px;border-radius:50%;margin-top:7px;background:${q.result === 'ناجح' ? '#04532F' : '#B23A48'};"></span>
+                     <span style="font-family:'Amiri',serif;font-size:14.5px;color:#04361F;line-height:1.7;">${UI.escapeHtml(q.eighth_start)}</span></div>`).join('')
+                : '<span style="color:#9DB3A6;">—</span>';
+
+            const testRows = tests.map(t => `<tr>
+                <td style="white-space:nowrap;vertical-align:top;">${UI.fmtDate(t.exam_date)}</td>
+                <td style="vertical-align:top;">${UI.resultBadge(t.result)}</td>
+                <td style="vertical-align:top;">${thumnList(t.questions)}</td></tr>`).join('')
+                || `<tr><td colspan="3" style="text-align:center;color:#9DB3A6;padding:16px;">لا توجد اختبارات</td></tr>`;
+
+            overlay.querySelector('.mq-card').innerHTML = `
+                <div class="mq-card-header" style="position:sticky;top:0;">
+                  <h3 class="mq-card-title">ملف الطالب</h3>
+                  <button class="mq-act" data-close style="background:rgba(4,54,31,.06);color:#3D6B52;font-size:20px;line-height:1;">×</button>
+                </div>
+                <div class="mq-card-body">
+                  <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
+                    <span class="mq-avatar" style="width:56px;height:56px;font-size:24px;">${UI.initial(s.name)}</span>
+                    <div>
+                      <h2 style="font-family:'Amiri',serif;font-size:24px;margin:0;color:#04361F;">${UI.escapeHtml(s.name)}</h2>
+                      <div style="display:flex;gap:8px;margin-top:6px;">
+                        ${s.is_active ? UI.badge('نشط', 'success') : UI.badge('غير نشط', 'danger')}
+                        ${s.center ? UI.badge(UI.escapeHtml(s.center.name), 'info') : ''}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:10px;margin-bottom:22px;">
+                    ${info('العمر', (s.age ?? '—') + ' سنة')}
+                    ${info('هاتف الطالب', s.phone)}
+                    ${info('ولي الأمر', s.guardian_name)}
+                    ${info('هاتف ولي الأمر', s.guardian_phone)}
+                    ${info('المركز', s.center?.name)}
+                    ${info('المدينة', s.center?.city)}
+                    ${info('المعلم', s.teacher?.name)}
+                    ${info('تاريخ الالتحاق', s.enrollment_date ? UI.fmtDate(s.enrollment_date) : '—')}
+                  </div>
+
+                  <h4 style="font-family:'Amiri',serif;color:#04532F;margin:0 0 10px;">📖 آخر سجلات الحفظ</h4>
+                  <div style="border:1px solid var(--hair);border-radius:12px;overflow:hidden;margin-bottom:20px;">
+                    <table class="mq-table"><thead><tr><th>التاريخ</th><th>السورة</th><th>الصفحات</th><th>الجودة</th></tr></thead><tbody>${memoRows}</tbody></table></div>
+
+                  <h4 style="font-family:'Amiri',serif;color:#04532F;margin:0 0 10px;">📋 آخر الحضور</h4>
+                  <div style="border:1px solid var(--hair);border-radius:12px;overflow:hidden;margin-bottom:20px;">
+                    <table class="mq-table"><thead><tr><th style="width:50%;">التاريخ</th><th>الحالة</th></tr></thead><tbody>${attRows}</tbody></table></div>
+
+                  <h4 style="font-family:'Amiri',serif;color:#04532F;margin:0 0 10px;">✏️ آخر الاختبارات والأثمان المختبَرة</h4>
+                  <div style="border:1px solid var(--hair);border-radius:12px;overflow:hidden;">
+                    <table class="mq-table"><thead><tr><th style="width:14%;">التاريخ</th><th style="width:14%;">النتيجة</th><th>الأثمان المختبَرة</th></tr></thead><tbody>${testRows}</tbody></table></div>
+                </div>`;
+            overlay.querySelector('[data-close]').addEventListener('click', close);
+        } catch (e) {
+            overlay.querySelector('.mq-card').innerHTML = `<div class="mq-card-body" style="text-align:center;"><p style="color:#B23A48;">${UI.escapeHtml(e.message)}</p><button class="mq-btn mq-btn-outline" data-close>إغلاق</button></div>`;
+            overlay.querySelector('[data-close]').addEventListener('click', close);
+        }
+    }
+
+    try {
+        const res = await API.get('/students?all=1');
+        const students = res.data.data || res.data || [];
+        const rows = students.map(s => `
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:10px;"><span class="mq-avatar">${UI.initial(s.name)}</span>
+                <div><div style="font-weight:600;">${UI.escapeHtml(s.name)}</div>
+                <div style="font-size:12px;color:#9DB3A6;">${UI.escapeHtml(s.guardian_name || '')}</div></div></div></td>
+              <td>${UI.escapeHtml(s.guardian_phone || '—')}</td>
+              <td>${s.age ?? '—'}</td>
+              <td>${UI.escapeHtml(s.center?.name || '—')}</td>
+              <td>${s.is_active ? UI.badge('نشط', 'success') : UI.badge('غير نشط', 'danger')}</td>
+              <td><div class="mq-actions">
+                <button class="mq-btn mq-btn-primary mq-btn-sm" data-view="${s.id}" style="gap:6px;">${UI.ic('eye', 15)} التفاصيل</button>
+              </div></td>
+            </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد طلاب مرتبطون بك</td></tr>`;
+
+        pc.innerHTML = `
+            <div class="mq-toolbar"><div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="بحث عن طالب..."></div></div>
+            <div class="mq-card"><table class="mq-table" id="tbl">
+              <thead><tr><th>الطالب</th><th>هاتف ولي الأمر</th><th>العمر</th><th>المركز</th><th>الحالة</th><th>التفاصيل</th></tr></thead>
+              <tbody>${rows}</tbody></table></div>`;
+        UI.bindTableSearch('search', 'tbl');
+        pc.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => openDetails(b.dataset.view)));
+    } catch (e) { UI.toast(e.message, 'danger'); }
+})();
+</script>
+</body>
+</html>

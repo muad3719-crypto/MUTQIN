@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:#F2EEDC;}
+  .mtqn-input::placeholder{color:#9DB3A6;font-weight:500;}
+  .mtqn-input:focus{outline:none;border-color:#04532F!important;box-shadow:0 0 0 4px rgba(4,83,47,0.1);}
+  ::selection{background:#D4AF37;color:#04361F;}
+</style>
+</helmet>
+
+<div dir="rtl" lang="ar" style="font-family:'Cairo',sans-serif;color:#04361F;background:#F2EEDC;min-height:100vh;-webkit-font-smoothing:antialiased;padding:0 0 80px;">
+
+  <!-- ===== HEADER ===== -->
+  <div style="background:linear-gradient(135deg,#0A6342 0%,#04532F 50%,#04361F 100%);padding:48px 56px;position:relative;overflow:hidden;">
+    <svg viewBox="0 0 200 200" width="420" height="420" aria-hidden="true" style="position:absolute;left:-90px;top:-120px;opacity:0.07;">
+      <rect x="44" y="44" width="112" height="112" fill="none" stroke="#D4AF37" stroke-width="3"/>
+      <rect x="44" y="44" width="112" height="112" fill="none" stroke="#D4AF37" stroke-width="3" transform="rotate(45 100 100)"/>
+      <circle cx="100" cy="100" r="50" fill="none" stroke="#D4AF37" stroke-width="1.6" stroke-dasharray="4 4"/>
+    </svg>
+    <div style="display:flex;align-items:center;gap:18px;position:relative;z-index:1;">
+      <svg viewBox="0 0 200 200" width="76" height="76">
+        <circle cx="100" cy="100" r="56" fill="#FBF7DA"/>
+        <rect x="44" y="44" width="112" height="112" fill="none" stroke="#D4AF37" stroke-width="3.6"/>
+        <rect x="44" y="44" width="112" height="112" fill="none" stroke="#D4AF37" stroke-width="3.6" transform="rotate(45 100 100)"/>
+        <circle cx="100" cy="100" r="50" fill="none" stroke="#D4AF37" stroke-width="1.5" stroke-dasharray="3.5 3.5"/>
+        <text x="100" y="116" text-anchor="middle" font-family="Amiri,serif" font-size="54" font-weight="700" fill="#04532F">متقن</text>
+      </svg>
+      <div>
+        <h1 style="font-family:'Amiri',serif;font-size:42px;font-weight:700;margin:0;color:#FBF7DA;">نظام التصميم — مُتقِن</h1>
+        <p style="margin:6px 0 0;color:#D4AF37;font-size:15px;font-weight:600;">المكوّنات القابلة لإعادة الاستخدام · هوية بصرية موحّدة لكل صفحات المنصة</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="max-width:1180px;margin:0 auto;padding:0 32px;">
+
+    <!-- ===== FOUNDATIONS: COLORS ===== -->
+    <section style="margin-top:56px;">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:26px;">
+        <span style="font-family:'Amiri',serif;font-size:15px;font-weight:700;color:#9A7A1E;background:#FBF7DA;border:1px solid rgba(212,175,55,0.5);width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;">١</span>
+        <h2 style="font-family:'Amiri',serif;font-size:30px;font-weight:700;margin:0;color:#04361F;">الألوان</h2>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;">
+        <sc-for list="{{ palette }}" as="c" hint-placeholder-count="5">
+          <div style="background:#fff;border:1px solid rgba(4,54,31,0.08);border-radius:16px;overflow:hidden;box-shadow:0 8px 24px -18px rgba(4,54,31,0.4);">
+            <div style="height:88px;background:{{ c.hex }};"></div>
+            <div style="padding:14px 16px;">
+              <div style="font-weight:700;font-size:15px;color:#04361F;">{{ c.name }}</div>
+              <div style="font-family:'Cairo',monospace;font-size:12.5px;color:#7A8F82;margin-top:3px;letter-spacing:0.5px;direction:ltr;text-align:right;">{{ c.hex }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- ===== FOUNDATIONS: TYPE ===== -->
+    <section style="margin-top:56px;">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:26px;">
+        <span style="font-family:'Amiri',serif;font-size:15px;font-weight:700;color:#9A7A1E;background:#FBF7DA;border:1px solid rgba(212,175,55,0.5);width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;">٢</span>
+        <h2 style="font-family:'Amiri',serif;font-size:30px;font-weight:700;margin:0;color:#04361F;">الخطوط</h2>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div style="background:#fff;border:1px solid rgba(4,54,31,0.08);border-radius:18px;padding:32px;box-shadow:0 8px 24px -18px rgba(4,54,31,0.4);">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid rgba(212,175,55,0.3);padding-bottom:14px;margin-bottom:18px;">
+            <span style="font-family:'Amiri',serif;font-size:22px;font-weight:700;color:#04532F;">Amiri — أميري</span>
+            <span style="font-size:13px;color:#9A7A1E;font-weight:600;">العناوين والاقتباسات</span>
+          </div>
+          <p style="font-family:'Amiri',serif;font-size:40px;font-weight:700;margin:0 0 6px;color:#04361F;line-height:1.3;">إتقانٌ لكتاب الله</p>
+          <p style="font-family:'Amiri',serif;font-size:22px;margin:0;color:#3D6B52;">أبجد هوّز حطّي كلمن سعفص قرشت</p>
+        </div>
+        <div style="background:#fff;border:1px solid rgba(4,54,31,0.08);border-radius:18px;padding:32px;box-shadow:0 8px 24px -18px rgba(4,54,31,0.4);">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid rgba(212,175,55,0.3);padding-bottom:14px;margin-bottom:18px;">
+            <span style="font-size:22px;font-weight:700;color:#04532F;">Cairo — القاهرة</span>
+            <span style="font-size:13px;color:#9A7A1E;font-weight:600;">نصوص الواجهة</span>
+          </div>
+          <p style="font-size:28px;font-weight:700;margin:0 0 10px;color:#04361F;">إدارة مراكز التحفيظ</p>
+          <p style="font-size:16px;font-weight:500;margin:0;color:#3D6B52;line-height:1.8;">نصٌّ توضيحيّ بأوزانٍ متعددة: عادي ٤٠٠، متوسط ٥٠٠، شبه عريض ٦٠٠، عريض ٧٠٠.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== BUTTONS ===== -->
+    <section style="margin-top:56px;">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:26px;">
+        <span style="font-family:'Amiri',serif;font-size:15px;font-weight:700;color:#9A7A1E;background:#FBF7DA;border:1px solid rgba(212,175,55,0.5);width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;">٣</span>
+        <h2 style="font-family:'Amiri',serif;font-size:30px;font-weight:700;margin:0;color:#04361F;">الأزرار</h2>
+      </div>
+      <div style="background:#fff;border:1px solid rgba(4,54,31,0.08);border-radius:18px;padding:34px;box-shadow:0 8px 24px -18px rgba(4,54,31,0.4);">
+        <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-bottom:22px;">
+          <button type="button" style="font-family:'Cairo';font-size:15px;font-weight:700;color:#FBF7DA;background:#04532F;border:1.5px solid #04532F;padding:12px 26px;border-radius:40px;cursor:pointer;transition:all .2s;" style-hover="background:#04361F;">btn-primary</button>
+          <button type="button" style="font-family:'Cairo';font-size:15px;font-weight:700;color:#04361F;background:#D4AF37;border:1.5px solid #D4AF37;padding:12px 26px;border-radius:40px;cursor:pointer;transition:all .2s;" style-hover="background:#c39f2c;">btn-secondary</button>
+          <button type="button" style="font-family:'Cairo';font-size:15px;font-weight:700;color:#fff;background:#B23A48;border:1.5px solid #B23A48;padding:12px 26px;border-radius:40px;cursor:pointer;transition:all .2s;" style-hover="background:#9c303c;">btn-danger</button>
+          <button type="button" style="font-family:'Cairo';font-size:15px;font-weight:700;color:#04532F;background:transparent;border:1.5px solid rgba(4,83,47,0.4);padding:12px 26px;border-radius:40px;cursor:pointer;transition:all .2s;" style-hover="background:rgba(4,83,47,0.06);border-color:#04532F;">btn-outline</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;">
+          <button type="button" style="font-family:'Cairo';font-size:13px;font-weight:700;color:#FBF7DA;background:#04532F;border:none;padding:8px 18px;border-radius:40px;cursor:pointer;">btn-sm</button>
+          <button type="button" style="font-family:'Cairo';font-size:18px;font-weight:700;color:#FBF7DA;background:#04532F;border:none;padding:16px 38px;border-radius:44px;cursor:pointer;">btn-lg</button>
+          <span style="font-size:13px;color:#7A8F82;font-weight:600;margin-right:6px;">← الأحجام الصغيرة والكبيرة</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== BADGES + ALERTS ===== -->
+    <section style="margin-top:56px;display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;">
+      <div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:26px;">
+          <span style="font-family:'Amiri',serif;font-size:15px;font-weight:700;color:#9A7A1E;background:#FBF7DA;border:1px solid rgba(212,175,55,0.5);width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;">٤</span>
+          <h2 style="font-family:'Amiri',serif;font-size:30px;font-weight:700;margin:0;color:#04361F;">الشارات</h2>
+        </div>
+        <div style="background:#fff;border:1px solid rgba(4,54,31,0.08);border-radius:18px;padding:30px;box-shadow:0 8px 24px -18px rgba(4,54,31,0.4);display:flex;flex-wrap:wrap;gap:12px;">
+          <sc-for list="{{ badges }}" as="b" hint-placeholder-count="6">
+            <span style="display:inline-flex;align-items:center;gap:7px;font-size:13.5px;font-weight:700;padding:7px 15px;border-radius:30px;color:{{ b.fg }};background:{{ b.bg }};border:1px solid {{ b.border }};">
+              <span style="width:7px;height:7px;border-radius:50%;background:{{ b.fg }};"></span>{{ b.label }}
+            </span>
+          </sc-for>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:26px;">
+          <span style="font-family:'Amiri',serif;font-size:15px;font-weight:700;color:#9A7A1E;background:#FBF7DA;border:1px solid rgba(212,175,55,0.5);width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;">٥</span>
+          <h2 style="font-family:'Amiri',serif;font-size:30px;font-weight:700;margin:0;color:#04361F;">التنبيهات</h2>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <sc-for list="{{ alerts }}" as="a" hint-placeholder-count="4">
+            <div style="display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:13px;font-size:14.5px;font-weight:600;color:{{ a.fg }};background:{{ a.bg }};border-right:4px solid {{ a.fg }};">
+              <span style="font-family:'Amiri',serif;font-weight:700;font-size:18px;flex:none;width:24px;height:24px;border-radius:50%;background:{{ a.fg }};color:#fff;display:flex;align-items:center;justify-content:center;">{{ a.mark }}</span>
+              {{ a.text }}
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== STAT CARDS ===== -->
+    <section style="margin-top:56px;">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:26px;">
+        <span style="font-family:'Amiri',serif;font-size:15px;font-weight:700;color:#9A7A1E;background:#FBF7DA;border:1px solid rgba(212,175,55,0.5);width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;">٦</span>
+        <h2 style="font-family:'Amiri',serif;font-size:30px;font-weight:700;margin:0;color:#04361F;">البطاقات الإحصائية</h2>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;">
+        <sc-for list="{{ stats }}" as="s" hint-placeholder-count="5">
+          <div style="background:#fff;border:1px solid rgba(4,54,31,0.08);border-top:3px solid {{ s.color }};border-radius:16px;padding:24px 20px;box-shadow:0 8px 24px -18px rgba(4,54,31,0.4);">
+            <div style="width:46px;height:46px;border-radius:13px;background:{{ s.tint }};display:flex;align-items:center;justify-content:center;margin-bottom:16px;position:relative;">
+              <svg viewBox="0 0 60 60" width="26" height="26"><rect x="16" y="16" width="28" height="28" fill="none" stroke="{{ s.color }}" stroke-width="2.4"/><rect x="16" y="16" width="28" height="28" fill="none" stroke="{{ s.color }}" stroke-width="2.4" transform="rotate(45 30 30)"/></svg>
+            </div>
+            <div style="font-family:'Amiri',serif;font-size:34px;font-weight:700;color:#04361F;line-height:1;">{{ s.value }}</div>
+            <div style="font-size:13.5px;color:#7A8F82;font-weight:600;margin-top:8px;">{{ s.label }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- ===== FORM ===== -->
+    <section style="margin-top:56px;">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:26px;">
+        <span style="font-family:'Amiri',serif;font-size:15px;font-weight:700;color:#9A7A1E;background:#FBF7DA;border:1px solid rgba(212,175,55,0.5);width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;">٧</span>
+        <h2 style="font-family:'Amiri',serif;font-size:30px;font-weight:700;margin:0;color:#04361F;">النماذج</h2>
+      </div>
+      <div style="background:#fff;border:1px solid rgba(4,54,31,0.08);border-radius:18px;padding:34px;box-shadow:0 8px 24px -18px rgba(4,54,31,0.4);">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:22px;">
+          <div>
+            <label style="display:block;font-size:14px;font-weight:700;color:#04361F;margin-bottom:9px;">الاسم الكامل <span style="color:#B23A48;">*</span></label>
+            <input class="mtqn-input" type="text" placeholder="مثال: محمد عبدالله الفيتوري" style="width:100%;font-family:'Cairo';font-size:15px;color:#04361F;padding:13px 16px;border:1.5px solid rgba(4,83,47,0.22);border-radius:12px;background:#FBF9EE;transition:all .2s;">
+          </div>
+          <div>
+            <label style="display:block;font-size:14px;font-weight:700;color:#04361F;margin-bottom:9px;">المركز <span style="color:#B23A48;">*</span></label>
+            <select class="mtqn-input" style="width:100%;font-family:'Cairo';font-size:15px;color:#04361F;padding:13px 16px;border:1.5px solid rgba(4,83,47,0.22);border-radius:12px;background:#FBF9EE;transition:all .2s;cursor:pointer;">
+              <option>مركز النور لتحفيظ القرآن</option>
+              <option>مركز الفرقان</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label style="display:block;font-size:14px;font-weight:700;color:#04361F;margin-bottom:9px;">ملاحظات المعلم</label>
+          <textarea class="mtqn-input" rows="3" placeholder="اكتب ملاحظاتك هنا..." style="width:100%;font-family:'Cairo';font-size:15px;color:#04361F;padding:13px 16px;border:1.5px solid rgba(4,83,47,0.22);border-radius:12px;background:#FBF9EE;transition:all .2s;resize:vertical;"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== TABLE + MISC ===== -->
+    <section style="margin-top:56px;">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:26px;">
+        <span style="font-family:'Amiri',serif;font-size:15px;font-weight:700;color:#9A7A1E;background:#FBF7DA;border:1px solid rgba(212,175,55,0.5);width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;">٨</span>
+        <h2 style="font-family:'Amiri',serif;font-size:30px;font-weight:700;margin:0;color:#04361F;">الجداول والعناصر المساعدة</h2>
+      </div>
+
+      <!-- breadcrumb -->
+      <div style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:#7A8F82;margin-bottom:20px;">
+        <span style="color:#04532F;cursor:pointer;">الرئيسية</span><span style="color:#D4AF37;">›</span>
+        <span style="color:#04532F;cursor:pointer;">المعلمون</span><span style="color:#D4AF37;">›</span>
+        <span style="color:#9A7A1E;">قائمة المعلمين</span>
+      </div>
+
+      <div style="background:#fff;border:1px solid rgba(4,54,31,0.08);border-radius:18px;overflow:hidden;box-shadow:0 8px 24px -18px rgba(4,54,31,0.4);">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 26px;border-bottom:1px solid rgba(212,175,55,0.3);background:#FBF9EE;">
+          <h3 style="font-family:'Amiri',serif;font-size:22px;font-weight:700;margin:0;color:#04361F;">قائمة المعلمين</h3>
+          <button type="button" style="font-family:'Cairo';font-size:14px;font-weight:700;color:#FBF7DA;background:#04532F;border:none;padding:10px 20px;border-radius:40px;cursor:pointer;">➕ إضافة معلم</button>
+        </div>
+        <table style="width:100%;border-collapse:collapse;text-align:right;">
+          <thead>
+            <tr style="background:#04532F;">
+              <th style="padding:14px 26px;font-size:13.5px;font-weight:700;color:#D4AF37;">المعلم</th>
+              <th style="padding:14px 16px;font-size:13.5px;font-weight:700;color:#D4AF37;">المركز</th>
+              <th style="padding:14px 16px;font-size:13.5px;font-weight:700;color:#D4AF37;">عدد الطلاب</th>
+              <th style="padding:14px 16px;font-size:13.5px;font-weight:700;color:#D4AF37;">الإجراءات</th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{ teachers }}" as="t" hint-placeholder-count="3">
+              <tr style="border-bottom:1px solid rgba(4,54,31,0.07);">
+                <td style="padding:15px 26px;">
+                  <div style="display:flex;align-items:center;gap:12px;">
+                    <span style="flex:none;width:40px;height:40px;border-radius:11px;background:{{ t.avatarBg }};color:{{ t.avatarFg }};display:flex;align-items:center;justify-content:center;font-family:'Amiri',serif;font-weight:700;font-size:19px;">{{ t.initial }}</span>
+                    <div>
+                      <div style="font-weight:700;font-size:14.5px;color:#04361F;">{{ t.name }}</div>
+                      <div style="font-size:12.5px;color:#9DB3A6;direction:ltr;text-align:right;">{{ t.email }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td style="padding:15px 16px;font-size:14px;color:#3D6B52;font-weight:500;">{{ t.center }}</td>
+                <td style="padding:15px 16px;"><span style="font-size:13px;font-weight:700;color:#04532F;background:rgba(4,83,47,0.1);padding:5px 13px;border-radius:30px;">{{ t.count }}</span></td>
+                <td style="padding:15px 16px;">
+                  <div style="display:flex;gap:8px;">
+                    <span style="width:32px;height:32px;border-radius:9px;background:rgba(4,83,47,0.08);color:#04532F;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;">👁</span>
+                    <span style="width:32px;height:32px;border-radius:9px;background:rgba(212,175,55,0.18);color:#9A7A1E;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;">✏️</span>
+                    <span style="width:32px;height:32px;border-radius:9px;background:rgba(178,58,72,0.12);color:#B23A48;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;">🗑</span>
+                  </div>
+                </td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+        <!-- pagination -->
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:20px;">
+          <span style="width:36px;height:36px;border-radius:10px;border:1px solid rgba(4,83,47,0.2);display:flex;align-items:center;justify-content:center;font-size:14px;color:#7A8F82;cursor:pointer;">›</span>
+          <span style="width:36px;height:36px;border-radius:10px;background:#04532F;color:#FBF7DA;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;">١</span>
+          <span style="width:36px;height:36px;border-radius:10px;border:1px solid rgba(4,83,47,0.2);display:flex;align-items:center;justify-content:center;font-size:14px;color:#04532F;cursor:pointer;">٢</span>
+          <span style="width:36px;height:36px;border-radius:10px;border:1px solid rgba(4,83,47,0.2);display:flex;align-items:center;justify-content:center;font-size:14px;color:#04532F;cursor:pointer;">٣</span>
+          <span style="width:36px;height:36px;border-radius:10px;border:1px solid rgba(4,83,47,0.2);display:flex;align-items:center;justify-content:center;font-size:14px;color:#7A8F82;cursor:pointer;">‹</span>
+        </div>
+      </div>
+
+      <!-- progress bars + empty state -->
+      <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:24px;margin-top:24px;">
+        <div style="background:#fff;border:1px solid rgba(4,54,31,0.08);border-radius:18px;padding:28px;box-shadow:0 8px 24px -18px rgba(4,54,31,0.4);">
+          <h3 style="font-family:'Amiri',serif;font-size:20px;font-weight:700;margin:0 0 20px;color:#04361F;">شريط نسبة الحضور</h3>
+          <sc-for list="{{ progress }}" as="p" hint-placeholder-count="3">
+            <div style="margin-bottom:18px;">
+              <div style="display:flex;justify-content:space-between;font-size:13.5px;font-weight:600;margin-bottom:7px;"><span style="color:#3D6B52;">{{ p.name }}</span><span style="color:{{ p.color }};font-weight:700;">{{ p.pct }}٪</span></div>
+              <div style="height:10px;border-radius:30px;background:rgba(4,54,31,0.08);overflow:hidden;"><div style="height:100%;width:{{ p.width }};background:{{ p.color }};border-radius:30px;"></div></div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="background:#fff;border:1px dashed rgba(4,83,47,0.3);border-radius:18px;padding:40px 28px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 200 200" width="76" height="76" style="opacity:0.45;margin-bottom:16px;">
+            <rect x="44" y="44" width="112" height="112" fill="none" stroke="#04532F" stroke-width="4"/>
+            <rect x="44" y="44" width="112" height="112" fill="none" stroke="#04532F" stroke-width="4" transform="rotate(45 100 100)"/>
+          </svg>
+          <h3 style="font-family:'Amiri',serif;font-size:21px;font-weight:700;margin:0 0 8px;color:#04361F;">لا توجد بيانات بعد</h3>
+          <p style="font-size:14px;color:#7A8F82;margin:0;font-weight:500;">الحالة الفارغة — تظهر عند عدم وجود سجلات.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== APP SHELL MOCKUP ===== -->
+    <section style="margin-top:64px;">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:26px;">
+        <span style="font-family:'Amiri',serif;font-size:15px;font-weight:700;color:#9A7A1E;background:#FBF7DA;border:1px solid rgba(212,175,55,0.5);width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;">٩</span>
+        <h2 style="font-family:'Amiri',serif;font-size:30px;font-weight:700;margin:0;color:#04361F;">الهيكل المشترك — لوحة تحكم المدير</h2>
+      </div>
+      <div style="background:#fff;border:1px solid rgba(4,54,31,0.1);border-radius:22px;overflow:hidden;box-shadow:0 26px 60px -34px rgba(4,54,31,0.5);display:grid;grid-template-columns:260px 1fr;min-height:560px;">
+
+        <!-- sidebar (right in RTL) -->
+        <aside style="grid-column:1;background:linear-gradient(180deg,#04532F,#04361F);padding:24px 18px;display:flex;flex-direction:column;order:2;">
+          <div style="display:flex;align-items:center;gap:11px;padding:0 6px 20px;border-bottom:1px solid rgba(212,175,55,0.25);margin-bottom:18px;">
+            <svg viewBox="0 0 200 200" width="42" height="42">
+              <rect x="44" y="44" width="112" height="112" fill="none" stroke="#D4AF37" stroke-width="5"/>
+              <rect x="44" y="44" width="112" height="112" fill="none" stroke="#D4AF37" stroke-width="5" transform="rotate(45 100 100)"/>
+              <text x="100" y="118" text-anchor="middle" font-family="Amiri,serif" font-size="52" font-weight="700" fill="#FBF7DA">متقن</text>
+            </svg>
+            <span style="font-family:'Amiri',serif;font-size:24px;font-weight:700;color:#FBF7DA;">مُتقِن</span>
+          </div>
+          <!-- user card -->
+          <div style="display:flex;align-items:center;gap:11px;background:rgba(251,247,218,0.08);border:1px solid rgba(212,175,55,0.2);border-radius:13px;padding:12px;margin-bottom:20px;">
+            <span style="flex:none;width:40px;height:40px;border-radius:11px;background:#D4AF37;color:#04361F;display:flex;align-items:center;justify-content:center;font-family:'Amiri',serif;font-weight:700;font-size:18px;">أ</span>
+            <div><div style="font-size:14px;font-weight:700;color:#FBF7DA;">أحمد المنصوري</div><div style="font-size:12px;color:#D4AF37;">مدير النظام</div></div>
+          </div>
+          <nav style="display:flex;flex-direction:column;gap:4px;flex:1;">
+            <sc-for list="{{ nav }}" as="n" hint-placeholder-count="5">
+              <div style="display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:11px;font-size:14.5px;font-weight:600;cursor:pointer;color:{{ n.fg }};background:{{ n.bg }};">
+                <span style="font-size:16px;">{{ n.icon }}</span>{{ n.label }}
+              </div>
+            </sc-for>
+          </nav>
+          <div style="display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:11px;font-size:14.5px;font-weight:600;color:#E8B4B4;cursor:pointer;margin-top:8px;border-top:1px solid rgba(212,175,55,0.2);padding-top:16px;">
+            <span style="font-size:16px;">🚪</span>تسجيل الخروج
+          </div>
+        </aside>
+
+        <!-- main -->
+        <div style="grid-column:2;order:1;background:#F7F3E4;display:flex;flex-direction:column;">
+          <!-- topbar -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 30px;background:#fff;border-bottom:1px solid rgba(212,175,55,0.3);">
+            <h3 style="font-family:'Amiri',serif;font-size:26px;font-weight:700;margin:0;color:#04361F;">لوحة التحكم</h3>
+            <span style="font-size:13.5px;color:#7A8F82;font-weight:600;">الجمعة، ٢٠ يونيو ٢٠٢٦</span>
+          </div>
+          <!-- content -->
+          <div style="padding:28px 30px;flex:1;">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px;">
+              <sc-for list="{{ dashStats }}" as="s" hint-placeholder-count="6">
+                <div style="background:#fff;border:1px solid rgba(4,54,31,0.08);border-top:3px solid {{ s.color }};border-radius:14px;padding:18px;display:flex;align-items:center;gap:14px;">
+                  <span style="flex:none;width:44px;height:44px;border-radius:12px;background:{{ s.tint }};display:flex;align-items:center;justify-content:center;">
+                    <svg viewBox="0 0 60 60" width="22" height="22"><rect x="18" y="18" width="24" height="24" fill="none" stroke="{{ s.color }}" stroke-width="2.6"/><rect x="18" y="18" width="24" height="24" fill="none" stroke="{{ s.color }}" stroke-width="2.6" transform="rotate(45 30 30)"/></svg>
+                  </span>
+                  <div><div style="font-family:'Amiri',serif;font-size:28px;font-weight:700;color:#04361F;line-height:1;">{{ s.value }}</div><div style="font-size:12.5px;color:#7A8F82;font-weight:600;margin-top:4px;">{{ s.label }}</div></div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="background:#fff;border:1px solid rgba(4,54,31,0.08);border-radius:16px;overflow:hidden;">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1px solid rgba(212,175,55,0.3);background:#FBF9EE;">
+                <h4 style="font-family:'Amiri',serif;font-size:19px;font-weight:700;margin:0;color:#04361F;">آخر الطلاب المضافين</h4>
+                <span style="font-size:13px;font-weight:700;color:#9A7A1E;cursor:pointer;">عرض الكل ›</span>
+              </div>
+              <table style="width:100%;border-collapse:collapse;text-align:right;">
+                <thead><tr style="background:rgba(4,83,47,0.05);"><th style="padding:11px 22px;font-size:12.5px;font-weight:700;color:#04532F;">الطالب</th><th style="padding:11px 16px;font-size:12.5px;font-weight:700;color:#04532F;">المعلم</th><th style="padding:11px 16px;font-size:12.5px;font-weight:700;color:#04532F;">المركز</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{ recentStudents }}" as="r" hint-placeholder-count="3">
+                    <tr style="border-bottom:1px solid rgba(4,54,31,0.06);">
+                      <td style="padding:12px 22px;"><div style="display:flex;align-items:center;gap:10px;"><span style="flex:none;width:34px;height:34px;border-radius:10px;background:{{ r.bg }};color:{{ r.fg }};display:flex;align-items:center;justify-content:center;font-family:'Amiri',serif;font-weight:700;font-size:16px;">{{ r.initial }}</span><span style="font-size:14px;font-weight:600;color:#04361F;">{{ r.name }}</span></div></td>
+                      <td style="padding:12px 16px;font-size:13.5px;color:#3D6B52;">{{ r.teacher }}</td>
+                      <td style="padding:12px 16px;font-size:13.5px;color:#3D6B52;">{{ r.center }}</td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1240,&quot;height&quot;:&quot;auto&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      palette: [
+        { name: 'الأخضر الأساسي', hex: '#04532F' },
+        { name: 'الأخضر الغامق', hex: '#04361F' },
+        { name: 'الأخضر اليشمي', hex: '#006850' },
+        { name: 'الذهبي', hex: '#D4AF37' },
+        { name: 'العاجي', hex: '#FBF7DA' }
+      ],
+      badges: [
+        { label: 'ناجح', fg: '#04532F', bg: 'rgba(4,83,47,0.12)', border: 'rgba(4,83,47,0.25)' },
+        { label: 'راسب', fg: '#B23A48', bg: 'rgba(178,58,72,0.12)', border: 'rgba(178,58,72,0.25)' },
+        { label: 'متأخر', fg: '#9A7A1E', bg: 'rgba(212,175,55,0.18)', border: 'rgba(212,175,55,0.4)' },
+        { label: 'أساسي', fg: '#04361F', bg: 'rgba(4,54,31,0.1)', border: 'rgba(4,54,31,0.2)' },
+        { label: 'معلومة', fg: '#2A6F8E', bg: 'rgba(42,111,142,0.12)', border: 'rgba(42,111,142,0.25)' },
+        { label: 'غير نشط', fg: '#6B7C72', bg: 'rgba(107,124,114,0.14)', border: 'rgba(107,124,114,0.28)' }
+      ],
+      alerts: [
+        { mark: '✓', text: 'تم حفظ البيانات بنجاح.', fg: '#04532F', bg: 'rgba(4,83,47,0.1)' },
+        { mark: '✕', text: 'حدث خطأ، يرجى المحاولة مرة أخرى.', fg: '#B23A48', bg: 'rgba(178,58,72,0.1)' },
+        { mark: '!', text: 'لم يُسجَّل الحضور اليوم بعد.', fg: '#9A7A1E', bg: 'rgba(212,175,55,0.16)' },
+        { mark: 'i', text: 'يمكنك استيراد الحضور من ملف Excel.', fg: '#2A6F8E', bg: 'rgba(42,111,142,0.1)' }
+      ],
+      stats: [
+        { value: '١٢', label: 'المعلمون', color: '#04532F', tint: 'rgba(4,83,47,0.1)' },
+        { value: '٣١٥', label: 'الطلاب', color: '#D4AF37', tint: 'rgba(212,175,55,0.18)' },
+        { value: '٨', label: 'المراكز', color: '#2A6F8E', tint: 'rgba(42,111,142,0.12)' },
+        { value: '٢٧', label: 'غائب اليوم', color: '#B23A48', tint: 'rgba(178,58,72,0.12)' },
+        { value: '١٤', label: 'متأخر اليوم', color: '#C57B2C', tint: 'rgba(197,123,44,0.13)' }
+      ],
+      teachers: [
+        { initial: 'م', name: 'محمد عبدالله الفيتوري', email: 'm.fituri@mutqin.ly', center: 'مركز النور', count: '٢٤ طالب', avatarBg: 'rgba(4,83,47,0.12)', avatarFg: '#04532F' },
+        { initial: 'ع', name: 'عائشة الزروق', email: 'a.zarrouq@mutqin.ly', center: 'مركز الفرقان', count: '١٨ طالبة', avatarBg: 'rgba(212,175,55,0.2)', avatarFg: '#9A7A1E' },
+        { initial: 'خ', name: 'خالد بن سعيد', email: 'k.binsaeed@mutqin.ly', center: 'مركز الهدى', count: '٣١ طالب', avatarBg: 'rgba(4,83,47,0.12)', avatarFg: '#04532F' }
+      ],
+      progress: [
+        { name: 'مريم الصادق', pct: '٩٦', width: '96%', color: '#04532F' },
+        { name: 'يوسف الترهوني', pct: '٧٨', width: '78%', color: '#C57B2C' },
+        { name: 'سارة المبروك', pct: '٥٢', width: '52%', color: '#B23A48' }
+      ],
+      nav: [
+        { icon: '◆', label: 'الرئيسية', fg: '#04361F', bg: '#D4AF37' },
+        { icon: '◇', label: 'المعلمون', fg: '#E4EFE8', bg: 'transparent' },
+        { icon: '◇', label: 'المراكز', fg: '#E4EFE8', bg: 'transparent' },
+        { icon: '◇', label: 'جميع الطلاب', fg: '#E4EFE8', bg: 'transparent' },
+        { icon: '◇', label: 'رفع ملف الحضور', fg: '#E4EFE8', bg: 'transparent' }
+      ],
+      dashStats: [
+        { value: '١٢', label: 'المعلمون', color: '#04532F', tint: 'rgba(4,83,47,0.1)' },
+        { value: '٣١٥', label: 'الطلاب', color: '#D4AF37', tint: 'rgba(212,175,55,0.18)' },
+        { value: '٨', label: 'المراكز النشطة', color: '#2A6F8E', tint: 'rgba(42,111,142,0.12)' },
+        { value: '٢٧٤', label: 'حاضر اليوم', color: '#006850', tint: 'rgba(0,104,80,0.1)' },
+        { value: '٢٧', label: 'غائب اليوم', color: '#B23A48', tint: 'rgba(178,58,72,0.12)' },
+        { value: '١٤', label: 'متأخر اليوم', color: '#C57B2C', tint: 'rgba(197,123,44,0.13)' }
+      ],
+      recentStudents: [
+        { initial: 'ع', name: 'عبدالرحمن المهدي', teacher: 'محمد الفيتوري', center: 'مركز النور', bg: 'rgba(4,83,47,0.12)', fg: '#04532F' },
+        { initial: 'ف', name: 'فاطمة الورفلي', teacher: 'عائشة الزروق', center: 'مركز الفرقان', bg: 'rgba(212,175,55,0.2)', fg: '#9A7A1E' },
+        { initial: 'ز', name: 'زيد القذافي', teacher: 'خالد بن سعيد', center: 'مركز الهدى', bg: 'rgba(4,83,47,0.12)', fg: '#04532F' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تتبع الحفظ | مُتقِن</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+<link href="../css/theme.css" rel="stylesheet">
+</head>
+<body>
+<div id="app-shell"></div>
+
+<script src="../js/config.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/layout.js"></script>
+<script>
+(function () {
+    const user = Auth.requireAuth(['teacher', 'admin']);
+    if (!user) return;
+    const pc = Layout.mount({ user, active: 'memorization', title: 'تتبع الحفظ' });
+    let students = [], surahs = [];
+
+    const today = new Date().toISOString().slice(0, 10);
+    const qualityOpts = [
+        { value: 'excellent', label: 'ممتاز' }, { value: 'good', label: 'جيد' },
+        { value: 'average', label: 'مقبول' }, { value: 'weak', label: 'ضعيف' }];
+
+    function addFields() {
+        return [
+            { name: 'student_id', label: 'الطالب', type: 'select', required: true, options: students.map(s => ({ value: s.id, label: s.name })) },
+            { name: 'date', label: 'التاريخ', type: 'date', required: true, value: today },
+            { name: 'surah_name', label: 'السورة', type: 'select', required: true, options: surahs.map(s => ({ value: s, label: s })) },
+            { name: 'quality', label: 'تقييم الجودة', type: 'select', required: true, options: qualityOpts },
+            { name: 'juz', label: 'الجزء (1-30)', type: 'number' },
+            { name: 'page_from', label: 'من صفحة', type: 'number' },
+            { name: 'page_to', label: 'إلى صفحة', type: 'number' },
+            { name: 'notes', label: 'ملاحظات', type: 'textarea' },
+        ];
+    }
+
+    async function load() {
+        pc.innerHTML = '<div class="mq-card"><div class="mq-card-body">جارٍ التحميل...</div></div>';
+        try {
+            const [sRes, surRes] = await Promise.all([
+                API.get('/students?all=1'), API.get('/memorizations/surahs')]);
+            students = sRes.data.data || sRes.data || [];
+            surahs = surRes.data || [];
+
+            const juzOptions = Array.from({ length: 30 }, (_, i) => i + 1)
+                .map(n => `<option value="${n}">الجزء ${n}</option>`).join('');
+
+            pc.innerHTML = `
+                <div class="mq-toolbar">
+                  <div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="بحث بالاسم..."></div>
+                  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <label class="mq-label" style="margin:0;font-size:13px;white-space:nowrap;">الجزء:</label>
+                      <select class="mq-input" id="juz-filter" style="max-width:170px;">
+                        <option value="">كل الأجزاء</option>${juzOptions}
+                      </select>
+                    </div>
+                    <button class="mq-btn mq-btn-primary" id="add">${UI.ic('plus', 17)} تسجيل حفظ</button>
+                  </div>
+                </div>
+                <div class="mq-card"><table class="mq-table" id="tbl">
+                  <thead><tr><th>الطالب</th><th>التاريخ</th><th>السورة</th><th>الصفحات</th><th>الجودة</th><th>حذف</th></tr></thead>
+                  <tbody id="rec-body"><tr><td colspan="6" style="text-align:center;color:#7A8F82;padding:30px;">جارٍ التحميل...</td></tr></tbody>
+                </table></div>`;
+
+            const searchInput = document.getElementById('search');
+            const juzFilter = document.getElementById('juz-filter');
+
+            // الجدول السفلي: سجلات الحفظ التفصيلية، مفلترة اختيارياً بجزء السورة (?juz=N)
+            async function renderRecords(juz) {
+                const body = document.getElementById('rec-body');
+                body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#7A8F82;padding:20px;">جارٍ التحميل...</td></tr>`;
+                try {
+                    const res = await API.get('/memorizations' + (juz ? '?juz=' + juz : ''));
+                    const memos = res.data.data || res.data || [];
+                    body.innerHTML = memos.map(m => `
+                        <tr>
+                          <td>${UI.escapeHtml(m.student?.name || '')}</td>
+                          <td>${UI.fmtDate(m.date)}</td>
+                          <td style="font-weight:600;">${UI.escapeHtml(m.surah_name)}</td>
+                          <td>${m.page_from && m.page_to ? m.page_from + '–' + m.page_to : '—'}</td>
+                          <td>${UI.qualityBadge(m.quality)}</td>
+                          <td><div class="mq-actions">${UI.actionBtn('del', `data-del="${m.id}"`)}</div></td>
+                        </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:#7A8F82;padding:30px;">لا توجد سجلات حفظ${juz ? ' لهذا الجزء' : ''}</td></tr>`;
+
+                    // ربط أزرار الحذف على الصفوف الجديدة
+                    body.querySelectorAll('[data-del]').forEach(b => b.onclick = () =>
+                        UI.confirmDelete('حذف هذا السجل؟', async () => {
+                            await API.del('/memorizations/' + b.dataset.del); UI.toast('تم الحذف'); renderRecords(juzFilter.value);
+                        }));
+                    // إعادة تطبيق البحث الحالي على الصفوف المُعاد رسمها (الفلتر + البحث معاً)
+                    if (searchInput.value.trim()) searchInput.dispatchEvent(new Event('input'));
+                } catch (e) {
+                    body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#B23A48;padding:20px;">${UI.escapeHtml(e.message)}</td></tr>`;
+                }
+            }
+
+            UI.bindTableSearch('search', 'tbl');     // بحث بالاسم (client-side) يعمل مع الفلتر
+            juzFilter.onchange = (e) => renderRecords(e.target.value);
+            document.getElementById('add').onclick = () => UI.formModal({
+                title: 'تسجيل حفظ جديد', fields: addFields(),
+                onSubmit: async (v, h) => { await API.post('/memorizations', v); UI.toast('تم تسجيل الحفظ'); h.close(); renderRecords(juzFilter.value); }
+            });
+
+            renderRecords('');
+        } catch (e) { UI.toast(e.message, 'danger'); }
+    }
+    load();
+})();
+</script>
+</body>
+</html>

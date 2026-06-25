@@ -1,0 +1,10 @@
+# Archives / backups
+*.zip
+
+# Temp & scratch
+.shots-tmp/
+/node_modules
+
+# OS
+.DS_Store
+Thumbs.db

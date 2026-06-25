@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الاختبارات الأسبوعية | مُتقِن</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+<link href="../css/theme.css" rel="stylesheet">
+</head>
+<body>
+<div id="app-shell"></div>
+
+<script src="../js/config.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/layout.js"></script>
+<script>
+(function () {
+    const user = Auth.requireAuth(['teacher', 'admin']);
+    if (!user) return;
+    const pc = Layout.mount({ user, active: 'tests', title: 'الاختبارات الأسبوعية' });
+    let students = [];
+    const today = new Date().toISOString().slice(0, 10);
+
+    // نافذة إضافة اختبار (أثمان ديناميكية)
+    function openAdd() {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(4,54,31,.45);z-index:1500;display:flex;align-items:center;justify-content:center;padding:24px;';
+        overlay.innerHTML = `
+          <div class="mq-card" style="width:100%;max-width:720px;max-height:90vh;overflow:auto;margin:0;">
+            <div class="mq-card-header"><h3 class="mq-card-title">اختبار أسبوعي جديد</h3>
+              <button type="button" data-close style="background:none;border:none;font-size:22px;cursor:pointer;color:#7A8F82;">×</button></div>
+            <form class="mq-card-body" id="tform">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+                <div><label class="mq-label">الطالب *</label>
+                  <select class="mq-input" name="student_id">${students.map(s => `<option value="${s.id}">${UI.escapeHtml(s.name)}</option>`).join('')}</select></div>
+                <div><label class="mq-label">تاريخ الاختبار *</label>
+                  <input class="mq-input" type="date" name="exam_date" value="${today}"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0;">
+                <strong style="color:#04361F;">الأثمان المختبَرة</strong>
+                <button type="button" class="mq-btn mq-btn-outline mq-btn-sm" id="addrow">➕ إضافة ثمن</button>
+              </div>
+              <div id="rows"></div>
+              <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:16px;">
+                <button type="button" class="mq-btn mq-btn-outline" data-close>إلغاء</button>
+                <button type="submit" class="mq-btn mq-btn-primary">💾 تسجيل الاختبار</button>
+              </div>
+            </form>
+          </div>`;
+        document.body.appendChild(overlay);
+        const close = () => overlay.remove();
+        overlay.querySelectorAll('[data-close]').forEach(b => b.onclick = close);
+        overlay.addEventListener('mousedown', e => { if (e.target === overlay) close(); });
+
+        const rowsBox = overlay.querySelector('#rows');
+        function addRow() {
+            const div = document.createElement('div');
+            div.className = 'eighth-row';
+            div.style.cssText = 'background:#FBF9EE;border:1px solid rgba(4,83,47,.15);border-radius:12px;padding:14px;margin-bottom:10px;position:relative;';
+            div.innerHTML = `
+              <button type="button" class="rm" style="position:absolute;left:10px;top:8px;background:none;border:none;color:#B23A48;font-size:20px;cursor:pointer;">×</button>
+              <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;align-items:end;">
+                <div><label class="mq-label" style="font-size:13px;">بداية الثمن * <span style="color:#9A7A1E;font-weight:600;">(اكتب فيبحث في فهرس الأثمان)</span></label>
+                  <input class="mq-input eighth_start" autocomplete="off" placeholder="اكتب بداية الثمن... مثل: هل جزاء الإحسان">
+                  <div class="thumn-meta" style="display:none;margin-top:7px;font-size:12px;font-weight:700;color:#04532F;background:rgba(4,83,47,.08);border:1px solid rgba(4,83,47,.2);border-radius:8px;padding:6px 11px;"></div></div>
+                <div><label class="mq-label" style="font-size:13px;">النتيجة *</label>
+                  <select class="mq-input result"><option value="ناجح">ناجح</option><option value="راسب">راسب</option></select></div>
+              </div>
+              <div class="mistakeBox" style="display:none;margin-top:10px;">
+                <label class="mq-label" style="font-size:13px;color:#B23A48;">تفاصيل الخطأ</label>
+                <textarea class="mq-input mistake" rows="2" placeholder="ما الذي أخطأ فيه الطالب..."></textarea></div>`;
+            rowsBox.appendChild(div);
+
+            // إكمال تلقائي من فهرس الأثمان + عرض السورة/الصفحة عند الاختيار
+            const startInput = div.querySelector('.eighth_start');
+            const meta = div.querySelector('.thumn-meta');
+            UI.attachAthmanSearch(startInput, {
+                onSelect: (it) => {
+                    meta.textContent = `✓ ${it.surah_name} — حزب ${it.hizb} · ثمن ${it.thumn_in_hizb} · صفحة ${it.page}`;
+                    meta.style.display = 'block';
+                }
+            });
+            startInput.addEventListener('input', () => { if (!startInput.value.trim()) meta.style.display = 'none'; });
+
+            div.querySelector('.rm').onclick = () => div.remove();
+            div.querySelector('.result').onchange = (e) => {
+                div.querySelector('.mistakeBox').style.display = e.target.value === 'راسب' ? 'block' : 'none';
+            };
+        }
+        overlay.querySelector('#addrow').onclick = addRow;
+        addRow();
+
+        overlay.querySelector('#tform').onsubmit = async (e) => {
+            e.preventDefault();
+            const f = e.target;
+            const questions = [...rowsBox.querySelectorAll('.eighth-row')].map(r => ({
+                eighth_start: r.querySelector('.eighth_start').value.trim(),
+                result: r.querySelector('.result').value,
+                mistake: r.querySelector('.mistake').value.trim() || null,
+            })).filter(q => q.eighth_start);
+            if (!questions.length) { UI.toast('أضف ثمنًا واحدًا على الأقل', 'warning'); return; }
+            try {
+                await API.post('/weekly-tests', { student_id: f.student_id.value, exam_date: f.exam_date.value, questions });
+                UI.toast('تم تسجيل الاختبار'); close(); load();
+            } catch (err) { UI.toast(err.message, 'danger'); }
+        };
+    }
+
+    async function load() {
+        pc.innerHTML = '<div class="mq-card"><div class="mq-card-body">جارٍ التحميل...</div></div>';
+        try {
+            const [tRes, sRes] = await Promise.all([API.get('/weekly-tests'), API.get('/students?all=1')]);
+            const tests = tRes.data.data || tRes.data || [];
+            students = sRes.data.data || sRes.data || [];
+
+            const rows = tests.map(t => {
+                const eighths = (t.questions || []).map(q => `${q.result === 'ناجح' ? '🟢' : '🔴'} ${UI.escapeHtml(q.eighth_start)}`).join('<br>') || '—';
+                return `<tr>
+                  <td>${UI.escapeHtml(t.student?.name || '')}</td>
+                  <td>${UI.fmtDate(t.exam_date)}</td>
+                  <td style="font-size:12px;max-width:300px;">${eighths}</td>
+                  <td>${UI.resultBadge(t.result)}</td>
+                  <td><div class="mq-actions">${UI.actionBtn('del', `data-del="${t.id}"`)}</div></td></tr>`;
+            }).join('') || `<tr><td colspan="5" style="text-align:center;color:#7A8F82;padding:30px;">لا توجد اختبارات</td></tr>`;
+
+            pc.innerHTML = `
+                <div class="mq-toolbar">
+                  <div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="بحث باسم الطالب..."></div>
+                  <button class="mq-btn mq-btn-primary" id="add">${UI.ic('plus', 17)} اختبار جديد</button></div>
+                <div class="mq-card"><table class="mq-table" id="tbl">
+                  <thead><tr><th>الطالب</th><th>التاريخ</th><th>الأثمان</th><th>النتيجة</th><th>حذف</th></tr></thead>
+                  <tbody>${rows}</tbody></table></div>`;
+
+            UI.bindTableSearch('search', 'tbl');
+            document.getElementById('add').onclick = openAdd;
+            pc.querySelectorAll('[data-del]').forEach(b => b.onclick = () =>
+                UI.confirmDelete('حذف هذا الاختبار؟', async () => { await API.del('/weekly-tests/' + b.dataset.del); UI.toast('تم الحذف'); load(); }));
+        } catch (e) { UI.toast(e.message, 'danger'); }
+    }
+    load();
+})();
+</script>
+</body>
+</html>
