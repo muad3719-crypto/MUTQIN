@@ -69,7 +69,8 @@ class StudentController extends Controller
             'name'             => 'required|string|max:255',
             'national_id'      => $this->nationalIdRules(),     // اختياري الآن، يُتحقّق منه عند وجوده فقط
             'center_id'        => 'required|exists:centers,id',
-            'teacher_id'       => 'nullable|exists:users,id',
+            // يجب أن يكون المعلّم فعلاً بدور teacher (لا ولي أمر/مدير) حتى لا تنكسر صلاحيات «طلابه فقط»
+            'teacher_id'       => ['nullable', \Illuminate\Validation\Rule::exists('users', 'id')->where('role', 'teacher')],
             'phone'            => 'nullable|string|max:20',
             'age'              => 'nullable|integer',
             // ولي أمر موجود (الوضع B): يجب أن يكون مستخدماً بدور parent
@@ -81,6 +82,7 @@ class StudentController extends Controller
         ], array_merge([
             'name.required'           => 'اسم الطالب مطلوب',
             'center_id.required'      => 'يجب اختيار المركز',
+            'teacher_id.exists'       => 'المعلّم المختار غير صالح',
             'parent_id.exists'        => 'ولي الأمر المختار غير صالح',
             'guardian_email.email'    => 'بريد ولي الأمر غير صحيح',
             'guardian_password.min'   => 'كلمة مرور ولي الأمر يجب أن تكون 6 أحرف على الأقل',
@@ -133,9 +135,9 @@ class StudentController extends Controller
         if ($phone) {
             $parent = User::where('role', 'parent')->where('phone', $phone)->first();
         }
-        // 2) ثم بالبريد إن لم نجد بالهاتف
+        // 2) ثم بالبريد إن لم نجد بالهاتف — مقيّد بدور parent حتى لا نطابق/نعدّل حساب مدير أو معلم
         if (!$parent && $email) {
-            $parent = User::where('email', $email)->first();
+            $parent = User::where('role', 'parent')->where('email', $email)->first();
         }
 
         if ($parent) {
@@ -152,12 +154,14 @@ class StudentController extends Controller
             ['guardian_email.required' => 'بريد ولي الأمر مطلوب لإنشاء حساب جديد له']
         );
 
+        // كلمة المرور: المُدخلة إن وُجدت، وإلا عشوائية قوية (لا «password» الثابتة).
+        // الحساب الجديد بلا كلمة مرور معروفة يحتاج لاحقاً تدفّق «نسيت كلمة المرور» (راجع الميزات الناقصة).
         return User::create([
             'name'     => $request->guardian_name ?: 'ولي أمر',
             'email'    => $email,
             'phone'    => $phone,
             'role'     => 'parent',
-            'password' => Hash::make($request->guardian_password ?: 'password'),
+            'password' => Hash::make($request->guardian_password ?: Str::random(24)),
         ]);
     }
 
@@ -248,10 +252,11 @@ class StudentController extends Controller
                 'phone' => 'nullable|string|max:20',
                 'age' => 'nullable|integer',
                 'center_id' => 'required|exists:centers,id',
-                'teacher_id' => 'nullable|exists:users,id',
+                'teacher_id' => ['nullable', \Illuminate\Validation\Rule::exists('users', 'id')->where('role', 'teacher')],
             ], array_merge([
                 'name.required' => 'اسم الطالب مطلوب',
                 'center_id.required' => 'يجب اختيار المركز',
+                'teacher_id.exists' => 'المعلّم المختار غير صالح',
             ], $this->nationalIdMessages()));
 
             $student->update([
