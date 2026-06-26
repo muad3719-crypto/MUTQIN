@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Center;
 use App\Models\Attendance;
 use App\Models\Memorization;
+use App\Support\ArabicText;
 use App\Support\Percentage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -177,7 +178,7 @@ class StudentController extends Controller
             return response()->json(['success' => true, 'data' => []]);
         }
 
-        $qName = $this->stripTashkeel($q); // أسماء القاعدة بلا تشكيل أصلاً
+        $qName = ArabicText::stripTashkeel($q); // أسماء القاعدة بلا تشكيل أصلاً
 
         $parents = User::where('role', 'parent')
             ->where(function ($w) use ($q, $qName) {
@@ -197,12 +198,6 @@ class StudentController extends Controller
             ]);
 
         return response()->json(['success' => true, 'data' => $parents]);
-    }
-
-    // إزالة التشكيل من النص العربي (للبحث الودود)
-    protected function stripTashkeel(string $text): string
-    {
-        return preg_replace('/[\x{0610}-\x{061A}\x{064B}-\x{065F}\x{0670}\x{06D6}-\x{06ED}]/u', '', $text);
     }
 
     public function show(Request $request, $id)
