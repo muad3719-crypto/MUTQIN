@@ -8,6 +8,7 @@ use App\Models\Student;
 use App\Models\Attendance;
 use App\Models\Memorization;
 use App\Models\WeeklyTest;
+use App\Support\Percentage;
 
 /**
  * خدمة التقارير — كل منطق التجميع في مكان واحد، يُعاد استخدامه من:
@@ -21,10 +22,10 @@ class ReportService
     const ATTENDANCE_THRESHOLD = 70; // نسبة الحضور التي تحتها يُعتبر متعثّراً
     const FAIL_THRESHOLD       = 2;  // عدد مرات الرسوب التي عندها فأكثر يُعتبر متعثّراً
 
-    // نسبة مئوية آمنة
+    // نسبة مئوية آمنة (تفوّض إلى المصدر الموحّد)
     protected function pct(int $part, int $total): int
     {
-        return $total > 0 ? (int) round($part / $total * 100) : 0;
+        return Percentage::of($part, $total);
     }
 
     /**

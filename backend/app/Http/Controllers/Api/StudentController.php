@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Center;
 use App\Models\Attendance;
 use App\Models\Memorization;
+use App\Support\Percentage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -341,9 +342,7 @@ class StudentController extends Controller
             $presentCount = Attendance::where('student_id', $student->id)
                 ->where('status', 'present')
                 ->count();
-            $attendancePercent = $totalAttendance > 0
-                ? round(($presentCount / $totalAttendance) * 100)
-                : 0;
+            $attendancePercent = Percentage::of($presentCount, $totalAttendance);
 
             return [
                 'id' => $student->id,
@@ -419,9 +418,7 @@ class StudentController extends Controller
         // ملخص الحضور
         $totalAttendance = $attendances->count();
         $presentCount = $attendances->where('status_raw', 'present')->count();
-        $attendancePercent = $totalAttendance > 0
-            ? round(($presentCount / $totalAttendance) * 100)
-            : 0;
+        $attendancePercent = Percentage::of($presentCount, $totalAttendance);
 
         return response()->json([
             'success' => true,
