@@ -12,7 +12,8 @@ use App\Http\Controllers\Api\WeeklyTestController;
 use App\Http\Controllers\Api\ReportController;
 
 // مسارات غير محمية (Public Routes)
-Route::post('/auth/login', [AuthController::class, 'login']); // دخول موحّد للأدوار الثلاثة (admin/teacher/parent)
+Route::post('/auth/login', [AuthController::class, 'login'])
+    ->middleware('throttle:10,1'); // دخول موحّد للأدوار الثلاثة + حدّ 10 محاولات/دقيقة لكل IP (منع التخمين)
 Route::get('/public/stats', [DashboardController::class, 'publicStats']); // إحصائيات عامة للصفحة الرئيسية
 Route::get('/public/demo-accounts', [DashboardController::class, 'demoAccounts']); // حسابات تجريبية لصفحة الدخول
 
