@@ -26,6 +26,12 @@
         try {
             const res = await API.get('/public/demo-accounts');
             const all = res.data || [];
+            // في الإنتاج تعود القائمة فارغة → أخفِ قسم «البيانات التجريبية» بالكامل
+            if (!all.length) {
+                const box = host.closest('details') || host;
+                box.style.display = 'none';
+                return;
+            }
             const groups = [
                 ['admin', '👑 المدير', '#04532F'],
                 ['teacher', '👨‍🏫 المعلمون', '#04532F'],

@@ -98,6 +98,12 @@ class DashboardController extends Controller
     // حسابات تجريبية (بدون مصادقة) لعرضها في صفحة الدخول — كلمة المرور للجميع: password
     public function demoAccounts()
     {
+        // تُعرض الحسابات التجريبية في بيئة التطوير فقط (local أو APP_DEBUG)؛
+        // في الإنتاج تُرجع قائمة فارغة حتى لا تتسرّب أسماء/إيميلات المستخدمين.
+        if (! app()->environment('local') && ! config('app.debug')) {
+            return response()->json(['success' => true, 'data' => []]);
+        }
+
         $users = User::orderByRaw("FIELD(role,'admin','teacher','parent')")
             ->orderBy('id')
             ->get(['name', 'email', 'role']);
