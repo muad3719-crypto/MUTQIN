@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\MemorizationController;
 use App\Http\Controllers\Api\WeeklyTestController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\StudentRequestController;
 
 // مسارات غير محمية (Public Routes)
 Route::post('/auth/login', [AuthController::class, 'login'])
@@ -51,11 +52,21 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/reports/admin/teachers/pdf', [\App\Http\Controllers\Api\ReportPdfController::class, 'teachers']);
         Route::get('/reports/admin/at-risk/pdf', [\App\Http\Controllers\Api\ReportPdfController::class, 'atRisk']);
         Route::get('/reports/admin/overview/pdf', [\App\Http\Controllers\Api\ReportPdfController::class, 'overview']);
+
+        // طلبات الطلاب — مراجعة الأدمن (موافقة/رفض تُنفّذ التغيير الفعلي على students)
+        Route::get('/admin/student-requests', [StudentRequestController::class, 'adminIndex']);
+        Route::post('/admin/student-requests/{id}/approve', [StudentRequestController::class, 'approve']);
+        Route::post('/admin/student-requests/{id}/reject', [StudentRequestController::class, 'reject']);
     });
 
     // مسارات المعلم والمدير (Teacher & Admin)
     Route::middleware('teacher')->group(function () {
         Route::apiResource('students', StudentController::class)->except(['store']); // استثناء إضافة طالب للمعلم
+
+        // طلبات الطلاب — إنشاء/متابعة من المحفّظ (لا تغيير فعلي على students؛ ينتظر موافقة الأدمن)
+        Route::get('/student-requests', [StudentRequestController::class, 'index']);          // طلباتي
+        Route::get('/student-requests/search-students', [StudentRequestController::class, 'searchStudents']); // بحث لإنشاء طلب نقل
+        Route::post('/student-requests', [StudentRequestController::class, 'store']);         // إنشاء طلب add/transfer
 
         Route::get('/attendance', [AttendanceController::class, 'index']);
         Route::post('/attendance', [AttendanceController::class, 'store']);
