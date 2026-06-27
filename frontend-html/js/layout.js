@@ -16,11 +16,13 @@
             ['teachers',  'المعلمون', 'teachers', 'admin/teachers.html'],
             ['centers',   'المراكز', 'centers', 'admin/centers.html'],
             ['students',  'جميع الطلاب', 'students', 'admin/students.html'],
+            ['requests',  'الطلبات', 'requests', 'admin/requests.html'],
             ['reports',   'التقارير', 'report', 'admin/reports.html'],
         ],
         teacher: [
             ['dashboard',   'الرئيسية', 'home', 'teacher/dashboard.html'],
             ['students',    'طلابي', 'students', 'teacher/students.html'],
+            ['requests',    'طلباتي', 'requests', 'teacher/requests.html'],
             ['attendance',  'الحضور والغياب', 'attendance', 'teacher/attendance.html'],
             ['memorization','تتبّع الحفظ', 'memo', 'teacher/memorization.html'],
             ['tests',       'الاختبارات الأسبوعية', 'tests', 'teacher/weekly-tests.html'],

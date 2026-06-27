@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>طلباتي | مُتقِن</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+<link href="../css/theme.css" rel="stylesheet">
+</head>
+<body>
+<div id="app-shell"></div>
+
+<script src="../js/config.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/layout.js"></script>
+<script>
+(function () {
+    const user = Auth.requireAuth(['teacher', 'admin']);
+    if (!user) return;
+    const pc = Layout.mount({ user, active: 'requests', title: 'طلباتي' });
+
+    const typeBadge = (t) => t === 'transfer' ? UI.badge('نقل', 'primary') : UI.badge('إضافة', 'info');
+    const statusBadge = (s) => ({
+        pending:  UI.badge('قيد المراجعة', 'warning'),
+        approved: UI.badge('موافَق عليه', 'success'),
+        rejected: UI.badge('مرفوض', 'danger'),
+    }[s] || UI.badge(s, 'secondary'));
+
+    // ===== تأكيد عام بزرّين (يرجع Promise<boolean>) =====
+    function confirmTwo(message, yesText = 'نعم', noText = 'إلغاء') {
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:1700;background:rgba(4,54,31,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:24px;';
+            overlay.innerHTML = `<div class="mq-card" style="width:100%;max-width:480px;margin:0;">
+                <div class="mq-card-header"><h3 class="mq-card-title">تأكيد</h3></div>
+                <div class="mq-card-body">
+                  <p style="color:#04361F;font-size:14.5px;line-height:1.8;">${UI.escapeHtml(message)}</p>
+                  <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:16px;">
+                    <button class="mq-btn mq-btn-outline" data-no>${UI.escapeHtml(noText)}</button>
+                    <button class="mq-btn mq-btn-primary" data-yes>${UI.escapeHtml(yesText)}</button>
+                  </div>
+                </div></div>`;
+            document.body.appendChild(overlay);
+            const done = (val) => { overlay.remove(); resolve(val); };
+            overlay.querySelector('[data-yes]').onclick = () => done(true);
+            overlay.querySelector('[data-no]').onclick = () => done(false);
+            overlay.addEventListener('mousedown', e => { if (e.target === overlay) done(false); });
+        });
+    }
+
+    // ===== طلب إضافة طالب =====
+    function openAdd() {
+        UI.formModal({
+            title: 'طلب إضافة طالب',
+            submitText: 'إرسال الطلب',
+            fields: [
+                { name: 'name', label: 'اسم الطالب', required: true },
+                { name: 'national_id', label: 'الرقم الوطني', required: true, help: '12 رقماً يبدأ بـ 1 (ذكر) أو 2 (أنثى)' },
+                { name: 'age', label: 'العمر', type: 'number' },
+                { name: 'phone', label: 'هاتف الطالب' },
+                { name: 'guardian_name', label: 'اسم ولي الأمر (اختياري)' },
+                { name: 'guardian_phone', label: 'هاتف ولي الأمر (اختياري)' },
+                { name: 'guardian_email', label: 'بريد ولي الأمر (اختياري)', type: 'email', help: 'يُستخدم لإنشاء حساب ولي الأمر عند الموافقة' },
+            ],
+            onSubmit: async (v, h) => {
+                const res = await API.post('/student-requests', { type: 'add', ...v });
+                if (res.data && res.data.exists) {
+                    // الطالب موجود مسبقاً → عرض رسالة المصدر واقتراح النقل
+                    h.close();
+                    const ok = await confirmTwo(res.message, 'نعم، اطلب النقل', 'إلغاء');
+                    if (ok) {
+                        try {
+                            const t = await API.post('/student-requests', { type: 'transfer', student_id: res.data.student_id });
+                            UI.toast(t.message || 'تم إرسال طلب النقل');
+                            load();
+                        } catch (e) { UI.toast(e.message, 'danger'); }
+                    }
+                } else {
+                    UI.toast(res.message || 'تم إرسال الطلب للأدمن');
+                    h.close();
+                    load();
+                }
+            }
+        });
+    }
+
+    // ===== طلب نقل طالب (بحث عبر المراكز) =====
+    function openTransfer() {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:1500;background:rgba(4,54,31,.45);display:flex;align-items:center;justify-content:center;padding:24px;';
+        overlay.innerHTML = `<div class="mq-card" style="width:100%;max-width:600px;max-height:90vh;overflow:auto;margin:0;">
+            <div class="mq-card-header"><h3 class="mq-card-title">طلب نقل طالب</h3>
+              <button type="button" data-close style="background:none;border:none;font-size:22px;cursor:pointer;color:#7A8F82;">×</button></div>
+            <div class="mq-card-body">
+              <label class="mq-label">ابحث عن الطالب (بالاسم أو الرقم الوطني)</label>
+              <div class="mq-search" style="margin-bottom:6px;">${UI.ic('search', 18, '#9A7A1E')}<input id="tr-q" placeholder="اكتب حرفين على الأقل..."></div>
+              <div id="tr-results" style="margin-top:10px;"></div>
+            </div></div>`;
+        document.body.appendChild(overlay);
+        const close = () => overlay.remove();
+        overlay.querySelector('[data-close]').onclick = close;
+        overlay.addEventListener('mousedown', e => { if (e.target === overlay) close(); });
+
+        const input = overlay.querySelector('#tr-q');
+        const box = overlay.querySelector('#tr-results');
+        let timer = null, lastReq = 0;
+
+        input.addEventListener('input', () => {
+            clearTimeout(timer);
+            const q = input.value.trim();
+            if (q.length < 2) { box.innerHTML = ''; return; }
+            timer = setTimeout(async () => {
+                const reqId = ++lastReq;
+                try {
+                    const res = await API.get('/student-requests/search-students?q=' + encodeURIComponent(q));
+                    if (reqId !== lastReq) return;
+                    const items = res.data || [];
+                    if (!items.length) { box.innerHTML = `<div style="color:#9DB3A6;padding:12px;text-align:center;">لا توجد نتائج مطابقة</div>`; return; }
+                    box.innerHTML = `<div style="border:1px solid var(--hair);border-radius:12px;overflow:hidden;">
+                      <table class="mq-table"><thead><tr><th>الطالب</th><th>المركز الحالي</th><th>المحفّظ الحالي</th><th></th></tr></thead>
+                      <tbody>${items.map((s, i) => `<tr>
+                        <td><div style="font-weight:600;">${UI.escapeHtml(s.name)}</div>
+                          <div style="font-size:12px;color:#9DB3A6;direction:ltr;text-align:right;">${UI.escapeHtml(s.national_id || '—')}</div></td>
+                        <td>${UI.escapeHtml(s.center_name)}</td>
+                        <td>${UI.escapeHtml(s.teacher_name)}</td>
+                        <td><button class="mq-btn mq-btn-primary mq-btn-sm" data-pick="${i}">طلب النقل</button></td>
+                      </tr>`).join('')}</tbody></table></div>`;
+                    box.querySelectorAll('[data-pick]').forEach(b => b.onclick = async () => {
+                        const s = items[+b.dataset.pick];
+                        const ok = await confirmTwo(`طلب نقل الطالب «${s.name}» من مركز [${s.center_name}] إلى مركزك؟`, 'نعم، اطلب النقل', 'إلغاء');
+                        if (!ok) return;
+                        try {
+                            const t = await API.post('/student-requests', { type: 'transfer', student_id: s.id });
+                            UI.toast(t.message || 'تم إرسال طلب النقل');
+                            close(); load();
+                        } catch (e) { UI.toast(e.message, 'danger'); }
+                    });
+                } catch (e) { box.innerHTML = `<div style="color:#B23A48;padding:12px;text-align:center;">${UI.escapeHtml(e.message)}</div>`; }
+            }, 300);
+        });
+    }
+
+    async function load() {
+        pc.innerHTML = '<div class="mq-card"><div class="mq-card-body">جارٍ التحميل...</div></div>';
+        try {
+            const res = await API.get('/student-requests');
+            const reqs = res.data || [];
+            const rows = reqs.map(r => `
+                <tr>
+                  <td>${typeBadge(r.type)}</td>
+                  <td><div style="font-weight:600;">${UI.escapeHtml(r.student_name || '—')}</div>
+                    <div style="font-size:12px;color:#9DB3A6;direction:ltr;text-align:right;">${UI.escapeHtml(r.national_id || '—')}</div></td>
+                  <td>${r.type === 'transfer' ? UI.escapeHtml((r.from_center || '—') + ' / ' + (r.from_teacher || '—')) : '—'}</td>
+                  <td>${statusBadge(r.status)}</td>
+                  <td style="font-size:13px;color:#B23A48;">${r.status === 'rejected' ? UI.escapeHtml(r.admin_note || '—') : '—'}</td>
+                  <td style="white-space:nowrap;">${UI.fmtDate(r.created_at)}</td>
+                </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:#7A8F82;padding:30px;">لا توجد طلبات بعد</td></tr>`;
+
+            pc.innerHTML = `
+                <div class="mq-toolbar">
+                  <div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="بحث في طلباتي..."></div>
+                  <div style="display:flex;gap:10px;">
+                    <button class="mq-btn mq-btn-outline" id="add-btn">${UI.ic('plus', 17)} طلب إضافة طالب</button>
+                    <button class="mq-btn mq-btn-primary" id="transfer-btn">${UI.ic('requests', 17)} طلب نقل طالب</button>
+                  </div>
+                </div>
+                <div class="mq-card"><table class="mq-table" id="tbl">
+                  <thead><tr><th>النوع</th><th>الطالب</th><th>المصدر (نقل)</th><th>الحالة</th><th>سبب الرفض</th><th>التاريخ</th></tr></thead>
+                  <tbody>${rows}</tbody></table></div>`;
+
+            UI.bindTableSearch('search', 'tbl');
+            document.getElementById('add-btn').onclick = openAdd;
+            document.getElementById('transfer-btn').onclick = openTransfer;
+        } catch (e) { UI.toast(e.message, 'danger'); }
+    }
+
+    load();
+})();
+</script>
+</body>
+</html>
