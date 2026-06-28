@@ -23,13 +23,29 @@ class StudentController extends Controller
     const NATIONAL_ID_PRESENCE = 'nullable';
 
     /**
-     * قواعد التحقق من الرقم الوطني الليبي (12 رقماً يبدأ بـ1 ذكر أو 2 أنثى).
+     * قواعد رقم هوية الطالب حسب الجنسية (فريد بين الطلاب دائماً).
+     *  - ليبي:   12 رقماً يبدأ بـ1 (ذكر) أو 2 (أنثى) — الصيغة الليبية الحالية.
+     *  - أجنبي:  نص حرّ (جواز/إقامة) بحدّ 32 حرفاً، بلا صيغة ليبية.
      * @param int|null $ignoreId معرّف الطالب لتجاهله في فحص التفرّد (عند التعديل)
      */
-    protected function nationalIdRules($ignoreId = null): array
+    protected function studentIdentityRules(string $natType, $ignoreId = null): array
     {
         $unique = 'unique:students,national_id' . ($ignoreId ? ',' . $ignoreId : '');
-        return [self::NATIONAL_ID_PRESENCE, 'digits:12', 'regex:/^[12]\d{11}$/', $unique];
+        $format = $natType === 'foreigner'
+            ? ['string', 'max:32']
+            : ['digits:12', 'regex:/^[12]\d{11}$/'];
+        return array_merge([self::NATIONAL_ID_PRESENCE], $format, [$unique]);
+    }
+
+    /**
+     * قواعد رقم هوية ولي الأمر حسب الجنسية — بلا قيد unique في التحقّق،
+     * لأن التفرّد يُفرض منطقياً عند الإنشاء فقط (وإلا تعذّر ربط الابن الثاني بنفس الرقم).
+     */
+    protected function parentIdentityRules(string $natType): array
+    {
+        return $natType === 'foreigner'
+            ? ['nullable', 'string', 'max:32']
+            : ['nullable', 'digits:12', 'regex:/^[12]\d{11}$/'];
     }
 
     protected function nationalIdMessages(): array
@@ -39,6 +55,10 @@ class StudentController extends Controller
             'national_id.regex'    => 'الرقم الوطني الليبي يبدأ بـ 1 (ذكر) أو 2 (أنثى) ويتكوّن من 12 رقماً',
             'national_id.unique'   => 'هذا الرقم الوطني مسجّل لطالب آخر',
             'national_id.required' => 'الرقم الوطني مطلوب',
+            'nationality_name.required_if'          => 'اسم الجنسية مطلوب للطالب الأجنبي',
+            'guardian_nationality_name.required_if' => 'اسم الجنسية مطلوب لولي الأمر الأجنبي',
+            'guardian_id_number.digits' => 'الرقم الوطني لولي الأمر يجب أن يكون 12 رقماً',
+            'guardian_id_number.regex'  => 'الرقم الوطني الليبي لولي الأمر يبدأ بـ 1/2 ويتكوّن من 12 رقماً',
         ];
     }
 
@@ -67,20 +87,28 @@ class StudentController extends Controller
     public function store(Request $request)
     {
         // المسار محميّ للمدير فقط. ينشئ الطالب ويربطه بحساب ولي أمر (role='parent').
+        $natType  = $request->input('nationality_type', 'libyan');
+        $gNatType = $request->input('guardian_nationality_type', 'libyan');
+
         $request->validate([
-            'name'             => 'required|string|max:255',
-            'national_id'      => $this->nationalIdRules(),     // اختياري الآن، يُتحقّق منه عند وجوده فقط
-            'center_id'        => 'required|exists:centers,id',
+            'name'              => 'required|string|max:255',
+            'nationality_type'  => 'nullable|in:libyan,foreigner',
+            'nationality_name'  => 'required_if:nationality_type,foreigner|nullable|string|max:100', // اسم الجنسية للأجنبي
+            'national_id'       => $this->studentIdentityRules($natType), // اختياري؛ الصيغة الليبية تُفرض للّيبي فقط
+            'center_id'         => 'required|exists:centers,id',
             // يجب أن يكون المعلّم فعلاً بدور teacher (لا ولي أمر/مدير) حتى لا تنكسر صلاحيات «طلابه فقط»
-            'teacher_id'       => ['nullable', \Illuminate\Validation\Rule::exists('users', 'id')->where('role', 'teacher')],
-            'phone'            => 'nullable|string|max:20',
-            'age'              => 'nullable|integer',
+            'teacher_id'        => ['nullable', \Illuminate\Validation\Rule::exists('users', 'id')->where('role', 'teacher')],
+            'phone'             => 'nullable|string|max:20',
+            'age'               => 'nullable|integer',
             // ولي أمر موجود (الوضع B): يجب أن يكون مستخدماً بدور parent
-            'parent_id'        => ['nullable', \Illuminate\Validation\Rule::exists('users', 'id')->where('role', 'parent')],
-            'guardian_name'    => 'nullable|string|max:255',
-            'guardian_email'   => 'nullable|email|max:255',
-            'guardian_phone'   => 'nullable|string|max:20',
-            'guardian_password'=> 'nullable|string|min:6',
+            'parent_id'         => ['nullable', \Illuminate\Validation\Rule::exists('users', 'id')->where('role', 'parent')],
+            'guardian_name'     => 'nullable|string|max:255',
+            'guardian_email'    => 'nullable|email|max:255',
+            'guardian_phone'    => 'nullable|string|max:20',
+            'guardian_password' => 'nullable|string|min:6',
+            'guardian_nationality_type' => 'nullable|in:libyan,foreigner',
+            'guardian_nationality_name' => 'required_if:guardian_nationality_type,foreigner|nullable|string|max:100',
+            'guardian_id_number'        => $this->parentIdentityRules($gNatType), // المعرّف الموحّد لولي الأمر
         ], array_merge([
             'name.required'           => 'اسم الطالب مطلوب',
             'center_id.required'      => 'يجب اختيار المركز',
@@ -92,28 +120,30 @@ class StudentController extends Controller
 
         // ترتيب حسم ولي الأمر:
         //  (B) parent_id موجود → ربط مباشر بحساب موجود، بلا إنشاء حساب جديد.
-        //  (A) بيانات ولي (اسم/هاتف/بريد) → مطابقة بالهاتف ثم إعادة استخدام/إنشاء.
+        //  (A) بيانات ولي (هوية/هاتف/بريد/اسم) → مطابقة بالهوية ثم الهاتف ثم البريد، وإلا إنشاء.
         //  (C) لا شيء → parent_id = null.
         if ($request->filled('parent_id')) {
             $parentId = (int) $request->parent_id;
-        } elseif ($request->filled('guardian_phone') || $request->filled('guardian_email') || $request->filled('guardian_name')) {
+        } elseif ($request->filled('guardian_id_number') || $request->filled('guardian_phone') || $request->filled('guardian_email') || $request->filled('guardian_name')) {
             $parentId = $this->resolveParentAccount($request)->id;
         } else {
             $parentId = null;
         }
 
         $student = Student::create([
-            'name'            => $request->name,
-            'national_id'     => $request->national_id ?: null, // اختياري
-            'phone'           => $request->phone,
-            'age'             => $request->age,
-            'center_id'       => $request->center_id,
-            'teacher_id'      => $request->teacher_id,
-            'parent_id'       => $parentId,
-            'guardian_name'   => $request->guardian_name,   // يبقى للعرض فقط
-            'guardian_phone'  => $request->guardian_phone,  // يبقى للعرض فقط
-            'enrollment_date' => now(),
-            'is_active'       => true,
+            'name'             => $request->name,
+            'national_id'      => $request->national_id ?: null, // اختياري (وطني لو ليبي / جواز لو أجنبي)
+            'nationality_type' => $natType,
+            'nationality_name' => $natType === 'foreigner' ? $request->nationality_name : null,
+            'phone'            => $request->phone,
+            'age'              => $request->age,
+            'center_id'        => $request->center_id,
+            'teacher_id'       => $request->teacher_id,
+            'parent_id'        => $parentId,
+            'guardian_name'    => $request->guardian_name,   // يبقى للعرض فقط
+            'guardian_phone'   => $request->guardian_phone,  // يبقى للعرض فقط
+            'enrollment_date'  => now(),
+            'is_active'        => true,
         ]);
 
         return response()->json([
@@ -124,46 +154,68 @@ class StudentController extends Controller
     }
 
     /**
-     * إيجاد حساب ولي الأمر بالمطابقة بالهاتف أولاً (شخص واحد ↔ عدة أبناء = حساب واحد)،
-     * ثم بالبريد، وإلا إنشاء حساب جديد (يتطلب بريداً). كلمة المرور الافتراضية 'password'.
+     * إيجاد حساب ولي الأمر — المعرّف الثابت (رقم الهوية) أولاً، ثم الهاتف، ثم البريد،
+     * وإلا إنشاء حساب جديد (يتطلب بريداً فريداً). يحفظ الجنسية ورقم الهوية.
+     *
+     * رقم الهوية هو المفتاح الأدق: من يملكه يُميَّز جذرياً (لا حساب مكرّر ولو اختلف الهاتف)؛
+     * ومن لا يملكه يبقى التمييز بالهاتف ثم البريد (احتياطي).
      */
     protected function resolveParentAccount(Request $request): User
     {
-        $phone = $request->guardian_phone;
-        $email = $request->guardian_email;
+        $idNumber = $request->guardian_id_number;
+        $phone    = $request->guardian_phone;
+        $email    = $request->guardian_email;
+        $gNatType = $request->input('guardian_nationality_type', 'libyan');
+        $gNatName = $gNatType === 'foreigner' ? $request->guardian_nationality_name : null;
 
-        // 1) المطابقة بالهاتف (الهاتف مُعرّف فريد للشخص)
         $parent = null;
-        if ($phone) {
+        // 1) المعرّف الثابت: رقم الهوية (مقيّد بدور parent)
+        if ($idNumber) {
+            $parent = User::where('role', 'parent')->where('id_number', $idNumber)->first();
+        }
+        // 2) ثم الهاتف (احتياطي لمن لا هوية له)
+        if (!$parent && $phone) {
             $parent = User::where('role', 'parent')->where('phone', $phone)->first();
         }
-        // 2) ثم بالبريد إن لم نجد بالهاتف — مقيّد بدور parent حتى لا نطابق/نعدّل حساب مدير أو معلم
+        // 3) ثم البريد — مقيّد بدور parent حتى لا نطابق/نعدّل حساب مدير أو معلم (S2)
         if (!$parent && $email) {
             $parent = User::where('role', 'parent')->where('email', $email)->first();
         }
 
         if ($parent) {
-            $parent->fill([
+            $fill = [
                 'name'  => $request->guardian_name ?: $parent->name,
                 'phone' => $phone ?: $parent->phone,
-            ])->save();
+            ];
+            // تعبئة الهوية/الجنسية إن كانت ناقصة لدى الحساب الموجود (لا نطمس قيمة موجودة)
+            if ($idNumber && !$parent->id_number) {
+                $fill['id_number']        = $idNumber;
+                $fill['nationality_type'] = $gNatType;
+                $fill['nationality_name'] = $gNatName;
+            }
+            $parent->fill($fill)->save();
             return $parent;
         }
 
-        // 3) إنشاء حساب جديد — يلزم بريد فريد
-        $request->validate(
-            ['guardian_email' => 'required|email|unique:users,email'],
-            ['guardian_email.required' => 'بريد ولي الأمر مطلوب لإنشاء حساب جديد له']
-        );
+        // 4) إنشاء حساب جديد — يلزم بريد فريد + رقم هوية فريد (دفاعياً)
+        $request->validate([
+            'guardian_email'     => 'required|email|unique:users,email',
+            'guardian_id_number' => 'nullable|unique:users,id_number',
+        ], [
+            'guardian_email.required'   => 'بريد ولي الأمر مطلوب لإنشاء حساب جديد له',
+            'guardian_id_number.unique' => 'رقم هوية ولي الأمر مسجّل لحساب آخر',
+        ]);
 
-        // كلمة المرور: المُدخلة إن وُجدت، وإلا عشوائية قوية (لا «password» الثابتة).
-        // الحساب الجديد بلا كلمة مرور معروفة يحتاج لاحقاً تدفّق «نسيت كلمة المرور» (راجع الميزات الناقصة).
+        // كلمة المرور: المُدخلة إن وُجدت، وإلا عشوائية قوية (لا «password» الثابتة — S1).
         return User::create([
-            'name'     => $request->guardian_name ?: 'ولي أمر',
-            'email'    => $email,
-            'phone'    => $phone,
-            'role'     => 'parent',
-            'password' => Hash::make($request->guardian_password ?: Str::random(24)),
+            'name'             => $request->guardian_name ?: 'ولي أمر',
+            'email'            => $email,
+            'phone'            => $phone,
+            'role'             => 'parent',
+            'password'         => Hash::make($request->guardian_password ?: Str::random(24)),
+            'nationality_type' => $gNatType,
+            'nationality_name' => $gNatName,
+            'id_number'        => $idNumber ?: null,
         ]);
     }
 
@@ -242,9 +294,12 @@ class StudentController extends Controller
         }
 
         if ($user->isAdmin()) {
+            $natType = $request->input('nationality_type', $student->nationality_type ?: 'libyan');
             $request->validate([
                 'name' => 'required|string|max:255',
-                'national_id' => $this->nationalIdRules($student->id), // يتجاهل الطالب نفسه في فحص التفرّد
+                'nationality_type' => 'nullable|in:libyan,foreigner',
+                'nationality_name' => 'required_if:nationality_type,foreigner|nullable|string|max:100',
+                'national_id' => $this->studentIdentityRules($natType, $student->id), // يتجاهل الطالب نفسه في فحص التفرّد
                 'phone' => 'nullable|string|max:20',
                 'age' => 'nullable|integer',
                 'center_id' => 'required|exists:centers,id',
@@ -258,6 +313,8 @@ class StudentController extends Controller
             $student->update([
                 'name' => $request->name,
                 'national_id' => $request->national_id ?: null,
+                'nationality_type' => $natType,
+                'nationality_name' => $natType === 'foreigner' ? $request->nationality_name : null,
                 'phone' => $request->phone,
                 'age' => $request->age,
                 'center_id' => $request->center_id,
