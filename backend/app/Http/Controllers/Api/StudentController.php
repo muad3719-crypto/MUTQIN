@@ -96,8 +96,8 @@ class StudentController extends Controller
             'nationality_name'  => 'required_if:nationality_type,foreigner|nullable|string|max:100', // اسم الجنسية للأجنبي
             'national_id'       => $this->studentIdentityRules($natType), // اختياري؛ الصيغة الليبية تُفرض للّيبي فقط
             'center_id'         => 'required|exists:centers,id',
-            // يجب أن يكون المعلّم فعلاً بدور teacher (لا ولي أمر/مدير) حتى لا تنكسر صلاحيات «طلابه فقط»
-            'teacher_id'        => ['nullable', \Illuminate\Validation\Rule::exists('users', 'id')->where('role', 'teacher')],
+            // المعلّم بدور teacher (S3) وينتمي للمركز المختار (لا محفّظ من مركز آخر)
+            'teacher_id'        => ['nullable', \Illuminate\Validation\Rule::exists('users', 'id')->where('role', 'teacher')->where('center_id', $request->input('center_id'))],
             'phone'             => 'nullable|string|max:20',
             'age'               => 'nullable|integer',
             // ولي أمر موجود (الوضع B): يجب أن يكون مستخدماً بدور parent
@@ -112,7 +112,7 @@ class StudentController extends Controller
         ], array_merge([
             'name.required'           => 'اسم الطالب مطلوب',
             'center_id.required'      => 'يجب اختيار المركز',
-            'teacher_id.exists'       => 'المعلّم المختار غير صالح',
+            'teacher_id.exists'       => 'المعلّم المختار غير صالح أو لا ينتمي للمركز المختار',
             'parent_id.exists'        => 'ولي الأمر المختار غير صالح',
             'guardian_email.email'    => 'بريد ولي الأمر غير صحيح',
             'guardian_password.min'   => 'كلمة مرور ولي الأمر يجب أن تكون 6 أحرف على الأقل',
@@ -303,11 +303,11 @@ class StudentController extends Controller
                 'phone' => 'nullable|string|max:20',
                 'age' => 'nullable|integer',
                 'center_id' => 'required|exists:centers,id',
-                'teacher_id' => ['nullable', \Illuminate\Validation\Rule::exists('users', 'id')->where('role', 'teacher')],
+                'teacher_id' => ['nullable', \Illuminate\Validation\Rule::exists('users', 'id')->where('role', 'teacher')->where('center_id', $request->input('center_id'))],
             ], array_merge([
                 'name.required' => 'اسم الطالب مطلوب',
                 'center_id.required' => 'يجب اختيار المركز',
-                'teacher_id.exists' => 'المعلّم المختار غير صالح',
+                'teacher_id.exists' => 'المعلّم المختار غير صالح أو لا ينتمي للمركز المختار',
             ], $this->nationalIdMessages()));
 
             $student->update([

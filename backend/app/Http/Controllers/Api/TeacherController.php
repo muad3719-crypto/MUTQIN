@@ -13,6 +13,11 @@ class TeacherController extends Controller
     {
         $query = User::where('role', 'teacher')->withCount('students')->latest();
 
+        // فلتر اختياري بالمركز — لقائمة المحفّظ التابعة للمركز في نماذج الطلاب
+        if ($request->filled('center_id')) {
+            $query->where('center_id', (int) $request->center_id);
+        }
+
         if ($request->has('all') && $request->all == 1) {
             $teachers = $query->get();
         } else {
@@ -67,15 +72,29 @@ class TeacherController extends Controller
 
     public function show($id)
     {
-        $teacher = User::where('role', 'teacher')->findOrFail($id);
-        $students = $teacher->students()->with('center')->get();
+        // بيانات المحفّظ مجمّعة لنافذة «تفاصيل» (للأدمن): المركز + النوع + عدد الطلاب + أسماء الطلاب.
+        // فعّال: استعلام للمحفّظ (مع المركز وعدّ الطلاب) + استعلام واحد للطلاب — بلا N+1.
+        $teacher = User::where('role', 'teacher')
+            ->with('center:id,name')
+            ->withCount('students')
+            ->findOrFail($id);
+
+        $students = $teacher->students()
+            ->orderBy('name')
+            ->get(['id', 'name', 'age']);
 
         return response()->json([
             'success' => true,
             'data' => [
-                'teacher' => $teacher,
-                'students' => $students
-            ]
+                'id'             => $teacher->id,
+                'name'           => $teacher->name,
+                'email'          => $teacher->email,
+                'phone'          => $teacher->phone,
+                'type'           => $teacher->type,
+                'center_name'    => $teacher->center->name ?? null,
+                'students_count' => $teacher->students_count,
+                'students'       => $students,
+            ],
         ]);
     }
 

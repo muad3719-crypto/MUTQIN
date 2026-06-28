@@ -25,6 +25,28 @@
     const centerOpts = () => centers.map(c => ({ value: c.id, label: c.name }));
     const teacherOpts = () => [{ value: '', label: '— بدون معلم —' }].concat(teachers.map(t => ({ value: t.id, label: t.name })));
 
+    // قائمة المحفّظ تابعة للمركز: تُملأ بمحفّظي المركز المختار فقط (role=teacher + center_id)
+    async function fillTeachersByCenter(root, centerId, selected) {
+        const sel = root.querySelector('[name="teacher_id"]');
+        if (!sel) return;
+        if (!centerId) { sel.innerHTML = '<option value="">اختر المركز أولاً</option>'; sel.disabled = true; return; }
+        sel.disabled = true; sel.innerHTML = '<option value="">جارٍ التحميل...</option>';
+        try {
+            const res = await API.get('/teachers?all=1&center_id=' + encodeURIComponent(centerId));
+            const list = res.data.data || res.data || [];
+            sel.innerHTML = '<option value="">— بدون معلم —</option>' + list.map(t =>
+                `<option value="${t.id}" ${String(t.id) === String(selected || '') ? 'selected' : ''}>${UI.escapeHtml(t.name)}</option>`).join('');
+        } catch (e) { sel.innerHTML = '<option value="">— بدون معلم —</option>'; }
+        sel.disabled = false;
+    }
+    // يربط قائمة المركز بقائمة المحفّظ داخل أي نموذج (إضافة/تعديل)
+    function wireTeacherByCenter(root, selectedTeacherId) {
+        const centerSel = root.querySelector('[name="center_id"]');
+        if (!centerSel) return;
+        centerSel.addEventListener('change', () => fillTeachersByCenter(root, centerSel.value, null));
+        fillTeachersByCenter(root, centerSel.value, selectedTeacherId); // تهيئة أولية
+    }
+
     // نموذج الإضافة — يشمل حقول ولي الأمر (تُنشئ/تربط حساب parent)
     const NAT_ID_HELP = 'اختياري الآن — رقم وطني ليبي: 12 رقماً يبدأ بـ 1 (ذكر) أو 2 (أنثى). يُستخدم لتقارير وزارة الأوقاف ولمطابقة البصمة.';
     function addFields() {
@@ -110,8 +132,8 @@
                 <div class="mq-field-error" data-error="national_id"></div>
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                ${inp('center_id', 'المركز', { req: true, type: 'select', options: centerOpts().map(o => `<option value="${o.value}">${UI.escapeHtml(o.label)}</option>`).join('') })}
-                ${inp('teacher_id', 'المعلم', { type: 'select', options: teacherOpts().map(o => `<option value="${o.value}">${UI.escapeHtml(o.label)}</option>`).join('') })}
+                ${inp('center_id', 'المركز', { req: true, type: 'select', options: '<option value="">— اختر المركز —</option>' + centerOpts().map(o => `<option value="${o.value}">${UI.escapeHtml(o.label)}</option>`).join('') })}
+                ${inp('teacher_id', 'المعلم', { type: 'select', options: '<option value="">اختر المركز أولاً</option>' })}
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                 ${inp('age', 'العمر', { type: 'number' })}
@@ -204,6 +226,9 @@
             'الرقم الوطني لولي الأمر (اختياري)', 'رقم الجواز/الإقامة لولي الأمر (اختياري)',
             'المعرّف الأساسي لتمييز ولي الأمر (يربط الإخوة بحساب واحد) — لو ليبي: رقم وطني 12 رقماً.',
             'رقم جواز/إقامة ولي الأمر — يميّزه بدقّة ويربط أبناءه بحساب واحد.');
+
+        // قائمة المحفّظ تابعة للمركز (تبدأ معطّلة حتى يُختار مركز)
+        wireTeacherByCenter(ov, null);
 
         // بحث ولي أمر موجود (debounced)
         const psearch = ov.querySelector('#parent-search'), pdd = ov.querySelector('#parent-dd'), pchip = ov.querySelector('#parent-chip');
@@ -330,7 +355,8 @@
             document.getElementById('add').onclick = openAddStudent;
             pc.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => {
                 const s = students.find(x => x.id == b.dataset.edit);
-                UI.formModal({ title: 'تعديل / نقل الطالب', submitText: 'حفظ', fields: editFields(s), onMount: wireEditNat,
+                UI.formModal({ title: 'تعديل / نقل الطالب', submitText: 'حفظ', fields: editFields(s),
+                    onMount: (form) => { wireEditNat(form); wireTeacherByCenter(form, s.teacher_id); },
                     onSubmit: async (v, h) => { await API.put('/students/' + s.id, v); UI.toast('تم التحديث'); h.close(); load(); } });
             });
             pc.querySelectorAll('[data-del]').forEach(b => b.onclick = () =>
