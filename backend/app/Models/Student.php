@@ -11,6 +11,8 @@ class Student extends Model
         'birth_date',
         'phone',
         'national_id',
+        'nationality_type',
+        'nationality_name',
         'age',
         'guardian_name',
         'guardian_phone',

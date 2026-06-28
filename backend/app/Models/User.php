@@ -20,6 +20,9 @@ class User extends Authenticatable
         'password',
         'center_id',
         'type',
+        'nationality_type',
+        'nationality_name',
+        'id_number',
     ];
 
     protected $hidden = [
