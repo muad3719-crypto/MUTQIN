@@ -81,6 +81,72 @@
         };
     }
 
+    // خلية معلومة (عنوان صغير + قيمة) لنافذة التفاصيل
+    function infoCell(label, val) {
+        return `<div><div style="font-size:12px;color:#7A8F82;margin-bottom:2px;">${label}</div>
+            <div style="font-weight:600;">${UI.escapeHtml(val)}</div></div>`;
+    }
+
+    // نافذة «تفاصيل المحفّظ» — للقراءة فقط (تجلب من GET /teachers/{id})
+    async function showTeacherDetails(id) {
+        let d;
+        try { const res = await API.get('/teachers/' + id); d = res.data || {}; }
+        catch (e) { UI.toast(e.message, 'danger'); return; }
+
+        const students = d.students || [];
+        const studentRows = students.length
+            ? students.map((s, i) => `<tr>
+                  <td style="color:#9DB3A6;">${i + 1}</td>
+                  <td style="font-weight:600;">${UI.escapeHtml(s.name)}</td>
+                  <td>${s.age ?? '—'}</td></tr>`).join('')
+            : `<tr><td colspan="3" style="text-align:center;color:#9DB3A6;padding:16px;">لا يوجد طلاب مسجّلون</td></tr>`;
+
+        // سجل تغييرات كلمة المرور (إن وُجد) — عرض فقط
+        const methodLabels = { otp: 'عبر الهاتف (OTP)', self: 'المستخدم نفسه', admin: 'الأدمن' };
+        const logs = d.password_logs || [];
+        const pwdLogsHtml = logs.length ? `
+            <details style="margin-bottom:18px;">
+              <summary style="cursor:pointer;font-size:13px;font-weight:700;color:#9A7A1E;">📜 سجل تغييرات كلمة المرور (${logs.length})</summary>
+              <table class="mq-table" style="margin-top:8px;">
+                <thead><tr><th>التاريخ</th><th>الطريقة</th></tr></thead>
+                <tbody>${logs.map(l => `<tr><td>${UI.fmtDate(l.changed_at)}</td><td>${methodLabels[l.method] || l.method}</td></tr>`).join('')}</tbody>
+              </table>
+            </details>` : '';
+
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(4,54,31,.45);z-index:1500;display:flex;align-items:center;justify-content:center;padding:24px;';
+        overlay.innerHTML = `
+            <div class="mq-card" style="width:100%;max-width:600px;max-height:90vh;overflow:auto;margin:0;">
+              <div class="mq-card-header"><h3 class="mq-card-title">تفاصيل المحفّظ</h3>
+                <button type="button" data-close style="background:none;border:none;font-size:22px;cursor:pointer;color:#7A8F82;">×</button></div>
+              <div class="mq-card-body">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+                  <span class="mq-avatar" style="width:52px;height:52px;font-size:20px;">${UI.initial(d.name)}</span>
+                  <div><div style="font-weight:700;font-size:17px;">${UI.escapeHtml(d.name || '—')}</div>
+                    <div style="font-size:12.5px;color:#9DB3A6;direction:ltr;text-align:right;">${UI.escapeHtml(d.email || '—')}</div></div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 18px;margin-bottom:20px;">
+                  ${infoCell('مركز التحفيظ', d.center_name || '—')}
+                  ${infoCell('النوع', d.type || '—')}
+                  ${infoCell('الهاتف', d.phone || '—')}
+                  ${infoCell('عدد الطلاب', (d.students_count ?? students.length) + ' طالب')}
+                  ${infoCell('مرات تغيير كلمة المرور', (d.password_changed_count ?? 0) + ' مرة')}
+                  ${infoCell('آخر تغيير لكلمة المرور', d.password_last_changed_at ? UI.fmtDate(d.password_last_changed_at) : 'لم تتغيّر')}
+                </div>
+                ${pwdLogsHtml}
+                <div style="font-weight:700;color:#04532F;margin-bottom:8px;">الطلاب المشرف عليهم</div>
+                <table class="mq-table">
+                  <thead><tr><th style="width:44px;">#</th><th>الاسم</th><th style="width:90px;">العمر</th></tr></thead>
+                  <tbody>${studentRows}</tbody>
+                </table>
+              </div>
+            </div>`;
+        document.body.appendChild(overlay);
+        const close = () => overlay.remove();
+        overlay.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', close));
+        overlay.addEventListener('mousedown', e => { if (e.target === overlay) close(); });
+    }
+
     async function load() {
         pc.innerHTML = '<div class="mq-card"><div class="mq-card-body">جارٍ التحميل...</div></div>';
         try {
@@ -94,14 +160,12 @@
                     <span class="mq-avatar">${UI.initial(t.name)}</span>
                     <div><div style="font-weight:600;">${UI.escapeHtml(t.name)}</div>
                     <div style="font-size:12px;color:#9DB3A6;direction:ltr;text-align:right;">${UI.escapeHtml(t.email)}</div></div></div></td>
-                  <td>${UI.escapeHtml(t.phone || '—')}</td>
-                  <td>${UI.badge((t.students_count ?? 0) + ' طالب', 'primary')}</td>
-                  <td>${UI.escapeHtml(t.type || '—')}</td>
                   <td><div class="mq-actions">
-                    ${UI.actionBtn('edit', `data-edit="${t.id}"`)}
-                    ${UI.actionBtn('del', `data-del="${t.id}"`)}
+                    ${UI.actionBtn('view', `data-details="${t.id}" title="تفاصيل"`)}
+                    ${UI.actionBtn('edit', `data-edit="${t.id}" title="تعديل"`)}
+                    ${UI.actionBtn('del', `data-del="${t.id}" title="حذف"`)}
                   </div></td>
-                </tr>`).join('') || `<tr><td colspan="5" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد معلمون</td></tr>`;
+                </tr>`).join('') || `<tr><td colspan="2" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد معلمون</td></tr>`;
 
             pc.innerHTML = `
                 <div class="mq-toolbar">
@@ -109,10 +173,11 @@
                   <button class="mq-btn mq-btn-primary" id="add">${UI.ic('plus', 17)} معلم جديد</button>
                 </div>
                 <div class="mq-card"><table class="mq-table" id="tbl">
-                  <thead><tr><th>المعلم</th><th>الهاتف</th><th>الطلاب</th><th>النوع</th><th>الإجراءات</th></tr></thead>
+                  <thead><tr><th>المعلم</th><th style="width:150px;">الإجراءات</th></tr></thead>
                   <tbody>${rows}</tbody></table></div>`;
 
             UI.bindTableSearch('search', 'tbl');
+            pc.querySelectorAll('[data-details]').forEach(b => b.onclick = () => showTeacherDetails(b.dataset.details));
             document.getElementById('add').onclick = () => UI.formModal({
                 title: 'إضافة معلم', fields: addFields(), onMount: wireSinglePrimary(null),
                 onSubmit: async (v, h) => { await API.post('/teachers', v); UI.toast('تم إضافة المعلم'); h.close(); load(); }

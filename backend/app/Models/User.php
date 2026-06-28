@@ -35,7 +35,29 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'password_last_changed_at' => 'datetime',
+            'password_changed_count' => 'integer',
         ];
+    }
+
+    // سجل تغييرات كلمة المرور (otp/self/admin)
+    public function passwordChangeLogs()
+    {
+        return $this->hasMany(PasswordChangeLog::class);
+    }
+
+    /**
+     * يسجّل تغيير كلمة المرور: يزيد العدّاد، يحدّث تاريخ آخر تغيير، ويضيف صفاً للسجل.
+     * يُستدعى بعد كل تغيير ناجح (OTP / المستخدم نفسه / الأدمن).
+     */
+    public function recordPasswordChange(string $method = 'self'): void
+    {
+        $this->increment('password_changed_count');
+        $this->forceFill(['password_last_changed_at' => now()])->save();
+        $this->passwordChangeLogs()->create([
+            'changed_at' => now(),
+            'method'     => $method,
+        ]);
     }
 
     // هل هذا المستخدم مدير؟

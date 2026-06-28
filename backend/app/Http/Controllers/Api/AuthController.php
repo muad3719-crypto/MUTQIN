@@ -170,6 +170,7 @@ class AuthController extends Controller
         // نجاح: تحديث كلمة المرور وإبطال كل شفرات هذا المستخدم
         $user->password = Hash::make($request->password);
         $user->save();
+        $user->recordPasswordChange('otp'); // تتبّع التغيير
         OtpReset::where('user_id', $user->id)->delete();
 
         return response()->json([

@@ -83,6 +83,12 @@ class TeacherController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'age']);
 
+        // سجل تغييرات كلمة المرور (للأدمن — عرض فقط، لا كلمات مرور)
+        $pwdLogs = $teacher->passwordChangeLogs()
+            ->latest('changed_at')
+            ->limit(10)
+            ->get(['changed_at', 'method']);
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -94,6 +100,9 @@ class TeacherController extends Controller
                 'center_name'    => $teacher->center->name ?? null,
                 'students_count' => $teacher->students_count,
                 'students'       => $students,
+                'password_changed_count'   => $teacher->password_changed_count,
+                'password_last_changed_at' => $teacher->password_last_changed_at,
+                'password_logs'            => $pwdLogs,
             ],
         ]);
     }
@@ -127,6 +136,10 @@ class TeacherController extends Controller
         }
 
         $teacher->update($data);
+
+        if ($request->filled('password')) {
+            $teacher->recordPasswordChange('admin'); // تتبّع تغيير الأدمن لكلمة المرور
+        }
 
         return response()->json([
             'success' => true,
