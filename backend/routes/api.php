@@ -15,6 +15,10 @@ use App\Http\Controllers\Api\StudentRequestController;
 // مسارات غير محمية (Public Routes)
 Route::post('/auth/login', [AuthController::class, 'login'])
     ->middleware('throttle:10,1'); // دخول موحّد للأدوار الثلاثة + حدّ 10 محاولات/دقيقة لكل IP (منع التخمين)
+
+// استعادة كلمة المرور عبر الهاتف (OTP) — محدودة المحاولات
+Route::post('/auth/forgot-password/request', [AuthController::class, 'forgotPasswordRequest'])->middleware('throttle:5,1');
+Route::post('/auth/forgot-password/verify', [AuthController::class, 'forgotPasswordVerify'])->middleware('throttle:10,1');
 Route::get('/public/stats', [DashboardController::class, 'publicStats']); // إحصائيات عامة للصفحة الرئيسية
 Route::get('/public/demo-accounts', [DashboardController::class, 'demoAccounts']); // حسابات تجريبية لصفحة الدخول
 
