@@ -57,13 +57,38 @@
             submitText: 'إرسال الطلب',
             fields: [
                 { name: 'name', label: 'اسم الطالب', required: true },
+                { name: 'nationality_type', label: 'الجنسية', type: 'select', value: 'libyan',
+                  options: [{ value: 'libyan', label: 'ليبي' }, { value: 'foreigner', label: 'أجنبي' }] },
+                { name: 'nationality_name', label: 'اسم الجنسية', placeholder: 'مثال: مصر، تشاد' },
                 { name: 'national_id', label: 'الرقم الوطني', required: true, help: '12 رقماً يبدأ بـ 1 (ذكر) أو 2 (أنثى)' },
                 { name: 'age', label: 'العمر', type: 'number' },
                 { name: 'phone', label: 'هاتف الطالب' },
                 { name: 'guardian_name', label: 'اسم ولي الأمر (اختياري)' },
+                { name: 'guardian_nationality_type', label: 'جنسية ولي الأمر', type: 'select', value: 'libyan',
+                  options: [{ value: 'libyan', label: 'ليبي' }, { value: 'foreigner', label: 'أجنبي' }] },
+                { name: 'guardian_nationality_name', label: 'اسم جنسية ولي الأمر', placeholder: 'مثال: مصر' },
+                { name: 'guardian_id_number', label: 'الرقم الوطني لولي الأمر (اختياري)', help: 'المعرّف الأساسي لتمييز ولي الأمر — يربط الإخوة بحساب واحد' },
                 { name: 'guardian_phone', label: 'هاتف ولي الأمر (اختياري)' },
                 { name: 'guardian_email', label: 'بريد ولي الأمر (اختياري)', type: 'email', help: 'يُستخدم لإنشاء حساب ولي الأمر عند الموافقة' },
             ],
+            onMount: (form) => {
+                // إظهار «اسم الجنسية» وتغيير تسمية حقل الرقم عند اختيار «أجنبي» (للطالب ولولي الأمر)
+                const wire = (selName, natErr, idErr, libLabel, forLabel) => {
+                    const sel = form.querySelector(`[name="${selName}"]`);
+                    if (!sel) return;
+                    const natWrap = form.querySelector(`[data-error="${natErr}"]`).parentElement;
+                    const idLabel = form.querySelector(`[data-error="${idErr}"]`).parentElement.querySelector('label');
+                    const apply = () => {
+                        const foreign = sel.value === 'foreigner';
+                        natWrap.style.display = foreign ? '' : 'none';
+                        idLabel.textContent = foreign ? forLabel : libLabel;
+                    };
+                    sel.onchange = apply; apply();
+                };
+                wire('nationality_type', 'nationality_name', 'national_id', 'الرقم الوطني', 'رقم الجواز/الإقامة');
+                wire('guardian_nationality_type', 'guardian_nationality_name', 'guardian_id_number',
+                    'الرقم الوطني لولي الأمر (اختياري)', 'رقم الجواز/الإقامة لولي الأمر (اختياري)');
+            },
             onSubmit: async (v, h) => {
                 const res = await API.post('/student-requests', { type: 'add', ...v });
                 if (res.data && res.data.exists) {

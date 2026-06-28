@@ -59,8 +59,8 @@
     function wireEditNat(form) {
         const sel = form.querySelector('[name="nationality_type"]');
         if (!sel) return;
-        const natNameWrap = form.querySelector('[data-error="nationality_name"]').closest('div');
-        const idLabel = form.querySelector('[data-error="national_id"]').closest('div').querySelector('label');
+        const natNameWrap = form.querySelector('[data-error="nationality_name"]').parentElement;
+        const idLabel = form.querySelector('[data-error="national_id"]').parentElement.querySelector('label');
         const apply = () => {
             const foreign = sel.value === 'foreigner';
             natNameWrap.style.display = foreign ? '' : 'none';
