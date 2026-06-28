@@ -45,12 +45,28 @@
     function editFields(s) {
         return [
             { name: 'name', label: 'اسم الطالب', required: true, value: s.name },
+            { name: 'nationality_type', label: 'الجنسية', type: 'select', value: s.nationality_type || 'libyan',
+              options: [{ value: 'libyan', label: 'ليبي' }, { value: 'foreigner', label: 'أجنبي' }] },
+            { name: 'nationality_name', label: 'اسم الجنسية', placeholder: 'مثال: مصر', value: s.nationality_name },
             { name: 'national_id', label: 'الرقم الوطني (اختياري)', placeholder: 'مثال: 199000000001', help: NAT_ID_HELP, value: s.national_id },
             { name: 'center_id', label: 'المركز', type: 'select', required: true, options: centerOpts(), value: s.center_id },
             { name: 'teacher_id', label: 'المعلم (النقل)', type: 'select', options: teacherOpts(), value: s.teacher_id },
             { name: 'age', label: 'العمر', type: 'number', value: s.age },
             { name: 'phone', label: 'هاتف الطالب', value: s.phone },
         ];
+    }
+    // إظهار «اسم الجنسية» وتغيير تسمية الرقم في نموذج التعديل حسب الجنسية
+    function wireEditNat(form) {
+        const sel = form.querySelector('[name="nationality_type"]');
+        if (!sel) return;
+        const natNameWrap = form.querySelector('[data-error="nationality_name"]').closest('div');
+        const idLabel = form.querySelector('[data-error="national_id"]').closest('div').querySelector('label');
+        const apply = () => {
+            const foreign = sel.value === 'foreigner';
+            natNameWrap.style.display = foreign ? '' : 'none';
+            idLabel.textContent = foreign ? 'رقم الجواز/الإقامة (اختياري)' : 'الرقم الوطني (اختياري)';
+        };
+        sel.onchange = apply; apply();
     }
 
     // ===== نموذج إضافة طالب مع اختيار ولي الأمر (جديد / موجود / بدون) =====
@@ -74,7 +90,25 @@
               <button class="mq-act" data-close style="background:rgba(4,54,31,.06);color:#3D6B52;font-size:20px;">×</button></div>
             <form class="mq-card-body" id="add-form">
               ${inp('name', 'اسم الطالب', { req: true })}
-              ${inp('national_id', 'الرقم الوطني (اختياري)', { ph: 'مثال: 199000000001', help: NAT_ID_HELP })}
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div style="margin-bottom:13px;">
+                  <label class="mq-label">الجنسية</label>
+                  <select class="mq-input" name="nationality_type" id="s-nat">
+                    <option value="libyan">ليبي</option><option value="foreigner">أجنبي</option>
+                  </select>
+                </div>
+                <div style="margin-bottom:13px;display:none;" id="s-natname-wrap">
+                  <label class="mq-label">اسم الجنسية <span style="color:#B23A48;">*</span></label>
+                  <input class="mq-input" name="nationality_name" placeholder="مثال: مصر، تشاد، السودان">
+                  <div class="mq-field-error" data-error="nationality_name"></div>
+                </div>
+              </div>
+              <div style="margin-bottom:13px;">
+                <label class="mq-label" id="s-idlabel">الرقم الوطني (اختياري)</label>
+                <input class="mq-input" name="national_id" placeholder="مثال: 199000000001">
+                <div style="font-size:12px;color:#7A8F82;margin-top:4px;" id="s-idhelp">${NAT_ID_HELP}</div>
+                <div class="mq-field-error" data-error="national_id"></div>
+              </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                 ${inp('center_id', 'المركز', { req: true, type: 'select', options: centerOpts().map(o => `<option value="${o.value}">${UI.escapeHtml(o.label)}</option>`).join('') })}
                 ${inp('teacher_id', 'المعلم', { type: 'select', options: teacherOpts().map(o => `<option value="${o.value}">${UI.escapeHtml(o.label)}</option>`).join('') })}
@@ -95,6 +129,25 @@
               <div id="gm-new">
                 ${inp('guardian_name', 'اسم ولي الأمر')}
                 ${inp('guardian_email', 'بريد ولي الأمر', { type: 'email', help: 'يُنشأ به حساب دخول لولي الأمر' })}
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  <div style="margin-bottom:13px;">
+                    <label class="mq-label">جنسية ولي الأمر</label>
+                    <select class="mq-input" name="guardian_nationality_type" id="g-nat">
+                      <option value="libyan">ليبي</option><option value="foreigner">أجنبي</option>
+                    </select>
+                  </div>
+                  <div style="margin-bottom:13px;display:none;" id="g-natname-wrap">
+                    <label class="mq-label">اسم الجنسية <span style="color:#B23A48;">*</span></label>
+                    <input class="mq-input" name="guardian_nationality_name" placeholder="مثال: مصر">
+                    <div class="mq-field-error" data-error="guardian_nationality_name"></div>
+                  </div>
+                </div>
+                <div style="margin-bottom:13px;">
+                  <label class="mq-label" id="g-idlabel">الرقم الوطني لولي الأمر (اختياري)</label>
+                  <input class="mq-input" name="guardian_id_number" placeholder="مثال: 199000000001">
+                  <div style="font-size:12px;color:#7A8F82;margin-top:4px;" id="g-idhelp">المعرّف الأساسي لتمييز ولي الأمر (يربط الإخوة بحساب واحد) — لو ليبي: رقم وطني 12 رقماً.</div>
+                  <div class="mq-field-error" data-error="guardian_id_number"></div>
+                </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                   ${inp('guardian_phone', 'هاتف ولي الأمر')}
                   ${inp('guardian_password', 'كلمة المرور', { type: 'password', help: 'إن تُركت: password' })}
@@ -131,6 +184,26 @@
             secEx.style.display = m === 'existing' ? 'block' : 'none';
             secNone.style.display = m === 'none' ? 'block' : 'none';
         });
+
+        // إظهار «اسم الجنسية» وتغيير تسمية حقل الرقم عند اختيار «أجنبي»
+        function wireNat(selId, wrapId, labelId, helpId, libLabel, forLabel, libHelp, forHelp) {
+            const sel = ov.querySelector('#' + selId), wrap = ov.querySelector('#' + wrapId);
+            const label = ov.querySelector('#' + labelId), help = ov.querySelector('#' + helpId);
+            const apply = () => {
+                const foreign = sel.value === 'foreigner';
+                wrap.style.display = foreign ? 'block' : 'none';
+                label.textContent = foreign ? forLabel : libLabel;
+                help.textContent = foreign ? forHelp : libHelp;
+            };
+            sel.onchange = apply; apply();
+        }
+        wireNat('s-nat', 's-natname-wrap', 's-idlabel', 's-idhelp',
+            'الرقم الوطني (اختياري)', 'رقم الجواز/الإقامة (اختياري)',
+            NAT_ID_HELP, 'رقم جواز/إقامة الطالب الأجنبي — نص حرّ بلا صيغة ليبية.');
+        wireNat('g-nat', 'g-natname-wrap', 'g-idlabel', 'g-idhelp',
+            'الرقم الوطني لولي الأمر (اختياري)', 'رقم الجواز/الإقامة لولي الأمر (اختياري)',
+            'المعرّف الأساسي لتمييز ولي الأمر (يربط الإخوة بحساب واحد) — لو ليبي: رقم وطني 12 رقماً.',
+            'رقم جواز/إقامة ولي الأمر — يميّزه بدقّة ويربط أبناءه بحساب واحد.');
 
         // بحث ولي أمر موجود (debounced)
         const psearch = ov.querySelector('#parent-search'), pdd = ov.querySelector('#parent-dd'), pchip = ov.querySelector('#parent-chip');
@@ -177,6 +250,8 @@
             const f = e.target;
             const v = {
                 name: f.name.value, national_id: f.national_id.value || null,
+                nationality_type: f.nationality_type.value,
+                nationality_name: f.nationality_type.value === 'foreigner' ? (f.nationality_name.value || null) : null,
                 center_id: f.center_id.value, teacher_id: f.teacher_id.value || null,
                 age: f.age.value || null, phone: f.phone.value || null,
             };
@@ -186,6 +261,9 @@
                 v.guardian_email = f.guardian_email.value || null;
                 v.guardian_phone = f.guardian_phone.value || null;
                 v.guardian_password = f.guardian_password.value || null;
+                v.guardian_nationality_type = f.guardian_nationality_type.value;
+                v.guardian_nationality_name = f.guardian_nationality_type.value === 'foreigner' ? (f.guardian_nationality_name.value || null) : null;
+                v.guardian_id_number = f.guardian_id_number.value || null;
             } else if (mode === 'existing') {
                 if (!chosenParent) { ov.querySelector('[data-error="parent_id"]').textContent = 'اختر ولي أمر من نتائج البحث'; return; }
                 v.parent_id = chosenParent.id;
@@ -252,7 +330,7 @@
             document.getElementById('add').onclick = openAddStudent;
             pc.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => {
                 const s = students.find(x => x.id == b.dataset.edit);
-                UI.formModal({ title: 'تعديل / نقل الطالب', submitText: 'حفظ', fields: editFields(s),
+                UI.formModal({ title: 'تعديل / نقل الطالب', submitText: 'حفظ', fields: editFields(s), onMount: wireEditNat,
                     onSubmit: async (v, h) => { await API.put('/students/' + s.id, v); UI.toast('تم التحديث'); h.close(); load(); } });
             });
             pc.querySelectorAll('[data-del]').forEach(b => b.onclick = () =>
