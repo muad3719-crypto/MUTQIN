@@ -22,18 +22,35 @@ use Illuminate\Validation\Rule;
  */
 class StudentRequestController extends Controller
 {
-    /** قواعد الرقم الوطني الليبي (نفس قاعدة StudentController) — مطلوب هنا للتحقّق. */
-    protected function nationalIdRules(): array
+    /**
+     * قواعد رقم هوية الطالب حسب الجنسية — مطلوب هنا لأنه مفتاح فحص التكرار/التعرّف.
+     *  - ليبي:  12 رقماً يبدأ بـ1/2.  - أجنبي: نص حرّ (جواز/إقامة).
+     */
+    protected function identityRules(string $natType): array
     {
-        return ['required', 'digits:12', 'regex:/^[12]\d{11}$/'];
+        return $natType === 'foreigner'
+            ? ['required', 'string', 'max:32']
+            : ['required', 'digits:12', 'regex:/^[12]\d{11}$/'];
+    }
+
+    /** قواعد رقم هوية ولي الأمر (اختياري) حسب الجنسية — بلا قيد unique (المطابقة/الإنشاء تتكفّل). */
+    protected function parentIdentityRules(string $natType): array
+    {
+        return $natType === 'foreigner'
+            ? ['nullable', 'string', 'max:32']
+            : ['nullable', 'digits:12', 'regex:/^[12]\d{11}$/'];
     }
 
     protected function nationalIdMessages(): array
     {
         return [
-            'national_id.required' => 'الرقم الوطني مطلوب للتحقّق',
+            'national_id.required' => 'رقم الهوية مطلوب للتحقّق',
             'national_id.digits'   => 'الرقم الوطني يجب أن يكون 12 رقماً',
             'national_id.regex'    => 'الرقم الوطني الليبي يبدأ بـ 1 (ذكر) أو 2 (أنثى) ويتكوّن من 12 رقماً',
+            'nationality_name.required_if'          => 'اسم الجنسية مطلوب للطالب الأجنبي',
+            'guardian_nationality_name.required_if' => 'اسم الجنسية مطلوب لولي الأمر الأجنبي',
+            'guardian_id_number.digits' => 'الرقم الوطني لولي الأمر يجب أن يكون 12 رقماً',
+            'guardian_id_number.regex'  => 'الرقم الوطني الليبي لولي الأمر يبدأ بـ 1/2 ويتكوّن من 12 رقماً',
         ];
     }
 
@@ -79,14 +96,22 @@ class StudentRequestController extends Controller
      */
     protected function storeAdd(Request $request, User $user)
     {
+        $natType  = $request->input('nationality_type', 'libyan');
+        $gNatType = $request->input('guardian_nationality_type', 'libyan');
+
         $request->validate(array_merge([
-            'name'           => 'required|string|max:255',
-            'national_id'    => $this->nationalIdRules(),
-            'age'            => 'nullable|integer',
-            'phone'          => 'nullable|string|max:20',
-            'guardian_name'  => 'nullable|string|max:255',
-            'guardian_phone' => 'nullable|string|max:20',
-            'guardian_email' => 'nullable|email|max:255',
+            'name'             => 'required|string|max:255',
+            'nationality_type' => 'nullable|in:libyan,foreigner',
+            'nationality_name' => 'required_if:nationality_type,foreigner|nullable|string|max:100',
+            'national_id'      => $this->identityRules($natType),
+            'age'              => 'nullable|integer',
+            'phone'            => 'nullable|string|max:20',
+            'guardian_name'    => 'nullable|string|max:255',
+            'guardian_phone'   => 'nullable|string|max:20',
+            'guardian_email'   => 'nullable|email|max:255',
+            'guardian_nationality_type' => 'nullable|in:libyan,foreigner',
+            'guardian_nationality_name' => 'required_if:guardian_nationality_type,foreigner|nullable|string|max:100',
+            'guardian_id_number'        => $this->parentIdentityRules($gNatType),
         ], []), array_merge([
             'name.required' => 'اسم الطالب مطلوب',
         ], $this->nationalIdMessages()));
@@ -135,12 +160,17 @@ class StudentRequestController extends Controller
             'target_center_id'  => $user->center_id,
             'target_teacher_id' => $user->id,
             'national_id'       => $request->national_id,
+            'nationality_type'  => $natType,
+            'nationality_name'  => $natType === 'foreigner' ? $request->nationality_name : null,
             'student_name'      => $request->name,
             'age'               => $request->age,
             'phone'             => $request->phone,
             'guardian_name'     => $request->guardian_name,
             'guardian_phone'    => $request->guardian_phone,
             'guardian_email'    => $request->guardian_email,
+            'guardian_nationality_type' => $gNatType,
+            'guardian_nationality_name' => $gNatType === 'foreigner' ? $request->guardian_nationality_name : null,
+            'guardian_id_number'        => $request->guardian_id_number,
         ]);
 
         return response()->json([
@@ -191,6 +221,8 @@ class StudentRequestController extends Controller
             'requested_by'      => $user->id,
             'student_id'        => $student->id,
             'national_id'       => $student->national_id,
+            'nationality_type'  => $student->nationality_type ?: 'libyan',
+            'nationality_name'  => $student->nationality_name,
             'student_name'      => $student->name,
             'from_center_id'    => $student->center_id,
             'from_teacher_id'   => $student->teacher_id,
@@ -316,17 +348,19 @@ class StudentRequestController extends Controller
                 $parentId = $this->resolveParentId($req);
 
                 $student = Student::create([
-                    'name'            => $req->student_name,
-                    'national_id'     => $req->national_id ?: null,
-                    'phone'           => $req->phone,
-                    'age'             => $req->age,
-                    'center_id'       => $req->target_center_id,
-                    'teacher_id'      => $req->target_teacher_id,
-                    'parent_id'       => $parentId,
-                    'guardian_name'   => $req->guardian_name,
-                    'guardian_phone'  => $req->guardian_phone,
-                    'enrollment_date' => now(),
-                    'is_active'       => true,
+                    'name'             => $req->student_name,
+                    'national_id'      => $req->national_id ?: null,
+                    'nationality_type' => $req->nationality_type ?: 'libyan',
+                    'nationality_name' => $req->nationality_type === 'foreigner' ? $req->nationality_name : null,
+                    'phone'            => $req->phone,
+                    'age'              => $req->age,
+                    'center_id'        => $req->target_center_id,
+                    'teacher_id'       => $req->target_teacher_id,
+                    'parent_id'        => $parentId,
+                    'guardian_name'    => $req->guardian_name,
+                    'guardian_phone'   => $req->guardian_phone,
+                    'enrollment_date'  => now(),
+                    'is_active'        => true,
                 ]);
 
                 $req->update(['status' => 'approved', 'student_id' => $student->id]);
@@ -399,46 +433,67 @@ class StudentRequestController extends Controller
     // =============================================
 
     /**
-     * حسم حساب ولي الأمر عند الموافقة على طلب add — مطابقة بالهاتف ثم البريد،
-     * وإلا إنشاء حساب جديد إن توفّر بريد فريد (يماثل StudentController@resolveParentAccount).
-     * يُرجع معرّف ولي الأمر أو null (يبقى guardian_name/phone للعرض فقط).
+     * حسم حساب ولي الأمر عند الموافقة على طلب add — رقم الهوية أولاً (المعرّف الثابت)،
+     * ثم الهاتف ثم البريد، وإلا إنشاء حساب جديد إن توفّر بريد فريد
+     * (يماثل StudentController@resolveParentAccount). يُرجع معرّف ولي الأمر أو null.
      */
     protected function resolveParentId(StudentRequest $req): ?int
     {
-        $phone = $req->guardian_phone;
-        $email = $req->guardian_email;
+        $idNumber = $req->guardian_id_number;
+        $phone    = $req->guardian_phone;
+        $email    = $req->guardian_email;
+        $gNatType = $req->guardian_nationality_type ?: 'libyan';
+        $gNatName = $gNatType === 'foreigner' ? $req->guardian_nationality_name : null;
 
-        if (!$phone && !$email && !$req->guardian_name) {
+        if (!$idNumber && !$phone && !$email && !$req->guardian_name) {
             return null;
         }
 
         $parent = null;
-        if ($phone) {
+        // 1) المعرّف الثابت: رقم الهوية
+        if ($idNumber) {
+            $parent = User::where('role', 'parent')->where('id_number', $idNumber)->first();
+        }
+        // 2) ثم الهاتف
+        if (!$parent && $phone) {
             $parent = User::where('role', 'parent')->where('phone', $phone)->first();
         }
+        // 3) ثم البريد (مقيّد بدور parent)
         if (!$parent && $email) {
             $parent = User::where('role', 'parent')->where('email', $email)->first();
         }
 
         if ($parent) {
-            $parent->fill([
+            $fill = [
                 'name'  => $req->guardian_name ?: $parent->name,
                 'phone' => $phone ?: $parent->phone,
-            ])->save();
+            ];
+            if ($idNumber && !$parent->id_number) {
+                $fill['id_number']        = $idNumber;
+                $fill['nationality_type'] = $gNatType;
+                $fill['nationality_name'] = $gNatName;
+            }
+            $parent->fill($fill)->save();
             return $parent->id;
         }
 
-        // لا يمكن إنشاء حساب جديد بلا بريد، أو إن كان البريد مستخدماً لغير ولي أمر
+        // لا يمكن إنشاء حساب جديد بلا بريد، أو إن كان البريد/رقم الهوية مستخدماً لغيره
         if (!$email || User::where('email', $email)->exists()) {
+            return null;
+        }
+        if ($idNumber && User::where('id_number', $idNumber)->exists()) {
             return null;
         }
 
         $parent = User::create([
-            'name'     => $req->guardian_name ?: 'ولي أمر',
-            'email'    => $email,
-            'phone'    => $phone,
-            'role'     => 'parent',
-            'password' => Hash::make(Str::random(24)),
+            'name'             => $req->guardian_name ?: 'ولي أمر',
+            'email'            => $email,
+            'phone'            => $phone,
+            'role'             => 'parent',
+            'password'         => Hash::make(Str::random(24)),
+            'nationality_type' => $gNatType,
+            'nationality_name' => $gNatName,
+            'id_number'        => $idNumber ?: null,
         ]);
 
         return $parent->id;
