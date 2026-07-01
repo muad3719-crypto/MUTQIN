@@ -139,14 +139,15 @@
             list.querySelectorAll('.mq-notif-item').forEach(el => el.addEventListener('click', () => onItemClick(el)));
         }
 
-        async function load() {
+        async function load(silent) {
             try {
                 const res = await API.get('/notifications');
                 const d = res.data || {};
                 setBadge(d.unread_count || 0);
-                renderItems(d.items || []);
+                // في التحديث الدوري: لا نُعيد رسم القائمة إن كانت مفتوحة حتى لا نُشوّش المستخدم
+                if (!silent || dd.style.display === 'none') renderItems(d.items || []);
             } catch (e) {
-                list.innerHTML = '<div style="padding:20px;text-align:center;color:#B23A48;font-size:12.5px;">تعذّر تحميل الإشعارات</div>';
+                if (!silent) list.innerHTML = '<div style="padding:20px;text-align:center;color:#B23A48;font-size:12.5px;">تعذّر تحميل الإشعارات</div>';
             }
         }
 
@@ -176,6 +177,7 @@
         });
 
         load();
+        setInterval(() => load(true), 60000); // تحديث دوري خفيف للشارة (بلا real-time)
     }
 
     window.Layout = { mount };
