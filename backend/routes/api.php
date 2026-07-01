@@ -29,6 +29,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index']);
 
+    // الإشعارات داخل التطبيق (كل مستخدم يرى/يعدّل إشعاراته فقط)
+    Route::get('/notifications', [\App\Http\Controllers\Api\NotificationController::class, 'index']);
+    Route::post('/notifications/read-all', [\App\Http\Controllers\Api\NotificationController::class, 'markAllRead']);
+    Route::post('/notifications/{id}/read', [\App\Http\Controllers\Api\NotificationController::class, 'markRead']);
+
     // فهرس الأثمان — بحث/إكمال تلقائي (قراءة فقط) لمساعدة الحفظ والاختبارات
     Route::get('/athman/search', [\App\Http\Controllers\Api\AthmanController::class, 'search']);
     Route::get('/athman/hizb/{n}', [\App\Http\Controllers\Api\AthmanController::class, 'hizb']);
