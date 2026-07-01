@@ -309,58 +309,131 @@
     async function load() {
         pc.innerHTML = '<div class="mq-card"><div class="mq-card-body">جارٍ التحميل...</div></div>';
         try {
-            const [sRes, cRes, tRes] = await Promise.all([
-                API.get('/students?all=1'), API.get('/centers?all=1'), API.get('/teachers?all=1')]);
-            const students = sRes.data.data || sRes.data || [];
+            const [cRes, tRes] = await Promise.all([API.get('/centers?all=1'), API.get('/teachers?all=1')]);
             centers = cRes.data.data || cRes.data || [];
             teachers = tRes.data.data || tRes.data || [];
 
-            const rows = students.map(s => `
-                <tr>
-                  <td><div style="display:flex;align-items:center;gap:10px;">
-                    <span class="mq-avatar">${UI.initial(s.name)}</span>
-                    <div><div style="font-weight:600;">${UI.escapeHtml(s.name)}</div>
-                    <div style="font-size:12px;color:#9DB3A6;">${UI.escapeHtml(s.guardian_name || '')}</div></div></div></td>
-                  <td>${s.national_id
-                      ? `<span style="direction:ltr;display:inline-block;font-weight:600;color:#04532F;">${UI.escapeHtml(s.national_id)}</span>`
-                      : `<span class="mq-badge mq-badge-warning">⚠ بدون رقم وطني</span>`}</td>
-                  <td>${UI.badge(UI.escapeHtml(s.center?.name || '—'), 'info')}</td>
-                  <td>${UI.escapeHtml(s.teacher?.name || '—')}</td>
-                  <td>${s.age ?? '—'}</td>
-                  <td><div class="mq-actions">
-                    ${UI.actionBtn('edit', `data-edit="${s.id}"`)}
-                    ${UI.actionBtn('del', `data-del="${s.id}"`)}
-                  </div></td>
-                </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد طلاب</td></tr>`;
-
-            // جاهزية الأوقاف: لافتة بعدد الطلاب بلا رقم وطني
-            const missing = students.filter(s => !s.national_id).length;
-            const banner = missing > 0
-                ? `<div style="display:flex;align-items:center;gap:10px;background:rgba(212,175,55,.16);color:#9A7A1E;border-right:4px solid #9A7A1E;border-radius:12px;padding:12px 16px;font-size:14px;font-weight:600;margin-bottom:16px;">
-                     ⚠️ ${missing} من ${students.length} طالباً بلا رقم وطني — يُنصح بإكمالها قبل رفع تقارير وزارة الأوقاف.</div>`
-                : `<div style="display:flex;align-items:center;gap:10px;background:rgba(4,83,47,.08);color:#04532F;border-right:4px solid #04532F;border-radius:12px;padding:12px 16px;font-size:14px;font-weight:600;margin-bottom:16px;">
-                     ✓ كل الطلاب لديهم رقم وطني — البيانات جاهزة لتقارير الأوقاف.</div>`;
+            const centerFilterOpts = '<option value="">كل المراكز</option>' +
+                centers.map(c => `<option value="${c.id}">${UI.escapeHtml(c.name)}</option>`).join('');
 
             pc.innerHTML = `
-                ${banner}
+                <div id="stu-banner"></div>
+                <div class="mq-card" style="margin-bottom:16px;"><div class="mq-card-body" style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;">
+                  <div style="flex:1;min-width:150px;">
+                    <label class="mq-label" style="font-size:12.5px;">المركز</label>
+                    <select class="mq-input" id="f-center">${centerFilterOpts}</select>
+                  </div>
+                  <div style="flex:1;min-width:150px;">
+                    <label class="mq-label" style="font-size:12.5px;">المعلم</label>
+                    <select class="mq-input" id="f-teacher" disabled><option value="">كل المعلمين</option></select>
+                  </div>
+                  <div style="flex:1;min-width:130px;">
+                    <label class="mq-label" style="font-size:12.5px;">الجنسية</label>
+                    <select class="mq-input" id="f-nat"><option value="">كل الجنسيات</option><option value="libyan">ليبي</option><option value="foreigner">أجنبي</option></select>
+                  </div>
+                  <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#3D6B52;font-weight:600;cursor:pointer;white-space:nowrap;padding-bottom:9px;">
+                    <input type="checkbox" id="f-missing" style="width:17px;height:17px;accent-color:#9A7A1E;cursor:pointer;"> بلا رقم وطني فقط
+                  </label>
+                  <button class="mq-btn mq-btn-outline" id="f-clear" style="padding:9px 16px;">مسح الفلاتر</button>
+                </div></div>
                 <div class="mq-toolbar">
                   <div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="بحث بالاسم أو ولي الأمر..."></div>
                   <button class="mq-btn mq-btn-primary" id="add">${UI.ic('plus', 17)} طالب جديد</button>
                 </div>
                 <div class="mq-card"><table class="mq-table" id="tbl">
                   <thead><tr><th>الطالب</th><th>الرقم الوطني</th><th>المركز</th><th>المعلم</th><th>العمر</th><th>الإجراءات</th></tr></thead>
-                  <tbody>${rows}</tbody></table></div>`;
+                  <tbody id="stu-body"><tr><td colspan="6" style="text-align:center;color:#7A8F82;padding:30px;">جارٍ التحميل...</td></tr></tbody>
+                </table></div>`;
+
+            const fCenter = document.getElementById('f-center'), fTeacher = document.getElementById('f-teacher');
+            const fNat = document.getElementById('f-nat'), fMissing = document.getElementById('f-missing');
+
+            function rowsHtml(students) {
+                return students.map(s => `
+                    <tr>
+                      <td><div style="display:flex;align-items:center;gap:10px;">
+                        <span class="mq-avatar">${UI.initial(s.name)}</span>
+                        <div><div style="font-weight:600;">${UI.escapeHtml(s.name)}</div>
+                        <div style="font-size:12px;color:#9DB3A6;">${UI.escapeHtml(s.guardian_name || '')}</div></div></div></td>
+                      <td>${s.national_id
+                          ? `<span style="direction:ltr;display:inline-block;font-weight:600;color:#04532F;">${UI.escapeHtml(s.national_id)}</span>${s.nationality_type === 'foreigner' ? ' ' + UI.badge(UI.escapeHtml(s.nationality_name || 'أجنبي'), 'warning') : ''}`
+                          : `<span class="mq-badge mq-badge-warning">⚠ بدون رقم وطني</span>`}</td>
+                      <td>${UI.badge(UI.escapeHtml(s.center?.name || '—'), 'info')}</td>
+                      <td>${UI.escapeHtml(s.teacher?.name || '—')}</td>
+                      <td>${s.age ?? '—'}</td>
+                      <td><div class="mq-actions">
+                        ${UI.actionBtn('edit', `data-edit="${s.id}"`)}
+                        ${UI.actionBtn('del', `data-del="${s.id}"`)}
+                      </div></td>
+                    </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد طلاب مطابقون للفلاتر</td></tr>`;
+            }
+
+            function updateBanner(students) {
+                const missing = students.filter(s => !s.national_id).length;
+                document.getElementById('stu-banner').innerHTML = missing > 0
+                    ? `<div style="display:flex;align-items:center;gap:10px;background:rgba(212,175,55,.16);color:#9A7A1E;border-right:4px solid #9A7A1E;border-radius:12px;padding:12px 16px;font-size:14px;font-weight:600;margin-bottom:16px;">
+                         ⚠️ ${missing} من ${students.length} طالباً (بالعرض الحالي) بلا رقم وطني — يُنصح بإكمالها قبل تقارير الأوقاف.</div>`
+                    : `<div style="display:flex;align-items:center;gap:10px;background:rgba(4,83,47,.08);color:#04532F;border-right:4px solid #04532F;border-radius:12px;padding:12px 16px;font-size:14px;font-weight:600;margin-bottom:16px;">
+                         ✓ كل الطلاب (بالعرض الحالي) لديهم رقم وطني — جاهزة لتقارير الأوقاف.</div>`;
+            }
+
+            function bindRowActions(students) {
+                const body = document.getElementById('stu-body');
+                body.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => {
+                    const s = students.find(x => x.id == b.dataset.edit);
+                    UI.formModal({ title: 'تعديل / نقل الطالب', submitText: 'حفظ', fields: editFields(s),
+                        onMount: (form) => { wireEditNat(form); wireTeacherByCenter(form, s.teacher_id); },
+                        onSubmit: async (v, h) => { await API.put('/students/' + s.id, v); UI.toast('تم التحديث'); h.close(); renderStudents(); } });
+                });
+                body.querySelectorAll('[data-del]').forEach(b => b.onclick = () =>
+                    UI.confirmDelete('حذف هذا الطالب؟', async () => { await API.del('/students/' + b.dataset.del); UI.toast('تم الحذف'); renderStudents(); }));
+            }
+
+            // قائمة معلّمي المركز المختار للفلتر (الفلترة نفسها في الـ Backend)
+            async function fillFilterTeachers(centerId) {
+                if (!centerId) { fTeacher.innerHTML = '<option value="">كل المعلمين</option>'; fTeacher.disabled = true; return; }
+                fTeacher.disabled = true; fTeacher.innerHTML = '<option value="">جارٍ...</option>';
+                try {
+                    const res = await API.get('/teachers?all=1&center_id=' + centerId);
+                    const list = res.data.data || res.data || [];
+                    fTeacher.innerHTML = '<option value="">كل المعلمين</option>' + list.map(t => `<option value="${t.id}">${UI.escapeHtml(t.name)}</option>`).join('');
+                } catch (e) { fTeacher.innerHTML = '<option value="">كل المعلمين</option>'; }
+                fTeacher.disabled = false;
+            }
+
+            // إعادة جلب الطلاب مفلترين (center_id/teacher_id/nationality/missing) — كلها AND في الـ Backend
+            async function renderStudents() {
+                const p = new URLSearchParams({ all: '1' });
+                if (fCenter.value) p.set('center_id', fCenter.value);
+                if (fTeacher.value) p.set('teacher_id', fTeacher.value);
+                if (fNat.value) p.set('nationality', fNat.value);
+                if (fMissing.checked) p.set('missing_national_id', '1');
+                const body = document.getElementById('stu-body');
+                body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#7A8F82;padding:20px;">جارٍ التحميل...</td></tr>`;
+                try {
+                    const res = await API.get('/students?' + p.toString());
+                    const students = res.data.data || res.data || [];
+                    body.innerHTML = rowsHtml(students);
+                    updateBanner(students);
+                    bindRowActions(students);
+                    const s = document.getElementById('search'); if (s.value.trim()) s.dispatchEvent(new Event('input'));
+                } catch (e) { body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#B23A48;padding:20px;">${UI.escapeHtml(e.message)}</td></tr>`; }
+            }
 
             UI.bindTableSearch('search', 'tbl');
+            fCenter.onchange = () => { fillFilterTeachers(fCenter.value); renderStudents(); };
+            fTeacher.onchange = renderStudents;
+            fNat.onchange = renderStudents;
+            fMissing.onchange = renderStudents;
+            document.getElementById('f-clear').onclick = () => {
+                fCenter.value = ''; fNat.value = ''; fMissing.checked = false;
+                fTeacher.innerHTML = '<option value="">كل المعلمين</option>'; fTeacher.disabled = true;
+                document.getElementById('search').value = '';
+                renderStudents();
+            };
             document.getElementById('add').onclick = openAddStudent;
-            pc.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => {
-                const s = students.find(x => x.id == b.dataset.edit);
-                UI.formModal({ title: 'تعديل / نقل الطالب', submitText: 'حفظ', fields: editFields(s),
-                    onMount: (form) => { wireEditNat(form); wireTeacherByCenter(form, s.teacher_id); },
-                    onSubmit: async (v, h) => { await API.put('/students/' + s.id, v); UI.toast('تم التحديث'); h.close(); load(); } });
-            });
-            pc.querySelectorAll('[data-del]').forEach(b => b.onclick = () =>
-                UI.confirmDelete('حذف هذا الطالب؟', async () => { await API.del('/students/' + b.dataset.del); UI.toast('تم الحذف'); load(); }));
+
+            renderStudents();
         } catch (e) { UI.toast(e.message, 'danger'); }
     }
     load();

@@ -71,6 +71,20 @@ class StudentController extends Controller
             $query->where('teacher_id', $user->id); // تصفية الطلاب حسب المعلم المسجل حالياً بدلاً من المركز
         }
 
+        // فلاتر اختيارية (تُدمج مع AND؛ الفلترة في الـ Backend)
+        if ($request->filled('center_id')) {
+            $query->where('center_id', (int) $request->center_id);
+        }
+        if ($request->filled('teacher_id')) {
+            $query->where('teacher_id', (int) $request->teacher_id);
+        }
+        if (in_array($request->input('nationality'), ['libyan', 'foreigner'], true)) {
+            $query->where('nationality_type', $request->input('nationality'));
+        }
+        if ($request->boolean('missing_national_id')) {
+            $query->whereNull('national_id'); // جاهزية الأوقاف: بلا رقم وطني
+        }
+
         if ($request->has('all') && $request->all == 1) {
             $students = $query->get();
         } else {
