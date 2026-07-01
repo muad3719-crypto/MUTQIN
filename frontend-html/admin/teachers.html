@@ -150,45 +150,72 @@
     async function load() {
         pc.innerHTML = '<div class="mq-card"><div class="mq-card-body">جارٍ التحميل...</div></div>';
         try {
-            const [tRes, cRes] = await Promise.all([API.get('/teachers?all=1'), API.get('/centers?all=1')]);
-            const teachers = tRes.data.data || tRes.data || [];
+            const cRes = await API.get('/centers?all=1');
             centers = cRes.data.data || cRes.data || [];
-
-            const rows = teachers.map(t => `
-                <tr>
-                  <td><div style="display:flex;align-items:center;gap:10px;">
-                    <span class="mq-avatar">${UI.initial(t.name)}</span>
-                    <div><div style="font-weight:600;">${UI.escapeHtml(t.name)}</div>
-                    <div style="font-size:12px;color:#9DB3A6;direction:ltr;text-align:right;">${UI.escapeHtml(t.email)}</div></div></div></td>
-                  <td><div class="mq-actions">
-                    ${UI.actionBtn('view', `data-details="${t.id}" title="تفاصيل"`)}
-                    ${UI.actionBtn('edit', `data-edit="${t.id}" title="تعديل"`)}
-                    ${UI.actionBtn('del', `data-del="${t.id}" title="حذف"`)}
-                  </div></td>
-                </tr>`).join('') || `<tr><td colspan="2" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد معلمون</td></tr>`;
+            const centerName = (id) => (centers.find(c => c.id == id) || {}).name || '—';
+            const centerFilterOpts = '<option value="">كل المراكز</option>' +
+                centers.map(c => `<option value="${c.id}">${UI.escapeHtml(c.name)}</option>`).join('');
 
             pc.innerHTML = `
                 <div class="mq-toolbar">
-                  <div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="بحث..."></div>
-                  <button class="mq-btn mq-btn-primary" id="add">${UI.ic('plus', 17)} معلم جديد</button>
+                  <div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="بحث بالاسم..."></div>
+                  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <label class="mq-label" style="margin:0;font-size:13px;white-space:nowrap;">المركز:</label>
+                      <select class="mq-input" id="center-filter" style="max-width:230px;">${centerFilterOpts}</select>
+                    </div>
+                    <button class="mq-btn mq-btn-primary" id="add">${UI.ic('plus', 17)} معلم جديد</button>
+                  </div>
                 </div>
                 <div class="mq-card"><table class="mq-table" id="tbl">
-                  <thead><tr><th>المعلم</th><th style="width:150px;">الإجراءات</th></tr></thead>
-                  <tbody>${rows}</tbody></table></div>`;
+                  <thead><tr><th>المعلم</th><th>المركز</th><th style="width:150px;">الإجراءات</th></tr></thead>
+                  <tbody id="tea-body"><tr><td colspan="3" style="text-align:center;color:#7A8F82;padding:30px;">جارٍ التحميل...</td></tr></tbody>
+                </table></div>`;
+
+            const centerFilter = document.getElementById('center-filter');
+
+            // جلب المعلمين مفلترين بالمركز (الفلترة في الـ Backend عبر ?center_id)
+            async function renderTeachers(centerId) {
+                const body = document.getElementById('tea-body');
+                body.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#7A8F82;padding:20px;">جارٍ التحميل...</td></tr>`;
+                try {
+                    const res = await API.get('/teachers?all=1' + (centerId ? '&center_id=' + centerId : ''));
+                    const teachers = res.data.data || res.data || [];
+                    body.innerHTML = teachers.map(t => `
+                        <tr>
+                          <td><div style="display:flex;align-items:center;gap:10px;">
+                            <span class="mq-avatar">${UI.initial(t.name)}</span>
+                            <div><div style="font-weight:600;">${UI.escapeHtml(t.name)}</div>
+                            <div style="font-size:12px;color:#9DB3A6;direction:ltr;text-align:right;">${UI.escapeHtml(t.email)}</div></div></div></td>
+                          <td>${UI.badge(UI.escapeHtml(centerName(t.center_id)), 'info')}</td>
+                          <td><div class="mq-actions">
+                            ${UI.actionBtn('view', `data-details="${t.id}" title="تفاصيل"`)}
+                            ${UI.actionBtn('edit', `data-edit="${t.id}" title="تعديل"`)}
+                            ${UI.actionBtn('del', `data-del="${t.id}" title="حذف"`)}
+                          </div></td>
+                        </tr>`).join('') || `<tr><td colspan="3" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد معلمون${centerId ? ' في هذا المركز' : ''}</td></tr>`;
+
+                    body.querySelectorAll('[data-details]').forEach(b => b.onclick = () => showTeacherDetails(b.dataset.details));
+                    body.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => {
+                        const t = teachers.find(x => x.id == b.dataset.edit);
+                        UI.formModal({ title: 'تعديل المعلم', submitText: 'حفظ التعديلات', fields: editFields(t), onMount: wireSinglePrimary(t.id),
+                            onSubmit: async (v, h) => { await API.put('/teachers/' + t.id, v); UI.toast('تم التحديث'); h.close(); renderTeachers(centerFilter.value); } });
+                    });
+                    body.querySelectorAll('[data-del]').forEach(b => b.onclick = () =>
+                        UI.confirmDelete('حذف هذا المعلم سيحذف ارتباط طلابه. تأكيد؟', async () => { await API.del('/teachers/' + b.dataset.del); UI.toast('تم الحذف'); renderTeachers(centerFilter.value); }));
+                    // إعادة تطبيق البحث الحالي (الفلتر + البحث معاً)
+                    const s = document.getElementById('search'); if (s.value.trim()) s.dispatchEvent(new Event('input'));
+                } catch (e) { body.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#B23A48;padding:20px;">${UI.escapeHtml(e.message)}</td></tr>`; }
+            }
 
             UI.bindTableSearch('search', 'tbl');
-            pc.querySelectorAll('[data-details]').forEach(b => b.onclick = () => showTeacherDetails(b.dataset.details));
+            centerFilter.onchange = () => renderTeachers(centerFilter.value);
             document.getElementById('add').onclick = () => UI.formModal({
                 title: 'إضافة معلم', fields: addFields(), onMount: wireSinglePrimary(null),
-                onSubmit: async (v, h) => { await API.post('/teachers', v); UI.toast('تم إضافة المعلم'); h.close(); load(); }
+                onSubmit: async (v, h) => { await API.post('/teachers', v); UI.toast('تم إضافة المعلم'); h.close(); renderTeachers(centerFilter.value); }
             });
-            pc.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => {
-                const t = teachers.find(x => x.id == b.dataset.edit);
-                UI.formModal({ title: 'تعديل المعلم', submitText: 'حفظ التعديلات', fields: editFields(t), onMount: wireSinglePrimary(t.id),
-                    onSubmit: async (v, h) => { await API.put('/teachers/' + t.id, v); UI.toast('تم التحديث'); h.close(); load(); } });
-            });
-            pc.querySelectorAll('[data-del]').forEach(b => b.onclick = () =>
-                UI.confirmDelete('حذف هذا المعلم سيحذف ارتباط طلابه. تأكيد؟', async () => { await API.del('/teachers/' + b.dataset.del); UI.toast('تم الحذف'); load(); }));
+
+            renderTeachers('');
         } catch (e) { UI.toast(e.message, 'danger'); }
     }
     load();
