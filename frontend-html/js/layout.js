@@ -80,7 +80,19 @@
                     <h1 class="mq-page-title">${UI.escapeHtml(title || '')}</h1>
                     <div class="mq-topbar-actions">
                         <span class="mq-date">${today}</span>
-                        <span class="mq-bell" title="الإشعارات">${UI.ic('bell', 19)}</span>
+                        <div class="mq-notif" style="position:relative;">
+                          <span class="mq-bell" id="mq-bell" title="الإشعارات" style="cursor:pointer;position:relative;display:inline-flex;">
+                            ${UI.ic('bell', 19)}
+                            <span id="mq-notif-badge" style="display:none;position:absolute;top:-7px;left:-7px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#B23A48;color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center;">0</span>
+                          </span>
+                          <div id="mq-notif-dd" style="display:none;position:absolute;top:calc(100% + 10px);left:0;width:340px;max-height:440px;overflow:auto;background:#fff;border:1px solid rgba(4,83,47,.18);border-radius:14px;box-shadow:0 24px 60px -20px rgba(4,54,31,.5);z-index:1600;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 15px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;">
+                              <strong style="color:#04532F;font-size:14px;">الإشعارات</strong>
+                              <button type="button" id="mq-notif-readall" style="background:none;border:none;color:#9A7A1E;font-weight:700;font-size:12px;cursor:pointer;">تعليم الكل كمقروء</button>
+                            </div>
+                            <div id="mq-notif-list"><div style="padding:20px;text-align:center;color:#9DB3A6;font-size:13px;">جارٍ التحميل...</div></div>
+                          </div>
+                        </div>
                     </div>
                 </header>
                 <div class="mq-content" id="page-content"></div>
@@ -91,7 +103,79 @@
             if (confirm('تسجيل الخروج من النظام؟')) Auth.logout();
         });
 
+        wireNotifications();
+
         return document.getElementById('page-content');
+    }
+
+    // ===== الإشعارات داخل التطبيق (الجرس + القائمة + الشارة) =====
+    function wireNotifications() {
+        const bell = document.getElementById('mq-bell');
+        const dd = document.getElementById('mq-notif-dd');
+        const badge = document.getElementById('mq-notif-badge');
+        const list = document.getElementById('mq-notif-list');
+        if (!bell) return;
+
+        const setBadge = (n) => {
+            if (n > 0) { badge.textContent = n > 99 ? '99+' : n; badge.style.display = 'block'; }
+            else badge.style.display = 'none';
+        };
+
+        function renderItems(items) {
+            if (!items.length) {
+                list.innerHTML = '<div style="padding:26px 20px;text-align:center;color:#9DB3A6;font-size:13px;">لا توجد إشعارات</div>';
+                return;
+            }
+            list.innerHTML = items.map(n => `
+                <div class="mq-notif-item" data-id="${n.id}" data-link="${n.link || ''}" data-read="${n.is_read ? 1 : 0}"
+                     style="display:flex;gap:10px;padding:12px 15px;border-bottom:1px solid var(--line);cursor:pointer;background:${n.is_read ? '#fff' : 'rgba(212,175,55,.10)'};">
+                  <span class="dot" style="flex-shrink:0;width:8px;height:8px;border-radius:50%;margin-top:6px;background:${n.is_read ? 'transparent' : '#B23A48'};"></span>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-weight:700;font-size:13px;color:#04361F;">${UI.escapeHtml(n.title)}</div>
+                    <div style="font-size:12.5px;color:#3D6B52;margin:2px 0;">${UI.escapeHtml(n.body)}</div>
+                    <div style="font-size:11px;color:#9DB3A6;">${UI.escapeHtml(n.created_ago)}</div>
+                  </div>
+                </div>`).join('');
+            list.querySelectorAll('.mq-notif-item').forEach(el => el.addEventListener('click', () => onItemClick(el)));
+        }
+
+        async function load() {
+            try {
+                const res = await API.get('/notifications');
+                const d = res.data || {};
+                setBadge(d.unread_count || 0);
+                renderItems(d.items || []);
+            } catch (e) {
+                list.innerHTML = '<div style="padding:20px;text-align:center;color:#B23A48;font-size:12.5px;">تعذّر تحميل الإشعارات</div>';
+            }
+        }
+
+        async function onItemClick(el) {
+            if (el.dataset.read !== '1') {
+                try {
+                    const res = await API.post('/notifications/' + el.dataset.id + '/read');
+                    el.dataset.read = '1';
+                    el.style.background = '#fff';
+                    el.querySelector('.dot').style.background = 'transparent';
+                    setBadge((res.data && res.data.unread_count) || 0);
+                } catch (e) { /* تجاهل — الإشعار ثانوي */ }
+            }
+            if (el.dataset.link) location.href = window.MutqinConfig.APP_ROOT + el.dataset.link;
+        }
+
+        bell.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+        });
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#mq-notif-dd') && !e.target.closest('#mq-bell')) dd.style.display = 'none';
+        });
+        document.getElementById('mq-notif-readall').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            try { await API.post('/notifications/read-all'); setBadge(0); load(); } catch (e) { /* تجاهل */ }
+        });
+
+        load();
     }
 
     window.Layout = { mount };
