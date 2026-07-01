@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\WeeklyTest;
 use App\Models\WeeklyTestQuestion; // استيراد كائن أسئلة الاختبار
 use App\Models\Student;
+use App\Notifications\InAppNotification;
 use Illuminate\Http\Request;
 
 class WeeklyTestController extends Controller
@@ -77,6 +78,16 @@ class WeeklyTestController extends Controller
                 'mistake'        => $q['mistake'] ?? null,
             ]);
         }
+
+        // إشعار ولي أمر الطالب (إن وُجد) — ثانوي، لا يُسقط التسجيل
+        InAppNotification::sendSafe(
+            $student->parent,
+            'test_added',
+            'اختبار أسبوعي جديد',
+            'تم تسجيل اختبار أسبوعي لابنك «' . $student->name . '» — النتيجة: ' . $overallResult . '.',
+            $test->id,
+            'parent/child.html?id=' . $student->id
+        );
 
         return response()->json([
             'success' => true,

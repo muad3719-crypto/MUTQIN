@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Memorization;
 use App\Models\Student;
+use App\Notifications\InAppNotification;
 use App\Support\SurahReference;
 use Illuminate\Http\Request;
 
@@ -136,6 +137,18 @@ class MemorizationController extends Controller
             'quality'     => $request->quality,
             'notes'       => $request->notes,
         ]);
+
+        // إشعار ولي أمر الطالب (إن وُجد) — ثانوي، لا يُسقط التسجيل
+        $qualityLabels = ['excellent' => 'ممتاز', 'good' => 'جيد', 'average' => 'مقبول', 'weak' => 'ضعيف'];
+        InAppNotification::sendSafe(
+            $student->parent,
+            'memorization_added',
+            'تسجيل حفظ جديد',
+            'سجّل المحفّظ حفظاً جديداً لابنك «' . $student->name . '»: سورة ' . $request->surah_name
+                . ' (التقييم: ' . ($qualityLabels[$request->quality] ?? $request->quality) . ').',
+            $student->id,
+            'parent/child.html?id=' . $student->id
+        );
 
         return response()->json([
             'success' => true,
