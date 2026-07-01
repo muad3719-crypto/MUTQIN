@@ -12,6 +12,11 @@ class CenterController extends Controller
     {
         $query = Center::withCount('students')->latest();
 
+        // فلتر اختياري بالمدينة (الفلترة في الـ Backend)
+        if ($request->filled('city')) {
+            $query->where('city', $request->city);
+        }
+
         if ($request->has('all') && $request->all == 1) {
             $centers = $query->get();
         } else {
@@ -28,11 +33,12 @@ class CenterController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
+            'city' => 'nullable|string|max:255',
         ], [
             'name.required' => 'اسم المركز مطلوب',
         ]);
 
-        $center = Center::create($request->only(['name', 'address', 'phone', 'is_active']));
+        $center = Center::create($request->only(['name', 'city', 'address', 'phone', 'is_active']));
 
         return response()->json([
             'success' => true,
@@ -57,9 +63,10 @@ class CenterController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
+            'city' => 'nullable|string|max:255',
         ]);
 
-        $center->update($request->only(['name', 'address', 'phone', 'is_active']));
+        $center->update($request->only(['name', 'city', 'address', 'phone', 'is_active']));
 
         return response()->json([
             'success' => true,
