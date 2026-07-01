@@ -6,10 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\StudentRequest;
 use App\Models\Student;
 use App\Models\User;
+use App\Notifications\StudentRequestNotification;
 use App\Support\ArabicText;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -173,6 +176,16 @@ class StudentRequestController extends Controller
             'guardian_id_number'        => $request->guardian_id_number,
         ]);
 
+        // إشعار كل الأدمن دفعة واحدة (استعلام واحد)
+        $this->safeNotify(
+            User::where('role', 'admin')->get(),
+            'request_created',
+            'طلب جديد بانتظار الموافقة',
+            'المحفّظ «' . $user->name . '» أرسل طلب إضافة الطالب «' . $req->student_name . '».',
+            $req->id,
+            'admin/requests.html'
+        );
+
         return response()->json([
             'success' => true,
             'message' => 'تم إرسال الطلب للأدمن، سيُضاف الطالب بعد الموافقة',
@@ -229,6 +242,15 @@ class StudentRequestController extends Controller
             'target_center_id'  => $user->center_id,
             'target_teacher_id' => $user->id,
         ]);
+
+        $this->safeNotify(
+            User::where('role', 'admin')->get(),
+            'request_created',
+            'طلب جديد بانتظار الموافقة',
+            'المحفّظ «' . $user->name . '» أرسل طلب نقل الطالب «' . $req->student_name . '» إلى مركزه.',
+            $req->id,
+            'admin/requests.html'
+        );
 
         return response()->json([
             'success' => true,
@@ -367,6 +389,15 @@ class StudentRequestController extends Controller
                 return $student;
             });
 
+            $this->safeNotify(
+                $req->requestedBy,
+                'request_approved',
+                'تمت الموافقة على طلبك',
+                'تمت الموافقة على طلب إضافة الطالب «' . $req->student_name . '» وإضافته لمركزك.',
+                $req->id,
+                'teacher/requests.html'
+            );
+
             return response()->json([
                 'success' => true,
                 'message' => 'تمت الموافقة وإنشاء الطالب بنجاح',
@@ -390,6 +421,15 @@ class StudentRequestController extends Controller
             ]);
             $req->update(['status' => 'approved']);
         });
+
+        $this->safeNotify(
+            $req->requestedBy,
+            'request_approved',
+            'تمت الموافقة على طلبك',
+            'تمت الموافقة على نقل الطالب «' . $req->student_name . '» إلى مركزك.',
+            $req->id,
+            'teacher/requests.html'
+        );
 
         return response()->json([
             'success' => true,
@@ -421,6 +461,12 @@ class StudentRequestController extends Controller
             'status'     => 'rejected',
             'admin_note' => $request->admin_note,
         ]);
+
+        $body = 'تم رفض طلب ' . $this->kindLabel($req) . ' الطالب «' . $req->student_name . '».';
+        if ($request->filled('admin_note')) {
+            $body .= ' السبب: ' . $request->admin_note;
+        }
+        $this->safeNotify($req->requestedBy, 'request_rejected', 'تم رفض طلبك', $body, $req->id, 'teacher/requests.html');
 
         return response()->json([
             'success' => true,
@@ -497,6 +543,28 @@ class StudentRequestController extends Controller
         ]);
 
         return $parent->id;
+    }
+
+    /** تسمية نوع الطلب للنصوص. */
+    protected function kindLabel(StudentRequest $req): string
+    {
+        return $req->type === 'transfer' ? 'نقل' : 'إضافة';
+    }
+
+    /**
+     * إرسال إشعار داخل التطبيق بأمان — الإشعار ثانوي: أي فشل لا يُسقط العملية الأساسية.
+     * $recipients: مستخدم واحد أو مجموعة مستخدمين (Notification::send يقبل الاثنين).
+     */
+    protected function safeNotify($recipients, string $type, string $title, string $body, ?int $requestId, ?string $link): void
+    {
+        try {
+            if ($recipients === null || (is_countable($recipients) && count($recipients) === 0)) {
+                return; // لا مستلمين (محذوف/غير موجود)
+            }
+            Notification::send($recipients, new StudentRequestNotification($type, $title, $body, $requestId, $link));
+        } catch (\Throwable $e) {
+            Log::warning('student-request notification failed: ' . $e->getMessage());
+        }
     }
 
     /**
