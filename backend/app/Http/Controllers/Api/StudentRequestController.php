@@ -6,13 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\StudentRequest;
 use App\Models\Student;
 use App\Models\User;
-use App\Notifications\StudentRequestNotification;
+use App\Notifications\InAppNotification;
 use App\Support\ArabicText;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -177,7 +175,7 @@ class StudentRequestController extends Controller
         ]);
 
         // إشعار كل الأدمن دفعة واحدة (استعلام واحد)
-        $this->safeNotify(
+        InAppNotification::sendSafe(
             User::where('role', 'admin')->get(),
             'request_created',
             'طلب جديد بانتظار الموافقة',
@@ -243,7 +241,7 @@ class StudentRequestController extends Controller
             'target_teacher_id' => $user->id,
         ]);
 
-        $this->safeNotify(
+        InAppNotification::sendSafe(
             User::where('role', 'admin')->get(),
             'request_created',
             'طلب جديد بانتظار الموافقة',
@@ -389,7 +387,7 @@ class StudentRequestController extends Controller
                 return $student;
             });
 
-            $this->safeNotify(
+            InAppNotification::sendSafe(
                 $req->requestedBy,
                 'request_approved',
                 'تمت الموافقة على طلبك',
@@ -422,7 +420,7 @@ class StudentRequestController extends Controller
             $req->update(['status' => 'approved']);
         });
 
-        $this->safeNotify(
+        InAppNotification::sendSafe(
             $req->requestedBy,
             'request_approved',
             'تمت الموافقة على طلبك',
@@ -466,7 +464,7 @@ class StudentRequestController extends Controller
         if ($request->filled('admin_note')) {
             $body .= ' السبب: ' . $request->admin_note;
         }
-        $this->safeNotify($req->requestedBy, 'request_rejected', 'تم رفض طلبك', $body, $req->id, 'teacher/requests.html');
+        InAppNotification::sendSafe($req->requestedBy, 'request_rejected', 'تم رفض طلبك', $body, $req->id, 'teacher/requests.html');
 
         return response()->json([
             'success' => true,
@@ -549,22 +547,6 @@ class StudentRequestController extends Controller
     protected function kindLabel(StudentRequest $req): string
     {
         return $req->type === 'transfer' ? 'نقل' : 'إضافة';
-    }
-
-    /**
-     * إرسال إشعار داخل التطبيق بأمان — الإشعار ثانوي: أي فشل لا يُسقط العملية الأساسية.
-     * $recipients: مستخدم واحد أو مجموعة مستخدمين (Notification::send يقبل الاثنين).
-     */
-    protected function safeNotify($recipients, string $type, string $title, string $body, ?int $requestId, ?string $link): void
-    {
-        try {
-            if ($recipients === null || (is_countable($recipients) && count($recipients) === 0)) {
-                return; // لا مستلمين (محذوف/غير موجود)
-            }
-            Notification::send($recipients, new StudentRequestNotification($type, $title, $body, $requestId, $link));
-        } catch (\Throwable $e) {
-            Log::warning('student-request notification failed: ' . $e->getMessage());
-        }
     }
 
     /**
