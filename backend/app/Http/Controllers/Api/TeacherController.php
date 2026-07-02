@@ -56,7 +56,7 @@ class TeacherController extends Controller
         $teacher = User::create([
             'name'     => $request->name,
             'email'    => $request->email,
-            'phone'    => $request->phone,
+            'phone'    => \App\Support\PhoneNumber::normalize($request->phone),
             'role'     => 'teacher',
             'password' => Hash::make($request->password),
             'center_id'=> $request->center_id,
@@ -131,7 +131,7 @@ class TeacherController extends Controller
         $data = [
             'name'      => $request->name,
             'email'     => $request->email,
-            'phone'     => $request->phone,
+            'phone'     => \App\Support\PhoneNumber::normalize($request->phone),
             'center_id' => $request->center_id,
             'type'      => $request->type,
         ];

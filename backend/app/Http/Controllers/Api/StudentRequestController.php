@@ -8,6 +8,8 @@ use App\Models\Student;
 use App\Models\User;
 use App\Notifications\InAppNotification;
 use App\Support\ArabicText;
+use App\Support\ParentResolver;
+use App\Support\PhoneNumber;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -166,9 +168,9 @@ class StudentRequestController extends Controller
             'nationality_name'  => $natType === 'foreigner' ? $request->nationality_name : null,
             'student_name'      => $request->name,
             'age'               => $request->age,
-            'phone'             => $request->phone,
+            'phone'             => PhoneNumber::normalize($request->phone),
             'guardian_name'     => $request->guardian_name,
-            'guardian_phone'    => $request->guardian_phone,
+            'guardian_phone'    => PhoneNumber::normalize($request->guardian_phone),
             'guardian_email'    => $request->guardian_email,
             'guardian_nationality_type' => $gNatType,
             'guardian_nationality_name' => $gNatType === 'foreigner' ? $request->guardian_nationality_name : null,
@@ -478,79 +480,20 @@ class StudentRequestController extends Controller
     // =============================================
 
     /**
-     * حسم حساب ولي الأمر عند الموافقة على طلب add — رقم الهوية أولاً (المعرّف الثابت)،
-     * ثم الهاتف ثم البريد، وإلا إنشاء حساب جديد إن توفّر بريد فريد
-     * (يماثل StudentController@resolveParentAccount). يُرجع معرّف ولي الأمر أو null.
+     * حسم ولي الأمر عند الموافقة — عبر المنطق الموحّد {@see ParentResolver}
+     * (هوية → هاتف مطبَّع → بريد؛ إنشاء بكلمة عشوائية؛ فشل واضح 422 بالعربية —
+     * لم يعد فشلاً صامتاً: طلبٌ ببيانات ولي ناقصة يظهر سببه للأدمن ليُكمل أو يرفض).
      */
     protected function resolveParentId(StudentRequest $req): ?int
     {
-        $idNumber = $req->guardian_id_number;
-        $phone    = $req->guardian_phone;
-        $email    = $req->guardian_email;
-        $gNatType = $req->guardian_nationality_type ?: 'libyan';
-        $gNatName = $gNatType === 'foreigner' ? $req->guardian_nationality_name : null;
-
-        if (!$idNumber && !$phone && !$email && !$req->guardian_name) {
-            return null;
-        }
-
-        $parent = null;
-        // 1) المعرّف الثابت: رقم الهوية
-        if ($idNumber) {
-            $parent = User::where('role', 'parent')->where('id_number', $idNumber)->first();
-        }
-        // 2) ثم الهاتف
-        if (!$parent && $phone) {
-            $parent = User::where('role', 'parent')->where('phone', $phone)->first();
-        }
-        // 3) ثم البريد (مقيّد بدور parent)
-        if (!$parent && $email) {
-            $parent = User::where('role', 'parent')->where('email', $email)->first();
-        }
-
-        if ($parent) {
-            $fill = [
-                'name'  => $req->guardian_name ?: $parent->name,
-                'phone' => $phone ?: $parent->phone,
-            ];
-            if ($idNumber && !$parent->id_number) {
-                $fill['id_number']        = $idNumber;
-                $fill['nationality_type'] = $gNatType;
-                $fill['nationality_name'] = $gNatName;
-            }
-            $parent->fill($fill)->save();
-            return $parent->id;
-        }
-
-        // لا يمكن إنشاء حساب جديد بلا بريد، أو إن كان البريد/رقم الهوية مستخدماً لغيره
-        if (!$email || User::where('email', $email)->exists()) {
-            return null;
-        }
-        if ($idNumber && User::where('id_number', $idNumber)->exists()) {
-            return null;
-        }
-
-        try {
-            $parent = User::create([
-                'name'             => $req->guardian_name ?: 'ولي أمر',
-                'email'            => $email,
-                'phone'            => $phone,
-                'role'             => 'parent',
-                'password'         => Hash::make(Str::random(24)),
-                'nationality_type' => $gNatType,
-                'nationality_name' => $gNatName,
-                'id_number'        => $idNumber ?: null,
-            ]);
-        } catch (\Illuminate\Database\QueryException $e) {
-            // سباق تزامن: موافقتان متزامنتان أنشأتا نفس الولي — نعيد المطابقة بدل إسقاط الموافقة
-            $parent = ($idNumber ? User::where('role', 'parent')->where('id_number', $idNumber)->first() : null)
-                ?? User::where('role', 'parent')->where('email', $email)->first();
-            if (!$parent) {
-                return null; // الإشعار/الربط ثانوي — لا نُسقط الموافقة
-            }
-        }
-
-        return $parent->id;
+        return ParentResolver::resolve([
+            'name'             => $req->guardian_name,
+            'email'            => $req->guardian_email,
+            'phone'            => $req->guardian_phone,
+            'nationality_type' => $req->guardian_nationality_type ?: 'libyan',
+            'nationality_name' => $req->guardian_nationality_name,
+            'id_number'        => $req->guardian_id_number,
+        ])?->id;
     }
 
     /** تسمية نوع الطلب للنصوص. */

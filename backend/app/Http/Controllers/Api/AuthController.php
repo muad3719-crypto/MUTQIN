@@ -102,7 +102,7 @@ class AuthController extends Controller
         ];
 
         // الأدمن لا يُعاد ضبطه بهذه الطريقة (يبقى يدوياً)
-        $user = User::whereIn('role', ['parent', 'teacher'])->where('phone', $request->phone)->first();
+        $user = User::whereIn('role', ['parent', 'teacher'])->where('phone', \App\Support\PhoneNumber::normalize($request->phone))->first();
         if (!$user) {
             return response()->json($neutral);
         }
@@ -154,7 +154,7 @@ class AuthController extends Controller
             'message' => 'الشفرة غير صحيحة أو منتهية الصلاحية',
         ], 422);
 
-        $user = User::whereIn('role', ['parent', 'teacher'])->where('phone', $request->phone)->first();
+        $user = User::whereIn('role', ['parent', 'teacher'])->where('phone', \App\Support\PhoneNumber::normalize($request->phone))->first();
         if (!$user) {
             return $generic;
         }

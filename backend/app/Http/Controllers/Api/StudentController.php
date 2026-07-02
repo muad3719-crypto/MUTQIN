@@ -9,7 +9,9 @@ use App\Models\Center;
 use App\Models\Attendance;
 use App\Models\Memorization;
 use App\Support\ArabicText;
+use App\Support\ParentResolver;
 use App\Support\Percentage;
+use App\Support\PhoneNumber;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -135,28 +137,32 @@ class StudentController extends Controller
 
         // ترتيب حسم ولي الأمر:
         //  (B) parent_id موجود → ربط مباشر بحساب موجود، بلا إنشاء حساب جديد.
-        //  (A) بيانات ولي (هوية/هاتف/بريد/اسم) → مطابقة بالهوية ثم الهاتف ثم البريد، وإلا إنشاء.
-        //  (C) لا شيء → parent_id = null.
-        if ($request->filled('parent_id')) {
-            $parentId = (int) $request->parent_id;
-        } elseif ($request->filled('guardian_id_number') || $request->filled('guardian_phone') || $request->filled('guardian_email') || $request->filled('guardian_name')) {
-            $parentId = $this->resolveParentAccount($request)->id;
-        } else {
-            $parentId = null;
-        }
+        //  (A) بيانات ولي → المنطق الموحّد ParentResolver (هوية → هاتف مطبَّع → بريد، وإلا إنشاء).
+        //  (C) لا شيء → null.
+        $parentId = $request->filled('parent_id')
+            ? (int) $request->parent_id
+            : ParentResolver::resolve([
+                'name'             => $request->guardian_name,
+                'email'            => $request->guardian_email,
+                'phone'            => $request->guardian_phone,
+                'password'         => $request->guardian_password,
+                'nationality_type' => $gNatType,
+                'nationality_name' => $request->guardian_nationality_name,
+                'id_number'        => $request->guardian_id_number,
+            ])?->id;
 
         $student = Student::create([
             'name'             => $request->name,
             'national_id'      => $request->national_id ?: null, // اختياري (وطني لو ليبي / جواز لو أجنبي)
             'nationality_type' => $natType,
             'nationality_name' => $natType === 'foreigner' ? $request->nationality_name : null,
-            'phone'            => $request->phone,
+            'phone'            => PhoneNumber::normalize($request->phone),
             'age'              => $request->age,
             'center_id'        => $request->center_id,
             'teacher_id'       => $request->teacher_id,
             'parent_id'        => $parentId,
             'guardian_name'    => $request->guardian_name,   // يبقى للعرض فقط
-            'guardian_phone'   => $request->guardian_phone,  // يبقى للعرض فقط
+            'guardian_phone'   => PhoneNumber::normalize($request->guardian_phone),  // يبقى للعرض فقط
             'enrollment_date'  => now(),
             'is_active'        => true,
         ]);
@@ -166,83 +172,6 @@ class StudentController extends Controller
             'message' => 'تم إضافة الطالب وربطه بولي أمره بنجاح',
             'data' => $student->load(['center', 'teacher', 'parent'])
         ], 201);
-    }
-
-    /**
-     * إيجاد حساب ولي الأمر — المعرّف الثابت (رقم الهوية) أولاً، ثم الهاتف، ثم البريد،
-     * وإلا إنشاء حساب جديد (يتطلب بريداً فريداً). يحفظ الجنسية ورقم الهوية.
-     *
-     * رقم الهوية هو المفتاح الأدق: من يملكه يُميَّز جذرياً (لا حساب مكرّر ولو اختلف الهاتف)؛
-     * ومن لا يملكه يبقى التمييز بالهاتف ثم البريد (احتياطي).
-     */
-    protected function resolveParentAccount(Request $request): User
-    {
-        $idNumber = $request->guardian_id_number;
-        $phone    = $request->guardian_phone;
-        $email    = $request->guardian_email;
-        $gNatType = $request->input('guardian_nationality_type', 'libyan');
-        $gNatName = $gNatType === 'foreigner' ? $request->guardian_nationality_name : null;
-
-        $parent = null;
-        // 1) المعرّف الثابت: رقم الهوية (مقيّد بدور parent)
-        if ($idNumber) {
-            $parent = User::where('role', 'parent')->where('id_number', $idNumber)->first();
-        }
-        // 2) ثم الهاتف (احتياطي لمن لا هوية له)
-        if (!$parent && $phone) {
-            $parent = User::where('role', 'parent')->where('phone', $phone)->first();
-        }
-        // 3) ثم البريد — مقيّد بدور parent حتى لا نطابق/نعدّل حساب مدير أو معلم (S2)
-        if (!$parent && $email) {
-            $parent = User::where('role', 'parent')->where('email', $email)->first();
-        }
-
-        if ($parent) {
-            $fill = [
-                'name'  => $request->guardian_name ?: $parent->name,
-                'phone' => $phone ?: $parent->phone,
-            ];
-            // تعبئة الهوية/الجنسية إن كانت ناقصة لدى الحساب الموجود (لا نطمس قيمة موجودة)
-            if ($idNumber && !$parent->id_number) {
-                $fill['id_number']        = $idNumber;
-                $fill['nationality_type'] = $gNatType;
-                $fill['nationality_name'] = $gNatName;
-            }
-            $parent->fill($fill)->save();
-            return $parent;
-        }
-
-        // 4) إنشاء حساب جديد — يلزم بريد فريد + رقم هوية فريد (دفاعياً)
-        $request->validate([
-            'guardian_email'     => 'required|email|unique:users,email',
-            'guardian_id_number' => 'nullable|unique:users,id_number',
-        ], [
-            'guardian_email.required'   => 'بريد ولي الأمر مطلوب لإنشاء حساب جديد له',
-            'guardian_id_number.unique' => 'رقم هوية ولي الأمر مسجّل لحساب آخر',
-        ]);
-
-        // كلمة المرور: المُدخلة إن وُجدت، وإلا عشوائية قوية (لا «password» الثابتة — S1).
-        try {
-            return User::create([
-                'name'             => $request->guardian_name ?: 'ولي أمر',
-                'email'            => $email,
-                'phone'            => $phone,
-                'role'             => 'parent',
-                'password'         => Hash::make($request->guardian_password ?: Str::random(24)),
-                'nationality_type' => $gNatType,
-                'nationality_name' => $gNatName,
-                'id_number'        => $idNumber ?: null,
-            ]);
-        } catch (\Illuminate\Database\QueryException $e) {
-            // سباق تزامن: طلبان أنشآ نفس الولي معاً — القيد الفريد (email/id_number) أوقف
-            // الثاني، فنعيد المطابقة ونربط بالحساب الذي سبق، بدل خطأ 500 غامض.
-            $existing = ($idNumber ? User::where('role', 'parent')->where('id_number', $idNumber)->first() : null)
-                ?? User::where('role', 'parent')->where('email', $email)->first();
-            if ($existing) {
-                return $existing;
-            }
-            throw $e;
-        }
     }
 
     /**
