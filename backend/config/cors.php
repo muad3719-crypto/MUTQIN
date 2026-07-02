@@ -8,5 +8,7 @@ return [
     'allowed_headers' => ['*'],
     'exposed_headers' => [],
     'max_age' => 0,
-    'supports_credentials' => true,
+    // المصادقة بتوكن Bearer لا بالكوكيز — لا حاجة لبيانات اعتماد المتصفح،
+    // وتركيبة ('*' + credentials:true) مخالفة لمواصفة CORS أصلاً.
+    'supports_credentials' => false,
 ];
