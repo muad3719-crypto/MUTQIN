@@ -205,17 +205,28 @@ class ReportService
     public function atRiskStudents($month, $year): array
     {
         $students = Student::where('is_active', true)->with(['center', 'teacher'])->get();
+
+        // استعلامان مجمّعان للجميع (بدل استعلامين لكل طالب — N+1)
+        $attStats = Attendance::whereIn('student_id', $students->pluck('id'))
+            ->whereMonth('date', $month)->whereYear('date', $year)
+            ->selectRaw('student_id, COUNT(*) AS total, SUM(status = "present") AS present')
+            ->groupBy('student_id')
+            ->get()->keyBy('student_id');
+        $failCounts = WeeklyTest::whereIn('student_id', $students->pluck('id'))
+            ->whereMonth('exam_date', $month)->whereYear('exam_date', $year)
+            ->where('result', 'راسب')
+            ->selectRaw('student_id, COUNT(*) AS c')
+            ->groupBy('student_id')
+            ->get()->keyBy('student_id');
+
         $rows = collect();
 
         foreach ($students as $s) {
-            $att = Attendance::where('student_id', $s->id)
-                ->whereMonth('date', $month)->whereYear('date', $year)->get();
-            $total = $att->count();
-            $pct = $this->pct($att->where('status', 'present')->count(), $total);
+            $stat  = $attStats->get($s->id);
+            $total = (int) ($stat->total ?? 0);
+            $pct = $this->pct((int) ($stat->present ?? 0), $total);
 
-            $failed = WeeklyTest::where('student_id', $s->id)
-                ->whereMonth('exam_date', $month)->whereYear('exam_date', $year)
-                ->where('result', 'راسب')->count();
+            $failed = (int) ($failCounts->get($s->id)->c ?? 0);
 
             $lowAtt = $total > 0 && $pct < self::ATTENDANCE_THRESHOLD;
             $manyFails = $failed >= self::FAIL_THRESHOLD;
