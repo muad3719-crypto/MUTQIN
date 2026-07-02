@@ -40,6 +40,15 @@
             <tr><td>${UI.fmtDate(a.date)}</td><td>${UI.escapeHtml(a.day || '—')}</td><td>${UI.attendanceBadge(a.status_raw)}</td></tr>`).join('')
             || `<tr><td colspan="3" style="text-align:center;color:#7A8F82;padding:24px;">لا توجد سجلات حضور</td></tr>`;
 
+        // سجل الاختبارات الأسبوعية (نموذج الأثمان: نتيجة كلية + عدد الأثمان الناجح/الراسب)
+        const tsum = d.tests_summary || {};
+        const tests = (d.weekly_tests || []).map(t => `
+            <tr><td>${UI.fmtDate(t.date)}</td>
+            <td>${UI.resultBadge(t.result)}</td>
+            <td>${t.questions_count} ثُمن (<span style="color:#04532F;">${t.passed_count} ناجح</span>${t.failed_count ? ` · <span style="color:#B23A48;">${t.failed_count} راسب</span>` : ''})</td>
+            <td>${UI.escapeHtml(t.notes || '—')}</td></tr>`).join('')
+            || `<tr><td colspan="4" style="text-align:center;color:#7A8F82;padding:24px;">لا توجد اختبارات مسجّلة</td></tr>`;
+
         pc.innerHTML = `
             <a class="mq-btn mq-btn-outline mq-btn-sm" href="dashboard.html" style="margin-bottom:18px;">→ العودة للأبناء</a>
 
@@ -66,6 +75,16 @@
                 <table class="mq-table"><thead><tr><th>التاريخ</th><th>السورة</th><th>الصفحات</th><th>الجودة</th></tr></thead><tbody>${memos}</tbody></table></div>
               <div class="mq-card"><div class="mq-card-header"><h3 class="mq-card-title">📋 سجل الحضور</h3></div>
                 <table class="mq-table"><thead><tr><th>التاريخ</th><th>اليوم</th><th>الحالة</th></tr></thead><tbody>${atts}</tbody></table></div>
+            </div>
+
+            <div class="mq-card" style="margin-top:24px;">
+              <div class="mq-card-header">
+                <h3 class="mq-card-title">📝 سجل الاختبارات</h3>
+                <span style="font-size:12.5px;color:#7A8F82;font-weight:600;">
+                  ${tsum.total ?? 0} اختباراً${tsum.last_result ? ' · آخر نتيجة: ' + UI.resultBadge(tsum.last_result) : ''}
+                </span>
+              </div>
+              <table class="mq-table"><thead><tr><th>التاريخ</th><th>النتيجة</th><th>الأثمان</th><th>ملاحظات</th></tr></thead><tbody>${tests}</tbody></table>
             </div>`;
     } catch (e) {
         pc.innerHTML = `<div class="mq-empty"><h3>تعذّر عرض البيانات</h3><p>${UI.escapeHtml(e.message)}</p></div>`;

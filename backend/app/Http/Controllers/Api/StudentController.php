@@ -436,6 +436,25 @@ class StudentController extends Controller
         $presentCount = $attendances->where('status_raw', 'present')->count();
         $attendancePercent = Percentage::of($presentCount, $totalAttendance);
 
+        // سجل الاختبارات الأسبوعية (نموذج الأثمان: نتيجة كلية + سؤال لكل ثمن)
+        $weeklyTests = \App\Models\WeeklyTest::with('questions')
+            ->where('student_id', $student->id)
+            ->latest('exam_date')
+            ->get()
+            ->map(fn ($t) => [
+                'date'            => $t->exam_date,
+                'result'          => $t->result,
+                'notes'           => $t->notes,
+                'questions_count' => $t->questions->count(),
+                'passed_count'    => $t->questions->where('result', 'ناجح')->count(),
+                'failed_count'    => $t->questions->where('result', 'راسب')->count(),
+                'questions'       => $t->questions->map(fn ($q) => [
+                    'eighth_start' => $q->eighth_start,
+                    'result'       => $q->result,
+                    'mistake'      => $q->mistake,
+                ])->values(),
+            ]);
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -453,6 +472,11 @@ class StudentController extends Controller
                 ],
                 'memorizations' => $memorizations,
                 'attendances' => $attendances,
+                'weekly_tests' => $weeklyTests,
+                'tests_summary' => [
+                    'total'       => $weeklyTests->count(),
+                    'last_result' => $weeklyTests->first()['result'] ?? null, // الأحدث أولاً
+                ],
                 'attendance_summary' => [
                     'total' => $totalAttendance,
                     'present' => $presentCount,
