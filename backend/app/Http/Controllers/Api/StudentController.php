@@ -219,8 +219,9 @@ class StudentController extends Controller
             ], 403);
         }
 
+        // ملاحظة: كانت تُجلب هنا «المراجعات» (revisions) وتُعاد بلا أي مستهلك في الواجهة —
+        // أُزيل الجلبُ الميت (6ج). الجدول والموديل باقيان لبناء الميزة لاحقاً.
         $memorizations  = $student->memorizations()->with('teacher')->latest()->take(10)->get();
-        $revisions      = $student->revisions()->with('teacher')->latest()->take(10)->get();
         $attendances    = $student->attendances()->with('teacher')->latest()->take(10)->get();
         $weeklyTests     = $student->weeklyTests()->with(['teacher', 'questions'])->latest()->take(10)->get(); // تحميل أجزاء الاختبار (الأثمان) مع الاختبارات الأسبوعية لصفحة تفاصيل الطالب
 
@@ -229,7 +230,6 @@ class StudentController extends Controller
             'data' => [
                 'student' => $student,
                 'memorizations' => $memorizations,
-                'revisions' => $revisions,
                 'attendances' => $attendances,
                 'weeklyTests' => $weeklyTests
             ]
