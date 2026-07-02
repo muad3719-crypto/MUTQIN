@@ -88,6 +88,7 @@ Every protected page is a small IIFE that does: `Auth.requireAuth([roles])` → 
 - `ExtraDataSeeder` **appends** (it does not wipe) and is center-aware to respect the one-primary-per-center rule; re-running it adds more data.
 - Two PHP extensions must be enabled in `C:\xampp\php\php.ini` for full functionality: `zip` (xlsx attendance import) and `gd` (mPDF). They were disabled by default in this install.
 - App timezone is **Africa/Tripoli** (config/app.php) — do not revert to UTC; "today" logic (attendance defaults, dashboard stats) depends on it, and the frontend uses `UI.todayStr()` (local) rather than `toISOString()`.
+- The week runs **Saturday → Friday** (center's convention). Carbon 3 removed the global `setWeekStartsAt`, so week-scoped queries pass `startOfWeek(Carbon::SATURDAY)`/`endOfWeek(Carbon::FRIDAY)` explicitly (dashboard weekly stat + weekly report) — new week-scoped code must do the same.
 - `php artisan serve` is single-threaded: concurrent requests serialize (slow dependent dropdowns in dev). Set `PHP_CLI_SERVER_WORKERS=4` or use Apache.
 - Feature tests live in `tests/Feature` (role matrix, ownership, login throttle, OTP, request notifications, phone normalization) against the `mutqin_test` DB. Keep them green — they are the only guard on the dual role+ability security model.
 
@@ -133,7 +134,7 @@ Gate column = the middleware group (see the auth section above for what each enf
 - **DashboardController** — `index` returns a role-aware dashboard (admin: system totals; teacher: own students/attendance/memorization); `publicStats` and `demoAccounts` are public.
 - **TeacherController** — teacher CRUD; enforces one-primary-per-center (`assertSinglePrimary`) and exposes `hasPrimary`.
 - **CenterController** — center CRUD.
-- **StudentController** — student CRUD + the parent-link logic (resolve/dedup guardian by phone, two-step email, `parent_id` precedence), `searchParents`, and the two parent-facing read endpoints. `show` eager-loads attendances/memorizations/revisions/tajweed/weeklyTests.
+- **StudentController** — student CRUD + guardian linking via `ParentResolver`, `searchParents`, and the two parent-facing read endpoints (child details include `weekly_tests` + `tests_summary`). `show` eager-loads attendances/memorizations/weeklyTests (revisions load removed — dead, no UI consumer).
 - **AttendanceController** — list/store/report. **AttendanceImportController** — xlsx (fingerprint-device) import (needs the `zip` extension).
 - **MemorizationController** — list (paginated, `?juz=N` filter by surah's juz via `SurahReference`), store, destroy, `surahs` list, and `studentsProgress` (surah-completion-based progress).
 - **WeeklyTestController** — weekly thumn tests with per-thumn questions (index/store/show/destroy; no update).
