@@ -22,7 +22,7 @@
     const pc = Layout.mount({ user, active: 'memorization', title: 'تتبع الحفظ' });
     let students = [], surahs = [];
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = UI.todayStr();
     const qualityOpts = [
         { value: 'excellent', label: 'ممتاز' }, { value: 'good', label: 'جيد' },
         { value: 'average', label: 'مقبول' }, { value: 'weak', label: 'ضعيف' }];

@@ -26,17 +26,24 @@
     const teacherOpts = () => [{ value: '', label: '— بدون معلم —' }].concat(teachers.map(t => ({ value: t.id, label: t.name })));
 
     // قائمة المحفّظ تابعة للمركز: تُملأ بمحفّظي المركز المختار فقط (role=teacher + center_id)
+    // حارس تسلسل: تغيير المركز مرتين بسرعة قد يُعيد ردَّ الأول بعد الثاني فتظهر قائمة المركز الخطأ.
+    let teacherFillSeq = 0;
     async function fillTeachersByCenter(root, centerId, selected) {
         const sel = root.querySelector('[name="teacher_id"]');
         if (!sel) return;
+        const seq = ++teacherFillSeq;
         if (!centerId) { sel.innerHTML = '<option value="">اختر المركز أولاً</option>'; sel.disabled = true; return; }
         sel.disabled = true; sel.innerHTML = '<option value="">جارٍ التحميل...</option>';
         try {
             const res = await API.get('/teachers?all=1&center_id=' + encodeURIComponent(centerId));
+            if (seq !== teacherFillSeq) return; // وصل ردٌّ أحدث — تجاهل هذا القديم
             const list = res.data.data || res.data || [];
             sel.innerHTML = '<option value="">— بدون معلم —</option>' + list.map(t =>
                 `<option value="${t.id}" ${String(t.id) === String(selected || '') ? 'selected' : ''}>${UI.escapeHtml(t.name)}</option>`).join('');
-        } catch (e) { sel.innerHTML = '<option value="">— بدون معلم —</option>'; }
+        } catch (e) {
+            if (seq !== teacherFillSeq) return;
+            sel.innerHTML = '<option value="">— بدون معلم —</option>';
+        }
         sel.disabled = false;
     }
     // يربط قائمة المركز بقائمة المحفّظ داخل أي نموذج (إضافة/تعديل)

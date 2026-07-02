@@ -127,7 +127,7 @@
                 return;
             }
             list.innerHTML = items.map(n => `
-                <div class="mq-notif-item" data-id="${n.id}" data-link="${n.link || ''}" data-read="${n.is_read ? 1 : 0}"
+                <div class="mq-notif-item" data-id="${UI.escapeHtml(n.id)}" data-link="${UI.escapeHtml(n.link || '')}" data-read="${n.is_read ? 1 : 0}"
                      style="display:flex;gap:10px;padding:12px 15px;border-bottom:1px solid var(--line);cursor:pointer;background:${n.is_read ? '#fff' : 'rgba(212,175,55,.10)'};">
                   <span class="dot" style="flex-shrink:0;width:8px;height:8px;border-radius:50%;margin-top:6px;background:${n.is_read ? 'transparent' : '#B23A48'};"></span>
                   <div style="flex:1;min-width:0;">

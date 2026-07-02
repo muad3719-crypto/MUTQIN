@@ -111,6 +111,13 @@
         if (isNaN(date)) return d;
         return date.toLocaleDateString('ar-LY', { year: 'numeric', month: '2-digit', day: '2-digit' });
     }
+    // تاريخ اليوم «المحلي» YYYY-MM-DD — لا toISOString():
+    // toISOString يُرجع تاريخ UTC، فبين منتصف الليل والثانية صباحاً بتوقيت ليبيا (+2)
+    // كان يُقترح تاريخ الأمس في نماذج الحضور/الحفظ/الاختبارات.
+    function todayStr() {
+        const d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
 
     // ===== نافذة نموذج عامة (إضافة/تعديل) =====
     // fields: [{name,label,type,required,value,options:[{value,label}],placeholder,help}]
@@ -372,7 +379,7 @@
     window.UI = {
         toast, confirmDialog, confirmDelete, formModal, runAttendanceImport, attachAthmanSearch, openPdf,
         bindPasswordToggle, bindTableSearch, setFieldErrors,
-        attendanceBadge, qualityBadge, resultBadge, badge, escapeHtml, initial, fmtDate,
+        attendanceBadge, qualityBadge, resultBadge, badge, escapeHtml, initial, fmtDate, todayStr,
         ic, star, actionBtn, ICON_PATHS,
     };
 })();

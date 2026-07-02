@@ -29,7 +29,7 @@
     const user = Auth.requireAuth(['teacher', 'admin']);
     if (!user) return;
     const pc = Layout.mount({ user, active: 'attendance', title: 'تسجيل الحضور والغياب' });
-    let date = new Date().toISOString().slice(0, 10);
+    let date = UI.todayStr();
 
     async function load() {
         pc.innerHTML = '<div class="mq-card"><div class="mq-card-body">جارٍ التحميل...</div></div>';

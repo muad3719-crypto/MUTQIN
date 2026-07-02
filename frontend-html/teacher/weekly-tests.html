@@ -21,7 +21,7 @@
     if (!user) return;
     const pc = Layout.mount({ user, active: 'tests', title: 'الاختبارات الأسبوعية' });
     let students = [];
-    const today = new Date().toISOString().slice(0, 10);
+    const today = UI.todayStr();
 
     // نافذة إضافة اختبار (أثمان ديناميكية)
     function openAdd() {
