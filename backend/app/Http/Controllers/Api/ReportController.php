@@ -90,8 +90,9 @@ class ReportController extends Controller
         }
         $students = $studentsQuery->get();
 
-        $startOfWeek = now()->startOfWeek();
-        $endOfWeek   = now()->endOfWeek();
+        // الأسبوع الليبي: السبت → الجمعة (مؤكَّد من خبير المركز).
+        $startOfWeek = now()->startOfWeek(\Carbon\Carbon::SATURDAY);
+        $endOfWeek   = now()->endOfWeek(\Carbon\Carbon::FRIDAY);
 
         $data = $students->map(function ($student) use ($startOfWeek, $endOfWeek) {
             $attendances = Attendance::where('student_id', $student->id)

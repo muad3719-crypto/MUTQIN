@@ -65,8 +65,10 @@ class DashboardController extends Controller
                 'today_late'     => Attendance::whereIn('student_id', $students->pluck('id'))
                                         ->where('date', today())
                                         ->where('status', 'late')->count(),
+                // الأسبوع الليبي: السبت → الجمعة (مؤكَّد من خبير المركز).
+                // صريحة لا مركزية: Carbon 3 أزال setWeekStartsAt العالمية.
                 'this_week_memorizations' => Memorization::whereIn('student_id', $students->pluck('id'))
-                                        ->whereBetween('date', [now()->startOfWeek(), now()->endOfWeek()])
+                                        ->whereBetween('date', [now()->startOfWeek(\Carbon\Carbon::SATURDAY), now()->endOfWeek(\Carbon\Carbon::FRIDAY)])
                                         ->count(),
             ];
 
