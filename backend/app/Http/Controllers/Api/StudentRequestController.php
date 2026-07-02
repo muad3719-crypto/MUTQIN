@@ -46,6 +46,7 @@ class StudentRequestController extends Controller
     {
         return [
             'national_id.required' => 'رقم الهوية مطلوب للتحقّق',
+            'age.between'          => 'العمر يجب أن يكون بين 1 و120 سنة',
             'national_id.digits'   => 'الرقم الوطني يجب أن يكون 12 رقماً',
             'national_id.regex'    => 'الرقم الوطني الليبي يبدأ بـ 1 (ذكر) أو 2 (أنثى) ويتكوّن من 12 رقماً',
             'nationality_name.required_if'          => 'اسم الجنسية مطلوب للطالب الأجنبي',
@@ -105,7 +106,7 @@ class StudentRequestController extends Controller
             'nationality_type' => 'nullable|in:libyan,foreigner',
             'nationality_name' => 'required_if:nationality_type,foreigner|nullable|string|max:100',
             'national_id'      => $this->identityRules($natType),
-            'age'              => 'nullable|integer',
+            'age'              => 'nullable|integer|between:1,120',
             'phone'            => 'nullable|string|max:20',
             'guardian_name'    => 'nullable|string|max:255',
             'guardian_phone'   => 'nullable|string|max:20',
@@ -529,16 +530,25 @@ class StudentRequestController extends Controller
             return null;
         }
 
-        $parent = User::create([
-            'name'             => $req->guardian_name ?: 'ولي أمر',
-            'email'            => $email,
-            'phone'            => $phone,
-            'role'             => 'parent',
-            'password'         => Hash::make(Str::random(24)),
-            'nationality_type' => $gNatType,
-            'nationality_name' => $gNatName,
-            'id_number'        => $idNumber ?: null,
-        ]);
+        try {
+            $parent = User::create([
+                'name'             => $req->guardian_name ?: 'ولي أمر',
+                'email'            => $email,
+                'phone'            => $phone,
+                'role'             => 'parent',
+                'password'         => Hash::make(Str::random(24)),
+                'nationality_type' => $gNatType,
+                'nationality_name' => $gNatName,
+                'id_number'        => $idNumber ?: null,
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // سباق تزامن: موافقتان متزامنتان أنشأتا نفس الولي — نعيد المطابقة بدل إسقاط الموافقة
+            $parent = ($idNumber ? User::where('role', 'parent')->where('id_number', $idNumber)->first() : null)
+                ?? User::where('role', 'parent')->where('email', $email)->first();
+            if (!$parent) {
+                return null; // الإشعار/الربط ثانوي — لا نُسقط الموافقة
+            }
+        }
 
         return $parent->id;
     }

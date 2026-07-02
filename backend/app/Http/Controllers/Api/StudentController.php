@@ -55,6 +55,7 @@ class StudentController extends Controller
             'national_id.regex'    => 'الرقم الوطني الليبي يبدأ بـ 1 (ذكر) أو 2 (أنثى) ويتكوّن من 12 رقماً',
             'national_id.unique'   => 'هذا الرقم الوطني مسجّل لطالب آخر',
             'national_id.required' => 'الرقم الوطني مطلوب',
+            'age.between'          => 'العمر يجب أن يكون بين 1 و120 سنة',
             'nationality_name.required_if'          => 'اسم الجنسية مطلوب للطالب الأجنبي',
             'guardian_nationality_name.required_if' => 'اسم الجنسية مطلوب لولي الأمر الأجنبي',
             'guardian_id_number.digits' => 'الرقم الوطني لولي الأمر يجب أن يكون 12 رقماً',
@@ -113,7 +114,7 @@ class StudentController extends Controller
             // المعلّم بدور teacher (S3) وينتمي للمركز المختار (لا محفّظ من مركز آخر)
             'teacher_id'        => ['nullable', \Illuminate\Validation\Rule::exists('users', 'id')->where('role', 'teacher')->where('center_id', $request->input('center_id'))],
             'phone'             => 'nullable|string|max:20',
-            'age'               => 'nullable|integer',
+            'age'               => 'nullable|integer|between:1,120',
             // ولي أمر موجود (الوضع B): يجب أن يكون مستخدماً بدور parent
             'parent_id'         => ['nullable', \Illuminate\Validation\Rule::exists('users', 'id')->where('role', 'parent')],
             'guardian_name'     => 'nullable|string|max:255',
@@ -221,16 +222,27 @@ class StudentController extends Controller
         ]);
 
         // كلمة المرور: المُدخلة إن وُجدت، وإلا عشوائية قوية (لا «password» الثابتة — S1).
-        return User::create([
-            'name'             => $request->guardian_name ?: 'ولي أمر',
-            'email'            => $email,
-            'phone'            => $phone,
-            'role'             => 'parent',
-            'password'         => Hash::make($request->guardian_password ?: Str::random(24)),
-            'nationality_type' => $gNatType,
-            'nationality_name' => $gNatName,
-            'id_number'        => $idNumber ?: null,
-        ]);
+        try {
+            return User::create([
+                'name'             => $request->guardian_name ?: 'ولي أمر',
+                'email'            => $email,
+                'phone'            => $phone,
+                'role'             => 'parent',
+                'password'         => Hash::make($request->guardian_password ?: Str::random(24)),
+                'nationality_type' => $gNatType,
+                'nationality_name' => $gNatName,
+                'id_number'        => $idNumber ?: null,
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // سباق تزامن: طلبان أنشآ نفس الولي معاً — القيد الفريد (email/id_number) أوقف
+            // الثاني، فنعيد المطابقة ونربط بالحساب الذي سبق، بدل خطأ 500 غامض.
+            $existing = ($idNumber ? User::where('role', 'parent')->where('id_number', $idNumber)->first() : null)
+                ?? User::where('role', 'parent')->where('email', $email)->first();
+            if ($existing) {
+                return $existing;
+            }
+            throw $e;
+        }
     }
 
     /**
@@ -315,7 +327,7 @@ class StudentController extends Controller
                 'nationality_name' => 'required_if:nationality_type,foreigner|nullable|string|max:100',
                 'national_id' => $this->studentIdentityRules($natType, $student->id), // يتجاهل الطالب نفسه في فحص التفرّد
                 'phone' => 'nullable|string|max:20',
-                'age' => 'nullable|integer',
+                'age' => 'nullable|integer|between:1,120',
                 'center_id' => 'required|exists:centers,id',
                 'teacher_id' => ['nullable', \Illuminate\Validation\Rule::exists('users', 'id')->where('role', 'teacher')->where('center_id', $request->input('center_id'))],
             ], array_merge([
@@ -338,7 +350,7 @@ class StudentController extends Controller
             $request->validate([
                 'name'           => 'required|string|max:255',
                 'phone'          => 'nullable|string|max:20',
-                'age'            => 'nullable|integer',
+                'age'            => 'nullable|integer|between:1,120',
                 'guardian_name'  => 'nullable|string|max:255',
                 'guardian_phone' => 'nullable|string|max:20',
             ], [
@@ -397,17 +409,26 @@ class StudentController extends Controller
             ->with(['center', 'teacher'])
             ->get();
 
-        $result = $students->map(function ($student) {
-            // آخر سورة محفوظة
-            $lastMemo = Memorization::where('student_id', $student->id)
-                ->latest('date')
-                ->first();
+        // استعلامان مجمّعان لكل الأبناء (بدل 3 استعلامات لكل ابن — N+1)
+        $ids = $students->pluck('id');
+        $attStats = Attendance::whereIn('student_id', $ids)
+            ->selectRaw('student_id, COUNT(*) AS total, SUM(status = "present") AS present')
+            ->groupBy('student_id')
+            ->get()
+            ->keyBy('student_id');
+        $lastMemos = Memorization::whereIn('student_id', $ids)
+            ->orderByDesc('date')->orderByDesc('id')
+            ->get()
+            ->groupBy('student_id')
+            ->map(fn ($g) => $g->first());
+
+        $result = $students->map(function ($student) use ($attStats, $lastMemos) {
+            $lastMemo = $lastMemos->get($student->id);
 
             // ملخص الحضور (نسبة الحضور)
-            $totalAttendance = Attendance::where('student_id', $student->id)->count();
-            $presentCount = Attendance::where('student_id', $student->id)
-                ->where('status', 'present')
-                ->count();
+            $stat = $attStats->get($student->id);
+            $totalAttendance = (int) ($stat->total ?? 0);
+            $presentCount = (int) ($stat->present ?? 0);
             $attendancePercent = Percentage::of($presentCount, $totalAttendance);
 
             return [

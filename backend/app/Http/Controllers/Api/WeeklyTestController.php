@@ -61,23 +61,28 @@ class WeeklyTestController extends Controller
         // احتساب النتيجة الكلية للاختبار: راسب إذا كان هناك ثمن واحد على الأقل راسب
         $overallResult = collect($request->questions)->contains('result', 'راسب') ? 'راسب' : 'ناجح';
 
-        $test = WeeklyTest::create([
-            'student_id'  => $request->student_id,
-            'teacher_id'  => $user->id,
-            'exam_date'   => $request->exam_date,
-            'result'      => $overallResult,
-        ]);
-
-        // حفظ تفاصيل كل ثمن تم اختباره
-        foreach ($request->questions as $q) {
-            WeeklyTestQuestion::create([
-                'weekly_test_id' => $test->id,
-                'student_id'     => $request->student_id,
-                'eighth_start'   => $q['eighth_start'],
-                'result'         => $q['result'],
-                'mistake'        => $q['mistake'] ?? null,
+        // معاملة واحدة: لا يُحفظ اختبار بلا أسئلته إن فشلت الكتابة في المنتصف
+        $test = \Illuminate\Support\Facades\DB::transaction(function () use ($request, $user, $overallResult) {
+            $test = WeeklyTest::create([
+                'student_id'  => $request->student_id,
+                'teacher_id'  => $user->id,
+                'exam_date'   => $request->exam_date,
+                'result'      => $overallResult,
             ]);
-        }
+
+            // حفظ تفاصيل كل ثمن تم اختباره
+            foreach ($request->questions as $q) {
+                WeeklyTestQuestion::create([
+                    'weekly_test_id' => $test->id,
+                    'student_id'     => $request->student_id,
+                    'eighth_start'   => $q['eighth_start'],
+                    'result'         => $q['result'],
+                    'mistake'        => $q['mistake'] ?? null,
+                ]);
+            }
+
+            return $test;
+        });
 
         // إشعار ولي أمر الطالب (إن وُجد) — ثانوي، لا يُسقط التسجيل
         InAppNotification::sendSafe(

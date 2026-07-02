@@ -68,6 +68,7 @@ class AttendanceController extends Controller
                 ],
                 [
                     'teacher_id' => $user->isAdmin() ? ($student->teacher_id ?? $user->id) : $user->id,
+                    'center_id'  => $student->center_id, // كما في الاستيراد — وإلا فقدت تقاريرُ المراكز الحضورَ اليدوي
                     'status'     => $status,
                 ]
             );
