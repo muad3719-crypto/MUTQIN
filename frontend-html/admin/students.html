@@ -359,7 +359,7 @@
                           ? `<span style="direction:ltr;display:inline-block;font-weight:600;color:#04532F;">${UI.escapeHtml(s.national_id)}</span>${s.nationality_type === 'foreigner' ? ' ' + UI.badge(UI.escapeHtml(s.nationality_name || 'أجنبي'), 'warning') : ''}`
                           : `<span class="mq-badge mq-badge-warning">⚠ بدون رقم وطني</span>`}</td>
                       <td>${UI.badge(UI.escapeHtml(s.center?.name || '—'), 'info')}</td>
-                      <td>${UI.escapeHtml(s.teacher?.name || '—')}</td>
+                      <td>${s.teacher ? UI.escapeHtml(s.teacher.name) : (s.teacher_id === null ? '<span style="color:#9A7A1E;">محفّظ سابق</span>' : '—')}</td>
                       <td>${s.age ?? '—'}</td>
                       <td><div class="mq-actions">
                         ${UI.actionBtn('edit', `data-edit="${s.id}"`)}

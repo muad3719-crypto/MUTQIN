@@ -201,8 +201,16 @@
                         UI.formModal({ title: 'تعديل المعلم', submitText: 'حفظ التعديلات', fields: editFields(t), onMount: wireSinglePrimary(t.id),
                             onSubmit: async (v, h) => { await API.put('/teachers/' + t.id, v); UI.toast('تم التحديث'); h.close(); renderTeachers(centerFilter.value); } });
                     });
-                    body.querySelectorAll('[data-del]').forEach(b => b.onclick = () =>
-                        UI.confirmDelete('حذف هذا المعلم سيحذف ارتباط طلابه. تأكيد؟', async () => { await API.del('/teachers/' + b.dataset.del); UI.toast('تم الحذف'); renderTeachers(centerFilter.value); }));
+                    body.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+                        // تحذير بالأثر: نجلب عدد الطلاب والسجلّات التاريخية قبل الحذف
+                        let info = {};
+                        try { info = (await API.get('/teachers/' + b.dataset.del)).data || {}; } catch (e) { /* نكمل بتحذير عام */ }
+                        const sc = info.students_count ?? 0, rc = info.records_count ?? 0;
+                        const msg = 'حذف المحفّظ «' + (info.name || '') + '».\n\n'
+                            + 'المرتبط به: ' + sc + ' طالباً و ' + rc + ' سجلّاً تاريخياً (حضور/حفظ/اختبارات).\n\n'
+                            + 'سيبقى التاريخ محفوظاً باسم «محفّظ سابق»، ويُفكّ ارتباط طلابه (يمكن إسنادهم لمحفّظ آخر لاحقاً).\n\nتأكيد الحذف؟';
+                        UI.confirmDelete(msg, async () => { await API.del('/teachers/' + b.dataset.del); UI.toast('تم الحذف'); renderTeachers(centerFilter.value); });
+                    });
                     // إعادة تطبيق البحث الحالي (الفلتر + البحث معاً)
                     const s = document.getElementById('search'); if (s.value.trim()) s.dispatchEvent(new Event('input'));
                 } catch (e) { body.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#B23A48;padding:20px;">${UI.escapeHtml(e.message)}</td></tr>`; }

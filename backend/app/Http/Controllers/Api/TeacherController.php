@@ -89,6 +89,11 @@ class TeacherController extends Controller
             ->limit(10)
             ->get(['changed_at', 'method']);
 
+        // عدد السجلّات التاريخية التي سجّلها هذا المحفّظ (لتحذير الأثر قبل الحذف)
+        $recordsCount = \App\Models\Attendance::where('teacher_id', $teacher->id)->count()
+            + \App\Models\Memorization::where('teacher_id', $teacher->id)->count()
+            + \App\Models\WeeklyTest::where('teacher_id', $teacher->id)->count();
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -99,6 +104,7 @@ class TeacherController extends Controller
                 'type'           => $teacher->type,
                 'center_name'    => $teacher->center->name ?? null,
                 'students_count' => $teacher->students_count,
+                'records_count'  => $recordsCount,
                 'students'       => $students,
                 'password_changed_count'   => $teacher->password_changed_count,
                 'password_last_changed_at' => $teacher->password_last_changed_at,
