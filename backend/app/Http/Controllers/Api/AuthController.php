@@ -28,11 +28,11 @@ class AuthController extends Controller
             'password.min'      => 'كلمة المرور يجب أن تكون 6 أحرف على الأقل',
         ]);
 
-        $credentials = $request->only('email', 'password');
+        // تحقّق صريح بلا حارس جلسات: هذا API عديم الحالة (توكنات)، وAuth::attempt
+        // يعتمد على الحارس الافتراضي القابل للتبدّل — مصدر هشاشة خفيّة.
+        $user = User::where('email', $request->email)->first();
 
-        if (Auth::attempt($credentials)) {
-            $user = Auth::user();
-
+        if ($user && Hash::check($request->password, $user->password)) {
             // ولي الأمر يُمنح صلاحية 'parent' فقط؛ المدير/المعلم صلاحية كاملة '*'
             $abilities = $user->isParent() ? ['parent'] : ['*'];
             $token = $user->createToken('auth_token', $abilities)->plainTextToken;
