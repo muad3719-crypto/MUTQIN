@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `backend/` — Laravel 11 REST API (no Blade views for the app), MySQL database `mutqin_db`, served on port **9090**.
 - `frontend-html/` — a standalone vanilla **HTML + CSS + JS + Bootstrap 5 RTL** client (no PHP, no build step) that consumes the API. Served as static files from any web server.
 
-This is a Windows/XAMPP setup and **not a git repository**.
+This is a Windows/XAMPP setup, versioned as a **single unified git repository** (backend + frontend together; a stale nested `backend/.git` was retired and backed up).
 
 ## Environment & commands
 
@@ -22,7 +22,7 @@ C:\xampp\php\php.exe composer.phar install          # install deps (no global co
 C:\xampp\php\php.exe artisan migrate                # run migrations
 C:\xampp\php\php.exe artisan migrate:fresh --seed   # rebuild DB + base demo data
 C:\xampp\php\php.exe artisan db:seed --class=ExtraDataSeeder   # APPENDS extra data (does not wipe)
-C:\xampp\php\php.exe artisan test                   # phpunit suite
+C:\xampp\php\php.exe artisan test                   # 23+ feature tests (uses the separate `mutqin_test` MySQL DB — phpunit.xml; sqlite won't work: raw MySQL ALTER in one migration)
 C:\xampp\php\php.exe artisan test --filter=SomeTest # single test
 C:\xampp\php\php.exe artisan tinker --execute='...' # quick DB/logic checks (used heavily for verification)
 ```
@@ -73,12 +73,23 @@ Every protected page is a small IIFE that does: `Auth.requireAuth([roles])` → 
 
 `ReportPdfController` uses **mPDF**. Render numbers with **Western digits** — Arabic-Indic digits show as empty boxes in the default font.
 
+### Later-added subsystems (beyond the base CRUD)
+
+- **Student requests** (`StudentRequestController`, `student_requests`): a teacher *requests* adding/transferring a student; only admin approval mutates `students`. Duplicate detection by national id suggests transfer instead of add.
+- **In-app notifications**: Laravel database channel via the generic `App\Notifications\InAppNotification` (`sendSafe()` never breaks the primary operation). Types: `request_created/approved/rejected`, `memorization_added`, `test_added` (parents). Bell UI in `layout.js` polls every 60s.
+- **Password reset by phone OTP** (`/auth/forgot-password/*`): hashed 6-digit OTP, 10-min expiry, 5 attempts, throttled. No SMS gateway — `AuthController::sendOtp()` is the single integration point; in `local` env only, the response carries `dev_otp` for the admin to relay.
+- **Password-change tracking**: `password_changed_count`/`password_last_changed_at` + `password_change_logs` (method: otp/self/admin) via `User::recordPasswordChange()` — which also **revokes all tokens** (S1). Sanctum tokens expire after 7 days.
+- **Nationality & identity**: students and parents have `nationality_type` (libyan/foreigner) + `nationality_name`; the parent's unified identifier is `users.id_number` (unique). Libyan format `^[12]\d{11}$` enforced only for `libyan`.
+- **Guardian resolution** is centralized in `App\Support\ParentResolver` (id_number → normalized phone → email, parent-role scoped, random password on create, 422 Arabic on unusable data). Phones are normalized everywhere via `App\Support\PhoneNumber::normalize` (+218/00218/Arabic digits → `09xxxxxxxx`).
+- **Deleted teachers**: records keep history (`teacher_id` → null, D1) and students carry `former_teacher_name` for display («محفّظ سابق: فلان»).
+
 ## Gotchas
 
-- No git repo, so there is no rollback/history — be deliberate with destructive DB commands (`migrate:fresh`).
 - `ExtraDataSeeder` **appends** (it does not wipe) and is center-aware to respect the one-primary-per-center rule; re-running it adds more data.
 - Two PHP extensions must be enabled in `C:\xampp\php\php.ini` for full functionality: `zip` (xlsx attendance import) and `gd` (mPDF). They were disabled by default in this install.
-- The test suite currently contains only the framework's `ExampleTest`s. Verification in this project has been done via `artisan tinker` scripts + live API checks (`curl`) + headless-Chrome screenshots, not a written test suite.
+- App timezone is **Africa/Tripoli** (config/app.php) — do not revert to UTC; "today" logic (attendance defaults, dashboard stats) depends on it, and the frontend uses `UI.todayStr()` (local) rather than `toISOString()`.
+- `php artisan serve` is single-threaded: concurrent requests serialize (slow dependent dropdowns in dev). Set `PHP_CLI_SERVER_WORKERS=4` or use Apache.
+- Feature tests live in `tests/Feature` (role matrix, ownership, login throttle, OTP, request notifications, phone normalization) against the `mutqin_test` DB. Keep them green — they are the only guard on the dual role+ability security model.
 
 ---
 
@@ -165,10 +176,12 @@ Static, role-segmented pages; each is a self-contained IIFE using the shared `wi
 
 ## Missing / dormant features
 
-Things present in the data model or UI but not actually wired end-to-end — likely roadmap items:
+Things present in the data model but not wired end-to-end — likely roadmap items:
 
-- **Revisions (المراجعة)** and **Tajweed evaluations (التجويد)**: tables + models + Student relations exist, and `StudentController@show` reads them, but there is **no controller, route, or UI to record them**, and `ReportService` ignores them. Tracking is read-only-at-best today.
-- **Password reset**: `password_reset_tokens` table and a "نسيت كلمة المرور؟" link (`href="#"`) exist, but there is **no forgot/reset endpoint or flow**.
+- **Revisions (المراجعة)** and **Tajweed evaluations (التجويد)**: tables + models + Student relations exist, and `StudentController@show` reads revisions, but there is **no controller, route, or UI to record them**, and `ReportService` ignores them.
 - **No self-registration**: parents and teachers are created server-side/by admin only; there is no public signup.
 - **No update for some records**: attendance and weekly-tests have no update endpoint (create/delete only).
-- **No automated tests**, no rate-limiting on `/auth/login`, no soft-deletes/audit trail despite handling minors' PII (national IDs, parent contacts) — worth adding before any production use.
+- **No SMS gateway** for OTP delivery (dev flow shows the code to the admin in `local` only) — see DEPLOYMENT.md.
+- **No soft-deletes/audit trail** despite handling minors' PII (national IDs, parent contacts).
+
+(Resolved since first written: password reset exists via phone OTP; login is rate-limited; a real feature-test suite exists — see Gotchas.)
