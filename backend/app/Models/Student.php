@@ -18,6 +18,7 @@ class Student extends Model
         'guardian_phone',
         'center_id',
         'teacher_id',
+        'former_teacher_name',
         'parent_id',
         'enrollment_date',
         'is_active',

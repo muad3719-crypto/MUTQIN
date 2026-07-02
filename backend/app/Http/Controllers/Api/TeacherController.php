@@ -157,6 +157,12 @@ class TeacherController extends Controller
     public function destroy($id)
     {
         $teacher = User::where('role', 'teacher')->findOrFail($id);
+
+        // قبل الحذف: نختم اسم المحفّظ على طلابه ليظهر «محفّظ سابق: فلان»
+        // (teacher_id سيصير null بالحذف — D1 — فلا يبقى تمييز بينه وبين «بدون معلم»)
+        \App\Models\Student::where('teacher_id', $teacher->id)
+            ->update(['former_teacher_name' => $teacher->name]);
+
         $teacher->delete();
 
         return response()->json([
