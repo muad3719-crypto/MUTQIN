@@ -92,10 +92,15 @@ class StudentController extends Controller
         // يتجمّع مع الفلاتر أعلاه بـ AND ويعمل مع الترقيم.
         if (($q = trim((string) $request->get('q', ''))) !== '') {
             $norm = ArabicText::normalize($q);
-            $query->where(function ($w) use ($q, $norm) {
-                $w->whereRaw(ArabicText::sqlNormalize('name') . ' LIKE ?', ['%' . $norm . '%'])
-                  ->orWhere('national_id', 'like', "%{$q}%")
-                  ->orWhere('phone', 'like', '%' . PhoneNumber::normalize($q) . '%');
+            // شرطا الرقم/الهاتف فقط لاستعلام يحوي أرقاماً — وإلا صار normalize(نص عربي)
+            // فارغاً فطابق LIKE '%%' كلَّ من له هاتف (خلل مطابقة زائفة)
+            $digits = PhoneNumber::normalize($q);
+            $query->where(function ($w) use ($q, $norm, $digits) {
+                $w->whereRaw(ArabicText::sqlNormalize('name') . ' LIKE ?', ['%' . $norm . '%']);
+                if ($digits) {
+                    $w->orWhere('national_id', 'like', "%{$q}%")
+                      ->orWhere('phone', 'like', "%{$digits}%");
+                }
             });
         }
 

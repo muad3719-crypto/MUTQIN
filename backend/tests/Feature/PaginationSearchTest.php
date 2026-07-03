@@ -42,13 +42,20 @@ class PaginationSearchTest extends TestCase
         $teacher = $this->makeTeacher();
         $this->makeStudent($teacher, null, ['name' => 'أحمد التجريبي']);
         $this->makeStudent($teacher, null, ['name' => 'فاطمة الاختبار']);
-        $this->makeStudent($teacher, null, ['name' => 'سالم البعيد']);
+        // طالب بهاتف: يحرس من خلل «الاستعلام العربي يطابق كل من له هاتف»
+        // (normalize(نص عربي) كان يُفرغ فيصير LIKE '%%')
+        $this->makeStudent($teacher, null, ['name' => 'سالم البعيد', 'phone' => '0918555444']);
         $token = $this->loginToken($admin);
 
-        // «احمد» (بلا همزة) تجد «أحمد»
+        // «احمد» (بلا همزة) تجد «أحمد» فقط — لا «سالم» صاحب الهاتف
         $r = $this->authed($token)->getJson('/api/students?q=' . urlencode('احمد'))->assertOk();
         $this->assertSame(1, $r->json('data.total'));
         $this->assertSame('أحمد التجريبي', $r->json('data.data.0.name'));
+
+        // والبحث الرقمي بالهاتف يعمل
+        $r = $this->authed($token)->getJson('/api/students?q=' . urlencode('0918555444'))->assertOk();
+        $this->assertSame(1, $r->json('data.total'));
+        $this->assertSame('سالم البعيد', $r->json('data.data.0.name'));
 
         // «فاطمه» (هاء) تجد «فاطمة» (تاء مربوطة)
         $r = $this->authed($token)->getJson('/api/students?q=' . urlencode('فاطمه'))->assertOk();
