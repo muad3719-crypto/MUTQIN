@@ -244,18 +244,24 @@ class StudentRequestController extends Controller
             'target_teacher_id' => $user->id,
         ]);
 
+        // توجيه الإشعار: النقل الداخلي (from=target) → مشرف المركز إن وُجد،
+        // وإلا (أو كان عابراً للمراكز) → المدير الرئيسي كما كان.
+        $isInternal = (int) $req->from_center_id === (int) $req->target_center_id;
+        $supervisor = $isInternal
+            ? User::where('role', 'center_supervisor')->where('center_id', $req->target_center_id)->first()
+            : null;
         InAppNotification::sendSafe(
-            User::where('role', 'admin')->get(),
+            $supervisor ?: User::where('role', 'admin')->get(),
             'request_created',
             'طلب جديد بانتظار الموافقة',
             'المحفّظ «' . $user->name . '» أرسل طلب نقل الطالب «' . $req->student_name . '» إلى مركزه.',
             $req->id,
-            'admin/requests.html'
+            $supervisor ? 'supervisor/requests.html' : 'admin/requests.html'
         );
 
         return response()->json([
             'success' => true,
-            'message' => 'تم إرسال طلب النقل للأدمن، سيُنفَّذ بعد الموافقة',
+            'message' => $supervisor ? 'تم إرسال طلب النقل لمشرف المركز، سيُنفَّذ بعد الموافقة' : 'تم إرسال طلب النقل للمدير، سيُنفَّذ بعد الموافقة',
             'data'    => ['request' => $req],
         ], 201);
     }

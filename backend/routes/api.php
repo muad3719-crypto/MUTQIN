@@ -66,6 +66,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/students', [StudentController::class, 'store']); // نقل مسار إضافة طالب ليكون للمدير فقط
         Route::get('/parents/search', [StudentController::class, 'searchParents']); // بحث أولياء الأمور (لاختيار ولي موجود)
 
+        // إدارة مشرفي المراكز (مشرف واحد لكل مركز كحدّ أقصى)
+        Route::get('/admin/supervisors', [\App\Http\Controllers\Api\SupervisorManagementController::class, 'index']);
+        Route::post('/admin/supervisors', [\App\Http\Controllers\Api\SupervisorManagementController::class, 'store']);
+        Route::put('/admin/supervisors/{id}', [\App\Http\Controllers\Api\SupervisorManagementController::class, 'update']);
+        Route::delete('/admin/supervisors/{id}', [\App\Http\Controllers\Api\SupervisorManagementController::class, 'destroy']);
+
         // جاهزية الأوقاف: الطلاب بلا رقم وطني
         Route::get('/reports/admin/missing-national-id', [ReportController::class, 'missingNationalId']);
 
