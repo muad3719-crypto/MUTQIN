@@ -344,13 +344,19 @@
                   <button class="mq-btn mq-btn-outline" id="f-clear" style="padding:9px 16px;">مسح الفلاتر</button>
                 </div></div>
                 <div class="mq-toolbar">
-                  <div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="بحث بالاسم أو ولي الأمر..."></div>
-                  <button class="mq-btn mq-btn-primary" id="add">${UI.ic('plus', 17)} طالب جديد</button>
+                  <div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="ابحث بالاسم أو الرقم الوطني أو الهاتف..."></div>
+                  <div style="display:flex;align-items:center;gap:14px;">
+                    <span id="stu-counter" style="font-size:13px;color:#7A8F82;font-weight:600;white-space:nowrap;"></span>
+                    <button class="mq-btn mq-btn-primary" id="add">${UI.ic('plus', 17)} طالب جديد</button>
+                  </div>
                 </div>
                 <div class="mq-card"><table class="mq-table" id="tbl">
                   <thead><tr><th>الطالب</th><th>الرقم الوطني</th><th>المركز</th><th>المعلم</th><th>العمر</th><th>الإجراءات</th></tr></thead>
                   <tbody id="stu-body"><tr><td colspan="6" style="text-align:center;color:#7A8F82;padding:30px;">جارٍ التحميل...</td></tr></tbody>
-                </table></div>`;
+                </table></div>
+                <div style="text-align:center;margin-top:16px;">
+                  <button class="mq-btn mq-btn-outline" id="load-more" style="display:none;">عرض المزيد ↓</button>
+                </div>`;
 
             const fCenter = document.getElementById('f-center'), fTeacher = document.getElementById('f-teacher');
             const fNat = document.getElementById('f-nat'), fMissing = document.getElementById('f-missing');
@@ -379,72 +385,153 @@
                     </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد طلاب مطابقون للفلاتر</td></tr>`;
             }
 
-            function updateBanner(students) {
-                const missing = students.filter(s => !s.national_id).length;
-                document.getElementById('stu-banner').innerHTML = missing > 0
-                    ? `<div style="display:flex;align-items:center;gap:10px;background:rgba(212,175,55,.16);color:#9A7A1E;border-right:4px solid #9A7A1E;border-radius:12px;padding:12px 16px;font-size:14px;font-weight:600;margin-bottom:16px;">
-                         ⚠️ ${missing} من ${students.length} طالباً (بالعرض الحالي) بلا رقم وطني — يُنصح بإكمالها قبل تقارير الأوقاف.</div>`
-                    : `<div style="display:flex;align-items:center;gap:10px;background:rgba(4,83,47,.08);color:#04532F;border-right:4px solid #04532F;border-radius:12px;padding:12px 16px;font-size:14px;font-weight:600;margin-bottom:16px;">
-                         ✓ كل الطلاب (بالعرض الحالي) لديهم رقم وطني — جاهزة لتقارير الأوقاف.</div>`;
-            }
-
-            function bindRowActions(students) {
-                const body = document.getElementById('stu-body');
-                body.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => {
-                    const s = students.find(x => x.id == b.dataset.edit);
-                    UI.formModal({ title: 'تعديل / نقل الطالب', submitText: 'حفظ', fields: editFields(s),
-                        onMount: (form) => { wireEditNat(form); wireTeacherByCenter(form, s.teacher_id); },
-                        onSubmit: async (v, h) => { await API.put('/students/' + s.id, v); UI.toast('تم التحديث'); h.close(); renderStudents(); } });
-                });
-                body.querySelectorAll('[data-del]').forEach(b => b.onclick = () =>
-                    UI.confirmDelete('حذف هذا الطالب؟', async () => { await API.del('/students/' + b.dataset.del); UI.toast('تم الحذف'); renderStudents(); }));
-            }
-
-            // قائمة معلّمي المركز المختار للفلتر (الفلترة نفسها في الـ Backend)
-            async function fillFilterTeachers(centerId) {
-                if (!centerId) { fTeacher.innerHTML = '<option value="">كل المعلمين</option>'; fTeacher.disabled = true; return; }
-                fTeacher.disabled = true; fTeacher.innerHTML = '<option value="">جارٍ...</option>';
+            // لافتة الأوقاف: العدد الإجمالي للطلاب بلا رقم وطني (استعلام خفيف — نقرأ total فقط)
+            async function updateBanner() {
                 try {
-                    const res = await API.get('/teachers?all=1&center_id=' + centerId);
-                    const list = res.data.data || res.data || [];
-                    fTeacher.innerHTML = '<option value="">كل المعلمين</option>' + list.map(t => `<option value="${t.id}">${UI.escapeHtml(t.name)}</option>`).join('');
-                } catch (e) { fTeacher.innerHTML = '<option value="">كل المعلمين</option>'; }
-                fTeacher.disabled = false;
+                    const res = await API.get('/students?missing_national_id=1');
+                    const missing = res.data.total ?? 0;
+                    document.getElementById('stu-banner').innerHTML = missing > 0
+                        ? `<div style="display:flex;align-items:center;gap:10px;background:rgba(212,175,55,.16);color:#9A7A1E;border-right:4px solid #9A7A1E;border-radius:12px;padding:12px 16px;font-size:14px;font-weight:600;margin-bottom:16px;">
+                             ⚠️ ${missing} طالباً بلا رقم وطني — يُنصح بإكمالها قبل تقارير الأوقاف.</div>`
+                        : `<div style="display:flex;align-items:center;gap:10px;background:rgba(4,83,47,.08);color:#04532F;border-right:4px solid #04532F;border-radius:12px;padding:12px 16px;font-size:14px;font-weight:600;margin-bottom:16px;">
+                             ✓ كل الطلاب لديهم رقم وطني — جاهزة لتقارير الأوقاف.</div>`;
+                } catch (e) { /* اللافتة معلومة ثانوية */ }
             }
 
-            // إعادة جلب الطلاب مفلترين (center_id/teacher_id/nationality/missing) — كلها AND في الـ Backend
-            async function renderStudents() {
-                const p = new URLSearchParams({ all: '1' });
+            function bindRowActions(batch) {
+                const body = document.getElementById('stu-body');
+                batch.forEach(s => {
+                    const eb = body.querySelector(`[data-edit="${s.id}"]`);
+                    if (eb) eb.onclick = () => UI.formModal({ title: 'تعديل / نقل الطالب', submitText: 'حفظ', fields: editFields(s),
+                        onMount: (form) => { wireEditNat(form); wireTeacherByCenter(form, s.teacher_id); },
+                        onSubmit: async (v, h) => { await API.put('/students/' + s.id, v); UI.toast('تم التحديث'); h.close(); renderStudents(true); } });
+                    const db = body.querySelector(`[data-del="${s.id}"]`);
+                    if (db) db.onclick = () => UI.confirmDelete('حذف هذا الطالب؟', async () => { await API.del('/students/' + s.id); UI.toast('تم الحذف'); renderStudents(true); });
+                });
+            }
+
+            // فلتر المعلم: دروب داون للقوائم الصغيرة، وبحث حي (autocomplete خادمي) فوق 30 معلماً
+            let fTeacherValue = ''; // القيمة الفعلية للفلتر (id) بأي وضع
+            async function fillFilterTeachers(centerId) {
+                const wrap = fTeacher.parentElement;
+                fTeacherValue = '';
+                const resetSelect = (html, disabled) => {
+                    wrap.querySelector('#f-teacher-ac')?.remove();
+                    fTeacher.style.display = ''; fTeacher.innerHTML = html; fTeacher.disabled = disabled; fTeacher.value = '';
+                };
+                if (!centerId) { resetSelect('<option value="">كل المعلمين</option>', true); return; }
+                resetSelect('<option value="">جارٍ...</option>', true);
+                try {
+                    const probe = await API.get('/teachers?center_id=' + centerId); // مرقّم — نقرأ total
+                    const total = probe.data.total ?? 0;
+                    if (total > 30) {
+                        // بحث حي: حقل نص + قائمة نتائج من الخادم ضمن المركز
+                        fTeacher.style.display = 'none';
+                        const ac = document.createElement('div');
+                        ac.id = 'f-teacher-ac'; ac.style.cssText = 'position:relative;';
+                        ac.innerHTML = `<input class="mq-input" id="f-teacher-q" autocomplete="off" placeholder="ابحث عن معلم (${total})...">
+                            <div id="f-teacher-dd" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:40;background:#fff;border:1px solid rgba(4,83,47,.2);border-radius:11px;margin-top:4px;max-height:220px;overflow-y:auto;box-shadow:0 16px 40px -14px rgba(4,54,31,.45);"></div>`;
+                        wrap.appendChild(ac);
+                        const inp = ac.querySelector('#f-teacher-q'), dd = ac.querySelector('#f-teacher-dd');
+                        let t = null, last = 0;
+                        inp.addEventListener('input', () => {
+                            clearTimeout(t); fTeacherValue = '';
+                            const q = inp.value.trim();
+                            if (q.length < 2) { dd.style.display = 'none'; renderStudents(true); return; }
+                            t = setTimeout(async () => {
+                                const rid = ++last;
+                                try {
+                                    const r = await API.get('/teachers?center_id=' + centerId + '&q=' + encodeURIComponent(q));
+                                    if (rid !== last) return;
+                                    const items = r.data.data || [];
+                                    dd.innerHTML = items.map((x, i) => `<div class="titem" data-i="${i}" style="padding:9px 13px;cursor:pointer;font-size:13.5px;border-bottom:1px solid rgba(4,54,31,.06);">${UI.escapeHtml(x.name)}</div>`).join('')
+                                        || '<div style="padding:9px 13px;color:#9DB3A6;font-size:13px;">لا نتائج</div>';
+                                    dd.querySelectorAll('.titem').forEach(el => el.onmousedown = (e) => {
+                                        e.preventDefault();
+                                        const x = items[+el.dataset.i];
+                                        inp.value = x.name; fTeacherValue = x.id; dd.style.display = 'none';
+                                        renderStudents(true);
+                                    });
+                                    dd.style.display = 'block';
+                                } catch (e) { dd.style.display = 'none'; }
+                            }, 300);
+                        });
+                        inp.addEventListener('blur', () => setTimeout(() => dd.style.display = 'none', 150));
+                    } else {
+                        const res = await API.get('/teachers?all=1&center_id=' + centerId);
+                        const list = res.data.data || res.data || [];
+                        resetSelect('<option value="">كل المعلمين</option>' + list.map(x => `<option value="${x.id}">${UI.escapeHtml(x.name)}</option>`).join(''), false);
+                    }
+                } catch (e) { resetSelect('<option value="">كل المعلمين</option>', false); }
+            }
+            fTeacher.addEventListener('change', () => { fTeacherValue = fTeacher.value; renderStudents(true); });
+
+            // ===== الترقيم من الخادم: حالة الصفحة/البحث + إلحاق تدريجي =====
+            let page = 1, lastPage = 1, total = 0, loadedCount = 0, fetchSeq = 0;
+            const loadMoreBtn = document.getElementById('load-more');
+            const counter = document.getElementById('stu-counter');
+            const searchInput = document.getElementById('search');
+
+            function buildParams() {
+                const p = new URLSearchParams({ page });
+                const q = searchInput.value.trim();
+                if (q) p.set('q', q);
                 if (fCenter.value) p.set('center_id', fCenter.value);
-                if (fTeacher.value) p.set('teacher_id', fTeacher.value);
+                if (fTeacherValue) p.set('teacher_id', fTeacherValue);
                 if (fNat.value) p.set('nationality', fNat.value);
                 if (fMissing.checked) p.set('missing_national_id', '1');
-                const body = document.getElementById('stu-body');
-                body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#7A8F82;padding:20px;">جارٍ التحميل...</td></tr>`;
-                try {
-                    const res = await API.get('/students?' + p.toString());
-                    const students = res.data.data || res.data || [];
-                    body.innerHTML = rowsHtml(students);
-                    updateBanner(students);
-                    bindRowActions(students);
-                    const s = document.getElementById('search'); if (s.value.trim()) s.dispatchEvent(new Event('input'));
-                } catch (e) { body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#B23A48;padding:20px;">${UI.escapeHtml(e.message)}</td></tr>`; }
+                return p;
             }
 
-            UI.bindTableSearch('search', 'tbl');
-            fCenter.onchange = () => { fillFilterTeachers(fCenter.value); renderStudents(); };
-            fTeacher.onchange = renderStudents;
-            fNat.onchange = renderStudents;
-            fMissing.onchange = renderStudents;
+            // reset=true: من الصفحة 1 (تغيير بحث/فلتر) — reset=false: إلحاق الصفحة التالية
+            async function renderStudents(reset = true) {
+                if (reset) { page = 1; loadedCount = 0; }
+                const seq = ++fetchSeq; // ردود متأخرة لا تكتب فوق الأحدث
+                const body = document.getElementById('stu-body');
+                if (reset) body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#7A8F82;padding:20px;">جارٍ التحميل...</td></tr>`;
+                loadMoreBtn.disabled = true;
+                try {
+                    const res = await API.get('/students?' + buildParams().toString());
+                    if (seq !== fetchSeq) return;
+                    const pg = res.data;
+                    const batch = pg.data || [];
+                    lastPage = pg.last_page ?? 1; total = pg.total ?? batch.length;
+                    const rows = rowsHtml(batch);
+                    if (reset) body.innerHTML = batch.length ? rows : `<tr><td colspan="6" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد طلاب مطابقون</td></tr>`;
+                    else body.insertAdjacentHTML('beforeend', rows);
+                    loadedCount += batch.length;
+                    bindRowActions(batch);
+                    counter.textContent = total ? `عرض ${loadedCount} من ${total}` : '';
+                    loadMoreBtn.style.display = page < lastPage ? '' : 'none';
+                } catch (e) {
+                    if (reset) body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#B23A48;padding:20px;">${UI.escapeHtml(e.message)}</td></tr>`;
+                } finally { loadMoreBtn.disabled = false; }
+            }
+
+            loadMoreBtn.onclick = () => { page++; renderStudents(false); };
+
+            // بحث حي من الخادم (debounce ~300ms) — الكتابة تعيد للصفحة 1، والمسح يعيد الكل
+            let searchTimer = null;
+            searchInput.addEventListener('input', () => {
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(() => renderStudents(true), 300);
+            });
+
+            fCenter.onchange = () => { fillFilterTeachers(fCenter.value); renderStudents(true); };
+            fNat.onchange = () => renderStudents(true);
+            fMissing.onchange = () => renderStudents(true);
             document.getElementById('f-clear').onclick = () => {
                 fCenter.value = ''; fNat.value = ''; fMissing.checked = false;
-                fTeacher.innerHTML = '<option value="">كل المعلمين</option>'; fTeacher.disabled = true;
-                document.getElementById('search').value = '';
-                renderStudents();
+                fTeacherValue = '';
+                fTeacher.parentElement.querySelector('#f-teacher-ac')?.remove();
+                fTeacher.style.display = ''; fTeacher.innerHTML = '<option value="">كل المعلمين</option>'; fTeacher.disabled = true;
+                searchInput.value = '';
+                renderStudents(true);
             };
             document.getElementById('add').onclick = openAddStudent;
 
-            renderStudents();
+            renderStudents(true);
+            updateBanner();
         } catch (e) { UI.toast(e.message, 'danger'); }
     }
     load();
