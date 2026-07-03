@@ -335,9 +335,53 @@ class StudentRequestController extends Controller
      *  - transfer → ينقل الطالب (center_id/teacher_id) للوجهة.
      * يعيد التحقّق من أن محفّظ الوجهة ما زال محفّظاً ضمن مركز الوجهة.
      */
+    /**
+     * نطاق مشرف المركز: يعتمد/يرفض فقط طلبات النقل الداخلية لمركزه
+     * (from = target = مركزه). العابرة للمراكز وطلبات الإضافة تبقى للمدير الرئيسي.
+     */
+    protected function assertSupervisorScope(Request $request, StudentRequest $req): ?\Illuminate\Http\JsonResponse
+    {
+        $user = $request->user();
+        if ($user->isCenterSupervisor()) {
+            $c = $user->center_id;
+            if ($req->type !== 'transfer' || (int) $req->from_center_id !== (int) $c || (int) $req->target_center_id !== (int) $c) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'هذا الطلب خارج نطاق مركزك — يعتمده المدير الرئيسي',
+                ], 403);
+            }
+        }
+        return null;
+    }
+
+    /** طلبات النقل الداخلية لمركز المشرف (المعلّقة افتراضياً؛ ?status=all للكل). */
+    public function supervisorIndex(Request $request)
+    {
+        $c = $request->user()->center_id;
+        $query = StudentRequest::with(['requestedBy', 'targetCenter', 'targetTeacher', 'fromCenter', 'fromTeacher', 'student'])
+            ->where('type', 'transfer')
+            ->where('from_center_id', $c)
+            ->where('target_center_id', $c)
+            ->latest();
+
+        $status = $request->get('status', 'pending');
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $query->get()->map(fn ($r) => $this->present($r, true)),
+        ]);
+    }
+
     public function approve(Request $request, $id)
     {
         $req = StudentRequest::findOrFail($id);
+
+        if ($guard = $this->assertSupervisorScope($request, $req)) {
+            return $guard;
+        }
 
         if ($req->status !== 'pending') {
             return response()->json([
@@ -445,6 +489,10 @@ class StudentRequestController extends Controller
     public function reject(Request $request, $id)
     {
         $req = StudentRequest::findOrFail($id);
+
+        if ($guard = $this->assertSupervisorScope($request, $req)) {
+            return $guard;
+        }
 
         if ($req->status !== 'pending') {
             return response()->json([

@@ -138,8 +138,11 @@ class AttendanceImportController extends Controller
             }
 
             // 2. التصفية الصامتة: المحفّظ قد يرفع ملف المركز كاملاً (جهاز بصمة واحد).
-            //    الطلاب من خارج طلابه يُتجاهَلون بهدوء — دون رسالة رفض ودون عدّهم كأخطاء.
-            if (!$user->isAdmin() && $student->teacher_id !== $user->id) {
+            //    خارج النطاق يُتجاهَل بهدوء — النطاق: المدير=الكل، مشرف المركز=مركزه، المحفّظ=طلابه.
+            $inScope = $user->isAdmin()
+                || ($user->isCenterSupervisor() && $student->center_id === $user->center_id)
+                || $student->teacher_id === $user->id;
+            if (!$inScope) {
                 $ignoredOther++;
                 continue;
             }
@@ -222,7 +225,7 @@ class AttendanceImportController extends Controller
                         'date'       => $date,
                     ],
                     [
-                        'teacher_id'  => $user->isAdmin() ? ($student->teacher_id ?? $user->id) : $user->id,
+                        'teacher_id'  => $user->isTeacher() ? $user->id : ($student->teacher_id ?? $user->id),
                         'center_id'   => $user->center_id ?? $student->center_id,
                         'time'        => $time,
                         'status'      => $status,
@@ -261,6 +264,9 @@ class AttendanceImportController extends Controller
             if ($user->isAdmin()) {
                 // المدير: كل طلاب المراكز التي ظهرت في الملف
                 $scopeQuery->whereIn('center_id', array_keys($centerIds) ?: [-1]);
+            } elseif ($user->isCenterSupervisor()) {
+                // مشرف المركز: طلاب مركزه فقط
+                $scopeQuery->where('center_id', $user->center_id);
             } else {
                 // المحفّظ: طلابه فقط — لا يمسّ طلاب محفّظين آخرين إطلاقاً
                 $scopeQuery->where('teacher_id', $user->id);
@@ -277,7 +283,7 @@ class AttendanceImportController extends Controller
                         'date'       => $date,
                     ],
                     [
-                        'teacher_id'  => $user->isAdmin() ? ($st->teacher_id ?? $user->id) : $user->id,
+                        'teacher_id'  => $user->isTeacher() ? $user->id : ($st->teacher_id ?? $user->id),
                         'center_id'   => $st->center_id,
                         'status'      => 'absent',
                         'notes'       => 'غياب محتسب تلقائياً (لم يظهر في ملف البصمة)',

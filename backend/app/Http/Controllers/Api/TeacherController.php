@@ -184,21 +184,7 @@ class TeacherController extends Controller
      */
     protected function assertSinglePrimary($centerId, $type, $ignoreId = null): void
     {
-        if ($type !== 'محفظ أساسي') {
-            return; // المعاونون بلا حدّ
-        }
-
-        $exists = User::where('role', 'teacher')
-            ->where('type', 'محفظ أساسي')
-            ->where('center_id', $centerId)
-            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
-            ->exists();
-
-        if ($exists) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'type' => ['هذا المركز له محفّظ أساسي بالفعل، لا يمكن إضافة محفّظ أساسي آخر'],
-            ]);
-        }
+        \App\Support\PrimaryTeacherRule::assert($centerId, $type, $ignoreId); // المصدر الموحّد
     }
 
     /**

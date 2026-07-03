@@ -33,8 +33,10 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
 
         if ($user && Hash::check($request->password, $user->password)) {
-            // ولي الأمر يُمنح صلاحية 'parent' فقط؛ المدير/المعلم صلاحية كاملة '*'
-            $abilities = $user->isParent() ? ['parent'] : ['*'];
+            // قدرات التوكن حسب الدور: ولي الأمر 'parent'، مشرف المركز 'supervisor'،
+            // المدير/المعلم '*' — الفحص المزدوج (دور+قدرة) يمنع تصعيد التوكن المسروق.
+            $abilities = $user->isParent() ? ['parent']
+                : ($user->isCenterSupervisor() ? ['supervisor'] : ['*']);
             $token = $user->createToken('auth_token', $abilities)->plainTextToken;
 
             return response()->json([

@@ -45,6 +45,19 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/parent/students/{id}', [StudentController::class, 'parentStudentDetails']);
     });
 
+    // مسارات مشرف المركز (center_supervisor) — كلها مضيَّقة بمركزه حصراً
+    Route::middleware('supervisor')->group(function () {
+        Route::get('/supervisor/dashboard', [\App\Http\Controllers\Api\CenterSupervisorController::class, 'dashboard']);
+        Route::get('/supervisor/teachers', [\App\Http\Controllers\Api\CenterSupervisorController::class, 'teachers']);
+        Route::get('/supervisor/teachers/{id}', [\App\Http\Controllers\Api\CenterSupervisorController::class, 'showTeacher']);
+        Route::put('/supervisor/teachers/{id}', [\App\Http\Controllers\Api\CenterSupervisorController::class, 'updateTeacher']); // لا حذف — للمدير الرئيسي
+        Route::post('/supervisor/attendance/import', [\App\Http\Controllers\Api\AttendanceImportController::class, 'import']); // مضيَّق بمركزه داخل المتحكم
+        // طلبات النقل الداخلية لمركزه (from=target=مركزه) — العابرة تبقى للمدير
+        Route::get('/supervisor/student-requests', [StudentRequestController::class, 'supervisorIndex']);
+        Route::post('/supervisor/student-requests/{id}/approve', [StudentRequestController::class, 'approve']);
+        Route::post('/supervisor/student-requests/{id}/reject', [StudentRequestController::class, 'reject']);
+    });
+
     // مسارات المدير فقط (Admin Only)
     Route::middleware('admin')->group(function () {
         Route::apiResource('teachers', TeacherController::class);
