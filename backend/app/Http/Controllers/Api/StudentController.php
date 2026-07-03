@@ -88,11 +88,22 @@ class StudentController extends Controller
             $query->whereNull('national_id'); // جاهزية الأوقاف: بلا رقم وطني
         }
 
+        // بحث حي اختياري q: الاسم (مطبَّعاً — «احمد»=«أحمد») + الرقم الوطني + الهاتف.
+        // يتجمّع مع الفلاتر أعلاه بـ AND ويعمل مع الترقيم.
+        if (($q = trim((string) $request->get('q', ''))) !== '') {
+            $norm = ArabicText::normalize($q);
+            $query->where(function ($w) use ($q, $norm) {
+                $w->whereRaw(ArabicText::sqlNormalize('name') . ' LIKE ?', ['%' . $norm . '%'])
+                  ->orWhere('national_id', 'like', "%{$q}%")
+                  ->orWhere('phone', 'like', '%' . PhoneNumber::normalize($q) . '%');
+            });
+        }
+
         if ($request->has('all') && $request->all == 1) {
             $students = $query->get();
         } else {
-            $limit = $user->isAdmin() ? 15 : 10;
-            $students = $query->paginate($limit);
+            // ترقيم من الخادم (data + current_page/last_page/total ضمن كائن الترقيم)
+            $students = $query->paginate(20)->withQueryString();
         }
 
         return response()->json([

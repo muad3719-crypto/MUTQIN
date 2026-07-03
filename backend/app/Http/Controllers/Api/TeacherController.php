@@ -18,10 +18,16 @@ class TeacherController extends Controller
             $query->where('center_id', (int) $request->center_id);
         }
 
+        // بحث حي اختياري q بالاسم المطبَّع («احمد»=«أحمد») — يتجمّع مع فلتر المركز
+        if (($q = trim((string) $request->get('q', ''))) !== '') {
+            $norm = \App\Support\ArabicText::normalize($q);
+            $query->whereRaw(\App\Support\ArabicText::sqlNormalize('name') . ' LIKE ?', ['%' . $norm . '%']);
+        }
+
         if ($request->has('all') && $request->all == 1) {
             $teachers = $query->get();
         } else {
-            $teachers = $query->paginate(10);
+            $teachers = $query->paginate(20)->withQueryString();
         }
 
         return response()->json([
