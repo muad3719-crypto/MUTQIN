@@ -48,6 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // مسارات مدير المركز (center_manager) — كلها مضيَّقة بمركزه حصراً
     Route::middleware('manager')->group(function () {
         Route::get('/manager/dashboard', [\App\Http\Controllers\Api\CenterManagerController::class, 'dashboard']);
+        Route::get('/manager/students', [StudentController::class, 'index']); // مضيَّق بمركزه داخل المتحكم (ترقيم+بحث قائمان)
         Route::get('/manager/teachers', [\App\Http\Controllers\Api\CenterManagerController::class, 'teachers']);
         Route::get('/manager/teachers/{id}', [\App\Http\Controllers\Api\CenterManagerController::class, 'showTeacher']);
         Route::put('/manager/teachers/{id}', [\App\Http\Controllers\Api\CenterManagerController::class, 'updateTeacher']); // لا حذف — لمدير النظام

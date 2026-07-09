@@ -31,6 +31,8 @@ class CenterManagerController extends Controller
                 'center' => \App\Models\Center::find($centerId, ['id', 'name', 'city']),
                 'stats' => [
                     'total_students'   => Student::where('center_id', $centerId)->where('is_active', true)->count(),
+                    // عدّاد بارز: طلاب بلا محفّظ (بعد نقل/حذف محفّظ) — يحتاجون إعادة توزيع
+                    'students_without_teacher' => Student::where('center_id', $centerId)->where('is_active', true)->whereNull('teacher_id')->count(),
                     'total_teachers'   => User::where('role', 'teacher')->where('center_id', $centerId)->count(),
                     'today_present'    => Attendance::whereIn('student_id', $studentIds)->where('date', today())->where('status', 'present')->count(),
                     'today_absent'     => Attendance::whereIn('student_id', $studentIds)->where('date', today())->where('status', 'absent')->count(),

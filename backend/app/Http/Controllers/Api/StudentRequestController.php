@@ -80,7 +80,7 @@ class StudentRequestController extends Controller
         if (!$user->center_id) {
             return response()->json([
                 'success' => false,
-                'message' => 'حسابك غير مرتبط بمركز — تواصل مع الأدمن',
+                'message' => 'حسابك غير مرتبط بمركز — تواصل مع مدير النظام',
             ], 422);
         }
 
@@ -189,7 +189,7 @@ class StudentRequestController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تم إرسال الطلب للأدمن، سيُضاف الطالب بعد الموافقة',
+            'message' => 'تم إرسال الطلب لمدير النظام، سيُضاف الطالب بعد الموافقة',
             'data'    => ['exists' => false, 'request' => $req],
         ], 201);
     }

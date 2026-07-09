@@ -70,8 +70,10 @@ class StudentController extends Controller
         $user = $request->user();
         $query = Student::with(['center', 'teacher'])->latest();
 
-        if (!$user->isAdmin()) {
-            $query->where('teacher_id', $user->id); // تصفية الطلاب حسب المعلم المسجل حالياً بدلاً من المركز
+        if ($user->isCenterManager()) {
+            $query->where('center_id', $user->center_id); // مدير المركز: طلاب مركزه فقط
+        } elseif (!$user->isAdmin()) {
+            $query->where('teacher_id', $user->id); // المحفّظ: طلابه فقط
         }
 
         // فلاتر اختيارية (تُدمج مع AND؛ الفلترة في الـ Backend)
