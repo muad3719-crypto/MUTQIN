@@ -41,8 +41,14 @@
                   <div style="font-size:13px;color:#7A8F82;">${UI.escapeHtml(c.city || '')} — نطاق صلاحياتك محصور بهذا المركز</div></div>
                 </div></div>
 
+                ${(s.students_without_teacher ?? 0) > 0 ? `
+                <div style="display:flex;align-items:center;gap:10px;background:rgba(178,58,72,.1);color:#B23A48;border-right:4px solid #B23A48;border-radius:12px;padding:13px 16px;font-size:14.5px;font-weight:700;margin-bottom:16px;">
+                  ⚠️ ${s.students_without_teacher} طالباً بلا محفّظ — يحتاجون إعادة توزيع على محفّظي المركز.
+                </div>` : ''}
+
                 <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px;">
                   ${stat(s.total_students ?? 0, 'طلاب المركز', 'green')}
+                  ${stat(s.students_without_teacher ?? 0, 'طلاب بلا محفّظ', (s.students_without_teacher ?? 0) > 0 ? 'red' : 'green')}
                   ${stat(s.total_teachers ?? 0, 'محفّظو المركز', 'gold')}
                   ${stat(s.today_present ?? 0, 'حاضر اليوم', 'blue')}
                   ${stat(s.today_absent ?? 0, 'غائب اليوم', 'red')}

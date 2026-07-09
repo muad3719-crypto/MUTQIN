@@ -15,7 +15,7 @@
             ['dashboard', 'الرئيسية', 'home', 'admin/dashboard.html'],
             ['teachers',  'المعلمون', 'teachers', 'admin/teachers.html'],
             ['centers',   'المراكز', 'centers', 'admin/centers.html'],
-            ['supervisors', 'مدراء المراكز', 'teachers', 'admin/supervisors.html'],
+            ['supervisors', 'مدراء المراكز', 'teachers', 'admin/managers.html'],
             ['students',  'جميع الطلاب', 'students', 'admin/students.html'],
             ['requests',  'الطلبات', 'requests', 'admin/requests.html'],
             ['reports',   'التقارير', 'report', 'admin/reports.html'],
@@ -32,6 +32,7 @@
         center_manager: [
             ['dashboard',  'الرئيسية', 'home', 'manager/dashboard.html'],
             ['teachers',   'محفّظو مركزي', 'teachers', 'manager/teachers.html'],
+            ['students',   'طلاب مركزي', 'students', 'manager/students.html'],
             ['attendance', 'استيراد الحضور', 'attendance', 'manager/attendance.html'],
             ['requests',   'طلبات النقل الداخلية', 'requests', 'manager/requests.html'],
         ],
