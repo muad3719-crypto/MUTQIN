@@ -82,10 +82,10 @@ class User extends Authenticatable
         return $this->role === 'parent';
     }
 
-    // هل هذا المستخدم مشرف مركز؟ («مشرف المركز» — يدير عمليات مركزه فقط)
-    public function isCenterSupervisor(): bool
+    // هل هذا المستخدم مدير مركز؟ («مدير المركز» — يدير عمليات مركزه فقط)
+    public function isCenterManager(): bool
     {
-        return $this->role === 'center_supervisor';
+        return $this->role === 'center_manager';
     }
 
     // الطلاب المرتبطون بهذا المعلم

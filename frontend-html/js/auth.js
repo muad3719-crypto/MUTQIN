@@ -29,6 +29,7 @@
         if (role === 'admin')   return C.APP_ROOT + 'admin/dashboard.html';
         if (role === 'teacher') return C.APP_ROOT + 'teacher/dashboard.html';
         if (role === 'parent')  return C.APP_ROOT + 'parent/dashboard.html';
+        if (role === 'center_manager') return C.APP_ROOT + 'manager/dashboard.html';
         return C.APP_ROOT + 'login.html';
     }
 

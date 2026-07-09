@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة مدير المركز | مُتقِن</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+<link href="../css/theme.css" rel="stylesheet">
+</head>
+<body>
+<div id="app-shell"></div>
+
+<script src="../js/config.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/layout.js"></script>
+<script>
+(function () {
+    const user = Auth.requireAuth(['center_manager']);
+    if (!user) return;
+    const pc = Layout.mount({ user, active: 'dashboard', title: 'لوحة مدير المركز' });
+
+    const stat = (val, lbl, color) => {
+        const colors = { green: '#04532F', gold: '#9A7A1E', red: '#B23A48', blue: '#2A6F8E' };
+        return `<div class="mq-card" style="flex:1;min-width:170px;"><div class="mq-card-body" style="text-align:center;">
+            <div style="font-family:'Amiri',serif;font-size:34px;font-weight:700;color:${colors[color] || '#04532F'};">${val}</div>
+            <div style="font-size:13px;color:#7A8F82;font-weight:600;margin-top:4px;">${lbl}</div></div></div>`;
+    };
+
+    async function load() {
+        pc.innerHTML = '<div class="mq-card"><div class="mq-card-body">جارٍ التحميل...</div></div>';
+        try {
+            const res = await API.get('/manager/dashboard');
+            const d = res.data, s = d.stats || {}, c = d.center || {};
+
+            pc.innerHTML = `
+                <div class="mq-card" style="margin-bottom:20px;"><div class="mq-card-body" style="display:flex;align-items:center;gap:14px;">
+                  <span class="mq-avatar" style="width:52px;height:52px;font-size:22px;">🏫</span>
+                  <div><div style="font-family:'Amiri',serif;font-size:20px;font-weight:700;color:#04361F;">${UI.escapeHtml(c.name || '—')}</div>
+                  <div style="font-size:13px;color:#7A8F82;">${UI.escapeHtml(c.city || '')} — نطاق صلاحياتك محصور بهذا المركز</div></div>
+                </div></div>
+
+                <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px;">
+                  ${stat(s.total_students ?? 0, 'طلاب المركز', 'green')}
+                  ${stat(s.total_teachers ?? 0, 'محفّظو المركز', 'gold')}
+                  ${stat(s.today_present ?? 0, 'حاضر اليوم', 'blue')}
+                  ${stat(s.today_absent ?? 0, 'غائب اليوم', 'red')}
+                  ${stat(s.pending_requests ?? 0, 'طلبات نقل معلّقة', 'gold')}
+                </div>
+
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;">
+                  <a class="mq-card" href="teachers.html" style="text-decoration:none;"><div class="mq-card-body" style="display:flex;align-items:center;gap:12px;">
+                    ${UI.ic('teachers', 26, '#04532F')}<div><b style="color:#04361F;">محفّظو مركزي</b><div style="font-size:12px;color:#7A8F82;">عرض وتعديل البيانات</div></div></div></a>
+                  <a class="mq-card" href="attendance.html" style="text-decoration:none;"><div class="mq-card-body" style="display:flex;align-items:center;gap:12px;">
+                    ${UI.ic('attendance', 26, '#04532F')}<div><b style="color:#04361F;">استيراد الحضور</b><div style="font-size:12px;color:#7A8F82;">ملف البصمة (xlsx)</div></div></div></a>
+                  <a class="mq-card" href="requests.html" style="text-decoration:none;"><div class="mq-card-body" style="display:flex;align-items:center;gap:12px;">
+                    ${UI.ic('requests', 26, '#04532F')}<div><b style="color:#04361F;">طلبات النقل الداخلية</b><div style="font-size:12px;color:#7A8F82;">اعتماد/رفض ضمن المركز</div></div></div></a>
+                </div>`;
+        } catch (e) { UI.toast(e.message, 'danger'); }
+    }
+    load();
+})();
+</script>
+</body>
+</html>

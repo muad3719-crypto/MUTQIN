@@ -138,9 +138,9 @@ class AttendanceImportController extends Controller
             }
 
             // 2. التصفية الصامتة: المحفّظ قد يرفع ملف المركز كاملاً (جهاز بصمة واحد).
-            //    خارج النطاق يُتجاهَل بهدوء — النطاق: المدير=الكل، مشرف المركز=مركزه، المحفّظ=طلابه.
+            //    خارج النطاق يُتجاهَل بهدوء — النطاق: المدير=الكل، مدير المركز=مركزه، المحفّظ=طلابه.
             $inScope = $user->isAdmin()
-                || ($user->isCenterSupervisor() && $student->center_id === $user->center_id)
+                || ($user->isCenterManager() && $student->center_id === $user->center_id)
                 || $student->teacher_id === $user->id;
             if (!$inScope) {
                 $ignoredOther++;
@@ -264,8 +264,8 @@ class AttendanceImportController extends Controller
             if ($user->isAdmin()) {
                 // المدير: كل طلاب المراكز التي ظهرت في الملف
                 $scopeQuery->whereIn('center_id', array_keys($centerIds) ?: [-1]);
-            } elseif ($user->isCenterSupervisor()) {
-                // مشرف المركز: طلاب مركزه فقط
+            } elseif ($user->isCenterManager()) {
+                // مدير المركز: طلاب مركزه فقط
                 $scopeQuery->where('center_id', $user->center_id);
             } else {
                 // المحفّظ: طلابه فقط — لا يمسّ طلاب محفّظين آخرين إطلاقاً

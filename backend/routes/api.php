@@ -45,17 +45,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/parent/students/{id}', [StudentController::class, 'parentStudentDetails']);
     });
 
-    // مسارات مشرف المركز (center_supervisor) — كلها مضيَّقة بمركزه حصراً
-    Route::middleware('supervisor')->group(function () {
-        Route::get('/supervisor/dashboard', [\App\Http\Controllers\Api\CenterSupervisorController::class, 'dashboard']);
-        Route::get('/supervisor/teachers', [\App\Http\Controllers\Api\CenterSupervisorController::class, 'teachers']);
-        Route::get('/supervisor/teachers/{id}', [\App\Http\Controllers\Api\CenterSupervisorController::class, 'showTeacher']);
-        Route::put('/supervisor/teachers/{id}', [\App\Http\Controllers\Api\CenterSupervisorController::class, 'updateTeacher']); // لا حذف — للمدير الرئيسي
-        Route::post('/supervisor/attendance/import', [\App\Http\Controllers\Api\AttendanceImportController::class, 'import']); // مضيَّق بمركزه داخل المتحكم
-        // طلبات النقل الداخلية لمركزه (from=target=مركزه) — العابرة تبقى للمدير
-        Route::get('/supervisor/student-requests', [StudentRequestController::class, 'supervisorIndex']);
-        Route::post('/supervisor/student-requests/{id}/approve', [StudentRequestController::class, 'approve']);
-        Route::post('/supervisor/student-requests/{id}/reject', [StudentRequestController::class, 'reject']);
+    // مسارات مدير المركز (center_manager) — كلها مضيَّقة بمركزه حصراً
+    Route::middleware('manager')->group(function () {
+        Route::get('/manager/dashboard', [\App\Http\Controllers\Api\CenterManagerController::class, 'dashboard']);
+        Route::get('/manager/teachers', [\App\Http\Controllers\Api\CenterManagerController::class, 'teachers']);
+        Route::get('/manager/teachers/{id}', [\App\Http\Controllers\Api\CenterManagerController::class, 'showTeacher']);
+        Route::put('/manager/teachers/{id}', [\App\Http\Controllers\Api\CenterManagerController::class, 'updateTeacher']); // لا حذف — لمدير النظام
+        Route::post('/manager/attendance/import', [\App\Http\Controllers\Api\AttendanceImportController::class, 'import']); // مضيَّق بمركزه داخل المتحكم
+        // طلبات النقل الداخلية لمركزه (from=target=مركزه) — العابرة تبقى لمدير النظام
+        Route::get('/manager/student-requests', [StudentRequestController::class, 'managerIndex']);
+        Route::post('/manager/student-requests/{id}/approve', [StudentRequestController::class, 'approve']);
+        Route::post('/manager/student-requests/{id}/reject', [StudentRequestController::class, 'reject']);
     });
 
     // مسارات المدير فقط (Admin Only)
@@ -66,11 +66,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/students', [StudentController::class, 'store']); // نقل مسار إضافة طالب ليكون للمدير فقط
         Route::get('/parents/search', [StudentController::class, 'searchParents']); // بحث أولياء الأمور (لاختيار ولي موجود)
 
-        // إدارة مشرفي المراكز (مشرف واحد لكل مركز كحدّ أقصى)
-        Route::get('/admin/supervisors', [\App\Http\Controllers\Api\SupervisorManagementController::class, 'index']);
-        Route::post('/admin/supervisors', [\App\Http\Controllers\Api\SupervisorManagementController::class, 'store']);
-        Route::put('/admin/supervisors/{id}', [\App\Http\Controllers\Api\SupervisorManagementController::class, 'update']);
-        Route::delete('/admin/supervisors/{id}', [\App\Http\Controllers\Api\SupervisorManagementController::class, 'destroy']);
+        // إدارة مدراء المراكز (مدير واحد لكل مركز كحدّ أقصى)
+        Route::get('/admin/managers', [\App\Http\Controllers\Api\ManagerManagementController::class, 'index']);
+        Route::post('/admin/managers', [\App\Http\Controllers\Api\ManagerManagementController::class, 'store']);
+        Route::put('/admin/managers/{id}', [\App\Http\Controllers\Api\ManagerManagementController::class, 'update']);
+        Route::delete('/admin/managers/{id}', [\App\Http\Controllers\Api\ManagerManagementController::class, 'destroy']);
 
         // جاهزية الأوقاف: الطلاب بلا رقم وطني
         Route::get('/reports/admin/missing-national-id', [ReportController::class, 'missingNationalId']);

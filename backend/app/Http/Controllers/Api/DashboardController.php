@@ -106,7 +106,7 @@ class DashboardController extends Controller
             return response()->json(['success' => true, 'data' => []]);
         }
 
-        $users = User::orderByRaw("FIELD(role,'admin','teacher','parent')")
+        $users = User::orderByRaw("FIELD(role,'admin','center_manager','teacher','parent')")
             ->orderBy('id')
             ->get(['name', 'email', 'role']);
 

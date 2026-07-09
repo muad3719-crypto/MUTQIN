@@ -14,12 +14,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * «مشرف المركز» — كل العمليات مضيَّقة بمركزه حصراً (center_id من حسابه،
- * لا يُقبل من المدخلات أبداً). الحذف والإنشاء يبقيان للمدير الرئيسي.
+ * «مدير المركز» — كل العمليات مضيَّقة بمركزه حصراً (center_id من حسابه،
+ * لا يُقبل من المدخلات أبداً). الحذف والإنشاء يبقيان لمدير النظام.
  */
-class CenterSupervisorController extends Controller
+class CenterManagerController extends Controller
 {
-    /** لوحة المشرف: إحصاءات مركزه فقط. */
+    /** لوحة مدير المركز: إحصاءات مركزه فقط. */
     public function dashboard(Request $request)
     {
         $centerId = $request->user()->center_id;
@@ -92,14 +92,14 @@ class CenterSupervisorController extends Controller
     }
 
     /**
-     * تعديل بيانات محفّظ من مركزه (لا حذف — الحذف للمدير الرئيسي، ولا نقل مركز
+     * تعديل بيانات محفّظ من مركزه (لا حذف — الحذف لمدير النظام، ولا نقل مركز
      * من هنا — النقل عبر سير نقل المحفّظين). يحترم قاعدة الأساسي الواحد.
      */
     public function updateTeacher(Request $request, $id)
     {
-        $supervisor = $request->user();
+        $manager = $request->user();
         $teacher = User::where('role', 'teacher')
-            ->where('center_id', $supervisor->center_id) // خارج مركزه → 404
+            ->where('center_id', $manager->center_id) // خارج مركزه → 404
             ->findOrFail($id);
 
         $request->validate([
@@ -115,7 +115,7 @@ class CenterSupervisorController extends Controller
         ]);
 
         // قاعدة: محفّظ أساسي واحد لكل مركز (المصدر الموحّد)
-        PrimaryTeacherRule::assert($supervisor->center_id, $request->type, $teacher->id);
+        PrimaryTeacherRule::assert($manager->center_id, $request->type, $teacher->id);
 
         $data = [
             'name'  => $request->name,
@@ -133,7 +133,7 @@ class CenterSupervisorController extends Controller
         $teacher->update($data);
 
         if ($request->filled('password')) {
-            $teacher->recordPasswordChange('admin'); // تغيير إداري (مشرف المركز)
+            $teacher->recordPasswordChange('admin'); // تغيير إداري (مدير المركز)
         }
 
         return response()->json([

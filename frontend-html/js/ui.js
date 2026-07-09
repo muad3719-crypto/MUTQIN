@@ -196,7 +196,7 @@
     }
 
     // ===== رفع ملف حضور البصمة (xlsx) + عرض ملخّص النتيجة =====
-    function runAttendanceImport(onComplete) {
+    function runAttendanceImport(onComplete, uploadPath = '/attendance/import') {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = '.xlsx';
@@ -206,7 +206,7 @@
             fd.append('attendance_file', input.files[0]);
             toast('جارٍ رفع الملف ومعالجته...', 'info');
             try {
-                const res = await window.API.upload('/attendance/import', fd);
+                const res = await window.API.upload(uploadPath, fd);
                 importSummaryModal(res);
                 if (onComplete) onComplete(res);
             } catch (err) {

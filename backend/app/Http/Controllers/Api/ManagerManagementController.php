@@ -10,22 +10,22 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 /**
- * إدارة «مشرفي المراكز» — للمدير الرئيسي فقط.
- * القاعدة: مشرف واحد لكل مركز كحدّ أقصى.
+ * إدارة «مدراء المراكز» — لمدير النظام فقط.
+ * القاعدة: مدير واحد لكل مركز كحدّ أقصى.
  */
-class SupervisorManagementController extends Controller
+class ManagerManagementController extends Controller
 {
-    /** مشرف واحد لكل مركز كحدّ أقصى. */
+    /** مدير واحد لكل مركز كحدّ أقصى. */
     protected function assertSingleSupervisor($centerId, $ignoreId = null): void
     {
-        $exists = User::where('role', 'center_supervisor')
+        $exists = User::where('role', 'center_manager')
             ->where('center_id', $centerId)
             ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
             ->exists();
 
         if ($exists) {
             throw ValidationException::withMessages([
-                'center_id' => ['لهذا المركز مشرف بالفعل — مشرف واحد لكل مركز كحدّ أقصى'],
+                'center_id' => ['لهذا المركز مدير بالفعل — مدير واحد لكل مركز كحدّ أقصى'],
             ]);
         }
     }
@@ -34,7 +34,7 @@ class SupervisorManagementController extends Controller
     {
         return response()->json([
             'success' => true,
-            'data' => User::where('role', 'center_supervisor')
+            'data' => User::where('role', 'center_manager')
                 ->with('center:id,name,city')
                 ->latest()
                 ->get(['id', 'name', 'email', 'phone', 'center_id', 'created_at']),
@@ -50,7 +50,7 @@ class SupervisorManagementController extends Controller
             'password'  => 'required|min:6|confirmed',
             'center_id' => 'required|exists:centers,id',
         ], [
-            'name.required'      => 'اسم المشرف مطلوب',
+            'name.required'      => 'اسم مدير المركز مطلوب',
             'email.required'     => 'البريد الإلكتروني مطلوب',
             'email.unique'       => 'هذا البريد مستخدم مسبقاً',
             'password.required'  => 'كلمة المرور مطلوبة',
@@ -61,38 +61,38 @@ class SupervisorManagementController extends Controller
 
         $this->assertSingleSupervisor($request->center_id);
 
-        $supervisor = User::create([
+        $manager = User::create([
             'name'      => $request->name,
             'email'     => $request->email,
             'phone'     => PhoneNumber::normalize($request->phone),
-            'role'      => 'center_supervisor',
+            'role'      => 'center_manager',
             'password'  => Hash::make($request->password),
             'center_id' => $request->center_id,
         ]);
 
         return response()->json([
             'success' => true,
-            'message' => 'تم إنشاء مشرف المركز بنجاح',
-            'data' => $supervisor,
+            'message' => 'تم إنشاء مدير المركز بنجاح',
+            'data' => $manager,
         ], 201);
     }
 
     public function update(Request $request, $id)
     {
-        $supervisor = User::where('role', 'center_supervisor')->findOrFail($id);
+        $manager = User::where('role', 'center_manager')->findOrFail($id);
 
         $request->validate([
             'name'      => 'required|string|max:255',
-            'email'     => 'required|email|unique:users,email,' . $supervisor->id,
+            'email'     => 'required|email|unique:users,email,' . $manager->id,
             'phone'     => 'nullable|string|max:20',
             'center_id' => 'required|exists:centers,id',
         ], [
-            'name.required'      => 'اسم المشرف مطلوب',
+            'name.required'      => 'اسم مدير المركز مطلوب',
             'email.unique'       => 'هذا البريد مستخدم مسبقاً',
             'center_id.required' => 'يجب اختيار المركز',
         ]);
 
-        $this->assertSingleSupervisor($request->center_id, $supervisor->id);
+        $this->assertSingleSupervisor($request->center_id, $manager->id);
 
         $data = [
             'name'      => $request->name,
@@ -106,27 +106,27 @@ class SupervisorManagementController extends Controller
             $data['password'] = Hash::make($request->password);
         }
 
-        $supervisor->update($data);
+        $manager->update($data);
 
         if ($request->filled('password')) {
-            $supervisor->recordPasswordChange('admin');
+            $manager->recordPasswordChange('admin');
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'تم تحديث بيانات المشرف بنجاح',
-            'data' => $supervisor,
+            'message' => 'تم تحديث بيانات مدير المركز بنجاح',
+            'data' => $manager,
         ]);
     }
 
     public function destroy($id)
     {
-        $supervisor = User::where('role', 'center_supervisor')->findOrFail($id);
-        $supervisor->delete();
+        $manager = User::where('role', 'center_manager')->findOrFail($id);
+        $manager->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'تم حذف المشرف بنجاح',
+            'message' => 'تم حذف مدير المركز بنجاح',
         ]);
     }
 }

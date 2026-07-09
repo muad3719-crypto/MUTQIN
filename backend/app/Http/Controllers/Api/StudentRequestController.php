@@ -244,24 +244,24 @@ class StudentRequestController extends Controller
             'target_teacher_id' => $user->id,
         ]);
 
-        // توجيه الإشعار: النقل الداخلي (from=target) → مشرف المركز إن وُجد،
-        // وإلا (أو كان عابراً للمراكز) → المدير الرئيسي كما كان.
+        // توجيه الإشعار: النقل الداخلي (from=target) → مدير المركز إن وُجد،
+        // وإلا (أو كان عابراً للمراكز) → مدير النظام كما كان.
         $isInternal = (int) $req->from_center_id === (int) $req->target_center_id;
-        $supervisor = $isInternal
-            ? User::where('role', 'center_supervisor')->where('center_id', $req->target_center_id)->first()
+        $centerManager = $isInternal
+            ? User::where('role', 'center_manager')->where('center_id', $req->target_center_id)->first()
             : null;
         InAppNotification::sendSafe(
-            $supervisor ?: User::where('role', 'admin')->get(),
+            $centerManager ?: User::where('role', 'admin')->get(),
             'request_created',
             'طلب جديد بانتظار الموافقة',
             'المحفّظ «' . $user->name . '» أرسل طلب نقل الطالب «' . $req->student_name . '» إلى مركزه.',
             $req->id,
-            $supervisor ? 'supervisor/requests.html' : 'admin/requests.html'
+            $centerManager ? 'manager/requests.html' : 'admin/requests.html'
         );
 
         return response()->json([
             'success' => true,
-            'message' => $supervisor ? 'تم إرسال طلب النقل لمشرف المركز، سيُنفَّذ بعد الموافقة' : 'تم إرسال طلب النقل للمدير، سيُنفَّذ بعد الموافقة',
+            'message' => $centerManager ? 'تم إرسال طلب النقل لمدير المركز، سيُنفَّذ بعد الموافقة' : 'تم إرسال طلب النقل للمدير، سيُنفَّذ بعد الموافقة',
             'data'    => ['request' => $req],
         ], 201);
     }
@@ -342,26 +342,26 @@ class StudentRequestController extends Controller
      * يعيد التحقّق من أن محفّظ الوجهة ما زال محفّظاً ضمن مركز الوجهة.
      */
     /**
-     * نطاق مشرف المركز: يعتمد/يرفض فقط طلبات النقل الداخلية لمركزه
-     * (from = target = مركزه). العابرة للمراكز وطلبات الإضافة تبقى للمدير الرئيسي.
+     * نطاق مدير المركز: يعتمد/يرفض فقط طلبات النقل الداخلية لمركزه
+     * (from = target = مركزه). العابرة للمراكز وطلبات الإضافة تبقى لمدير النظام.
      */
-    protected function assertSupervisorScope(Request $request, StudentRequest $req): ?\Illuminate\Http\JsonResponse
+    protected function assertManagerScope(Request $request, StudentRequest $req): ?\Illuminate\Http\JsonResponse
     {
         $user = $request->user();
-        if ($user->isCenterSupervisor()) {
+        if ($user->isCenterManager()) {
             $c = $user->center_id;
             if ($req->type !== 'transfer' || (int) $req->from_center_id !== (int) $c || (int) $req->target_center_id !== (int) $c) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'هذا الطلب خارج نطاق مركزك — يعتمده المدير الرئيسي',
+                    'message' => 'هذا الطلب خارج نطاق مركزك — يعتمده مدير النظام',
                 ], 403);
             }
         }
         return null;
     }
 
-    /** طلبات النقل الداخلية لمركز المشرف (المعلّقة افتراضياً؛ ?status=all للكل). */
-    public function supervisorIndex(Request $request)
+    /** طلبات النقل الداخلية لمركز مدير المركز (المعلّقة افتراضياً؛ ?status=all للكل). */
+    public function managerIndex(Request $request)
     {
         $c = $request->user()->center_id;
         $query = StudentRequest::with(['requestedBy', 'targetCenter', 'targetTeacher', 'fromCenter', 'fromTeacher', 'student'])
@@ -385,7 +385,7 @@ class StudentRequestController extends Controller
     {
         $req = StudentRequest::findOrFail($id);
 
-        if ($guard = $this->assertSupervisorScope($request, $req)) {
+        if ($guard = $this->assertManagerScope($request, $req)) {
             return $guard;
         }
 
@@ -496,7 +496,7 @@ class StudentRequestController extends Controller
     {
         $req = StudentRequest::findOrFail($id);
 
-        if ($guard = $this->assertSupervisorScope($request, $req)) {
+        if ($guard = $this->assertManagerScope($request, $req)) {
             return $guard;
         }
 
