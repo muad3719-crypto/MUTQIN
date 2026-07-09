@@ -46,6 +46,14 @@ class ManagerManagementController extends Controller
         // معرّف مدير المركز بالمخطط: {الاسم اللاتيني}.centeradmin@mutqin.ly
         // (مثل muad.centeradmin@mutqin.ly) — بلا لاحقة معرّف رقمي.
         // كلمة المرور مطلوبة صراحةً عند الإنشاء — لا توليد صامت (درس S1).
+
+        // تسامح مع الإدخال: من يكتب البريد كاملاً (mohammad.centeradmin@mutqin.ly)
+        // نستخرج الاسم منه تلقائياً بدل رفضه — يُقصّ ما بعد @ ولاحقة .centeradmin
+        $prefix = strtolower(trim((string) $request->input('email_prefix', '')));
+        $prefix = preg_replace('/@.*$/', '', $prefix);
+        $prefix = preg_replace('/\.centeradmin$/', '', $prefix);
+        $request->merge(['email_prefix' => $prefix]);
+
         $request->validate([
             'name'         => 'required|string|max:255',
             'email_prefix' => ['required', 'string', 'max:40', 'regex:/^[a-z]+(\.[a-z]+)*$/'],

@@ -32,8 +32,7 @@
         const opts = centersWithoutManager(null);
         return [
             { name: 'name', label: 'اسم مدير المركز', required: true },
-            { name: 'email_prefix', label: 'الاسم اللاتيني', required: true, placeholder: 'مثال: muad',
-              help: 'البريد النهائي سيكون: {الاسم}.centeradmin@mutqin.ly — مثل muad.centeradmin@mutqin.ly' },
+            { name: 'email_prefix', label: 'الاسم اللاتيني', required: true, placeholder: 'مثال: muad' },
             { name: 'phone', label: 'رقم الهاتف' },
             { name: 'center_id', label: 'المركز (بلا مدير فقط)', type: 'select', required: true,
               options: opts.map(c => ({ value: c.id, label: c.name })) },
@@ -89,6 +88,21 @@
                 if (!centersWithoutManager(null).length) { UI.toast('كل المراكز لها مدراء بالفعل', 'warning'); return; }
                 UI.formModal({
                     title: 'إضافة مدير مركز', submitText: 'إنشاء', fields: addFields(),
+                    onMount: (form) => {
+                        // معاينة حيّة للبريد النهائي + تنظيف تلقائي لمن يلصق البريد كاملاً
+                        const inp = form.querySelector('[name="email_prefix"]');
+                        const preview = document.createElement('div');
+                        preview.style.cssText = 'font-size:12.5px;color:#04532F;font-weight:700;margin-top:5px;direction:ltr;text-align:right;';
+                        inp.parentElement.insertBefore(preview, inp.nextSibling);
+                        const refresh = () => {
+                            let v = inp.value.toLowerCase().trim().replace(/@.*$/, '').replace(/\.centeradmin$/, '');
+                            if (v !== inp.value) inp.value = v; // نظّف الإدخال في مكانه
+                            preview.textContent = v ? v + '.centeradmin@mutqin.ly' : '';
+                            preview.style.display = v ? '' : 'none';
+                        };
+                        inp.addEventListener('input', refresh);
+                        refresh();
+                    },
                     onSubmit: async (v, h) => {
                         const res = await API.post('/admin/managers', v);
                         UI.toast(res.message || 'تم الإنشاء'); h.close(); load();
