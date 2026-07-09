@@ -50,6 +50,14 @@ trait CreatesCoreData
         return $this->makeUser('parent', $attrs);
     }
 
+    /** «مدير المركز» — center_id إلزامي له. */
+    protected function makeManager(?Center $center = null, array $attrs = []): User
+    {
+        return $this->makeUser('center_manager', array_merge([
+            'center_id' => ($center ?? $this->makeCenter())->id,
+        ], $attrs));
+    }
+
     protected function makeStudent(User $teacher, ?User $parent = null, array $attrs = []): Student
     {
         static $sseq = 0;
