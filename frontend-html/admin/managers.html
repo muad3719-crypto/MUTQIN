@@ -32,8 +32,8 @@
         const opts = centersWithoutManager(null);
         return [
             { name: 'name', label: 'اسم مدير المركز', required: true },
-            { name: 'email_prefix', label: 'اسم المستخدم اللاتيني', required: true, placeholder: 'مثال: ali.faraj',
-              help: 'البريد النهائي سيكون بالمخطط: name.family.id@mutqin.ly (المعرّف يُلحق تلقائياً)' },
+            { name: 'email_prefix', label: 'الاسم اللاتيني', required: true, placeholder: 'مثال: muad',
+              help: 'البريد النهائي سيكون: {الاسم}.centeradmin@mutqin.ly — مثل muad.centeradmin@mutqin.ly' },
             { name: 'phone', label: 'رقم الهاتف' },
             { name: 'center_id', label: 'المركز (بلا مدير فقط)', type: 'select', required: true,
               options: opts.map(c => ({ value: c.id, label: c.name })) },

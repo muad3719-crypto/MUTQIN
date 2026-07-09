@@ -161,14 +161,22 @@ class CenterManagerTest extends TestCase
             'name' => 'مدير بلا كلمة', 'email_prefix' => 'no.pass', 'center_id' => $center->id,
         ])->assertStatus(422);
 
-        // إنشاء سليم → البريد بمخطط prefix.id@mutqin.ly
+        // إنشاء سليم → البريد بمخطط {prefix}.centeradmin@mutqin.ly
         $r = $this->authed($token)->postJson('/api/admin/managers', [
-            'name' => 'علي فرج', 'email_prefix' => 'ali.faraj',
+            'name' => 'معاذ', 'email_prefix' => 'muad',
             'password' => 'secret123', 'password_confirmation' => 'secret123',
             'center_id' => $center->id,
         ])->assertStatus(201);
-        $id = $r->json('data.id');
-        $this->assertSame("ali.faraj.{$id}@mutqin.ly", $r->json('data.email'));
+        $this->assertSame('muad.centeradmin@mutqin.ly', $r->json('data.email'));
+
+        // نفس الاسم اللاتيني لمركز آخر → 422 برسالة واضحة (البريد محجوز)
+        $center2 = $this->makeCenter();
+        $this->authed($token)->postJson('/api/admin/managers', [
+            'name' => 'معاذ آخر', 'email_prefix' => 'muad',
+            'password' => 'secret123', 'password_confirmation' => 'secret123',
+            'center_id' => $center2->id,
+        ])->assertStatus(422)
+          ->assertJsonValidationErrors(['email_prefix']);
     }
 
     public function test_internal_request_notifies_manager_else_admin_fallback(): void

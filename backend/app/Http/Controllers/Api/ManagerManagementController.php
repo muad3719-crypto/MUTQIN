@@ -43,19 +43,19 @@ class ManagerManagementController extends Controller
 
     public function store(Request $request)
     {
-        // البريد بمخطط النظام name.family.id@mutqin.ly — يُدخل المدير الجزء اللاتيني
-        // (email_prefix مثل ali.faraj) والمعرّف يُلحق بعد الإدراج (لا يوجد قبله).
+        // معرّف مدير المركز بالمخطط: {الاسم اللاتيني}.centeradmin@mutqin.ly
+        // (مثل muad.centeradmin@mutqin.ly) — بلا لاحقة معرّف رقمي.
         // كلمة المرور مطلوبة صراحةً عند الإنشاء — لا توليد صامت (درس S1).
         $request->validate([
             'name'         => 'required|string|max:255',
-            'email_prefix' => ['required', 'string', 'max:60', 'regex:/^[a-z]+(\.[a-z]+)+$/'],
+            'email_prefix' => ['required', 'string', 'max:40', 'regex:/^[a-z]+(\.[a-z]+)*$/'],
             'phone'        => 'nullable|string|max:20',
             'password'     => 'required|min:6|confirmed',
             'center_id'    => 'required|exists:centers,id',
         ], [
             'name.required'         => 'اسم مدير المركز مطلوب',
-            'email_prefix.required' => 'اسم المستخدم اللاتيني مطلوب (مثل: ali.faraj)',
-            'email_prefix.regex'    => 'الصيغة: أحرف لاتينية صغيرة بنقطة بينها، مثل ali.faraj',
+            'email_prefix.required' => 'الاسم اللاتيني مطلوب (مثل: muad)',
+            'email_prefix.regex'    => 'الصيغة: أحرف لاتينية صغيرة (ونقطة اختيارياً)، مثل muad أو ali.faraj',
             'password.required'     => 'كلمة المرور مطلوبة',
             'password.min'          => 'كلمة المرور 6 أحرف على الأقل',
             'password.confirmed'    => 'كلمتا المرور غير متطابقتين',
@@ -64,17 +64,22 @@ class ManagerManagementController extends Controller
 
         $this->assertSingleSupervisor($request->center_id);
 
-        // خطوتان: إدراج ببريد مؤقّت ثم ضبط البريد النهائي بالمعرّف (النمط المعتمد في النظام)
+        // البريد محسوب مسبقاً (لا يعتمد على المعرّف) — نتحقق من تفرّده برسالة واضحة
+        $email = $request->email_prefix . '.centeradmin@mutqin.ly';
+        if (User::where('email', $email)->exists()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'email_prefix' => ["الاسم اللاتيني «{$request->email_prefix}» مستخدم بالفعل ({$email}) — اختر اسماً آخر"],
+            ]);
+        }
+
         $manager = User::create([
             'name'      => $request->name,
-            'email'     => 'tmp-' . \Illuminate\Support\Str::random(18) . '@mutqin.ly',
+            'email'     => $email,
             'phone'     => PhoneNumber::normalize($request->phone),
             'role'      => 'center_manager',
             'password'  => Hash::make($request->password),
             'center_id' => $request->center_id,
         ]);
-        $manager->email = $request->email_prefix . '.' . $manager->id . '@mutqin.ly';
-        $manager->save();
 
         return response()->json([
             'success' => true,
