@@ -204,4 +204,16 @@ a { text-decoration:none; }
     .mq-content { padding:18px 14px 50px; }
     .mq-quick-grid { grid-template-columns:1fr; }
     .mq-table th, .mq-table td { padding:12px 14px; }
+
+    /* النوافذ المنبثقة: عرض شبه كامل بهوامش صغيرة (تجاوز أنماط inline)
+       الصيغتان مطلوبتان: HTML الثابت بلا مسافات، وcssText يُسلسَل بمسافات */
+    div[style*="position:fixed"][style*="inset:0"],
+    div[style*="position: fixed"][style*="inset: 0"] { padding:12px !important; }
+    .mq-card[style*="max-width"] { max-width:calc(100vw - 24px) !important; }
+    /* الحقول المتجاورة داخل البطاقات والنماذج تتكدّس عمودياً */
+    .mq-card [style*="grid-template-columns"] { grid-template-columns:1fr !important; }
+    /* أزرار بارتفاع لمس مريح */
+    .mq-btn { min-height:44px; }
+    .mq-card-header { padding:14px 16px; }
+    .mq-card-body { padding:18px 16px; }
 }
