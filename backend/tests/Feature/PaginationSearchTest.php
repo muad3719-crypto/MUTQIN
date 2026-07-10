@@ -84,6 +84,47 @@ class PaginationSearchTest extends TestCase
         $this->assertSame('أحمد في المركز أ', $r->json('data.data.0.name'));
     }
 
+    public function test_students_search_covers_center_teacher_and_nationality(): void
+    {
+        $admin    = $this->makeAdmin();
+        $centerA  = $this->makeCenter(['name' => 'مركز البركة']);
+        $centerB  = $this->makeCenter(['name' => 'مركز آخر']);
+        $teacherA = $this->makeTeacher($centerA, ['name' => 'الشيخ حسن']);
+        $teacherB = $this->makeTeacher($centerB, ['name' => 'الشيخ سالم']);
+        $this->makeStudent($teacherA, null, ['name' => 'طالب الأول']); // ليبي افتراضاً
+        $this->makeStudent($teacherB, null, [
+            'name' => 'طالب الثاني', 'nationality_type' => 'foreigner', 'nationality_name' => 'تشاد',
+        ]);
+        $token = $this->loginToken($admin);
+
+        $q = fn ($term) => $this->authed($token)->getJson('/api/students?q=' . urlencode($term))->assertOk();
+
+        // باسم المركز — وبتاء مربوطة مختلفة («البركه» تجد «البركة»)
+        $r = $q('البركه');
+        $this->assertSame(1, $r->json('data.total'));
+        $this->assertSame('طالب الأول', $r->json('data.data.0.name'));
+
+        // باسم المعلم
+        $r = $q('حسن');
+        $this->assertSame(1, $r->json('data.total'));
+        $this->assertSame('طالب الأول', $r->json('data.data.0.name'));
+
+        // بكلمة «أجنبي» → الأجانب فقط
+        $r = $q('أجنبي');
+        $this->assertSame(1, $r->json('data.total'));
+        $this->assertSame('طالب الثاني', $r->json('data.data.0.name'));
+
+        // باسم الجنسية
+        $r = $q('تشاد');
+        $this->assertSame(1, $r->json('data.total'));
+        $this->assertSame('طالب الثاني', $r->json('data.data.0.name'));
+
+        // بكلمة «ليبي» → الليبيون فقط
+        $r = $q('ليبي');
+        $this->assertSame(1, $r->json('data.total'));
+        $this->assertSame('طالب الأول', $r->json('data.data.0.name'));
+    }
+
     public function test_teachers_search_is_normalized_and_paginated(): void
     {
         $admin  = $this->makeAdmin();

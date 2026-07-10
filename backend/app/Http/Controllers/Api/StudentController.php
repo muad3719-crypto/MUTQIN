@@ -90,15 +90,29 @@ class StudentController extends Controller
             $query->whereNull('national_id'); // جاهزية الأوقاف: بلا رقم وطني
         }
 
-        // بحث حي اختياري q: الاسم (مطبَّعاً — «احمد»=«أحمد») + الرقم الوطني + الهاتف.
+        // بحث حي اختياري q في «كل الأعمدة»: اسم الطالب/ولي الأمر، الرقم الوطني، الهاتف،
+        // اسم المركز، اسم المعلم (والسابق)، والجنسية («ليبي»/«أجنبي»/اسمها) — كلها مطبَّعة.
         // يتجمّع مع الفلاتر أعلاه بـ AND ويعمل مع الترقيم.
         if (($q = trim((string) $request->get('q', ''))) !== '') {
             $norm = ArabicText::normalize($q);
             // شرطا الرقم/الهاتف فقط لاستعلام يحوي أرقاماً — وإلا صار normalize(نص عربي)
             // فارغاً فطابق LIKE '%%' كلَّ من له هاتف (خلل مطابقة زائفة)
             $digits = PhoneNumber::normalize($q);
-            $query->where(function ($w) use ($q, $norm, $digits) {
-                $w->whereRaw(ArabicText::sqlNormalize('name') . ' LIKE ?', ['%' . $norm . '%']);
+            $like = '%' . $norm . '%';
+            $query->where(function ($w) use ($q, $norm, $digits, $like) {
+                $w->whereRaw(ArabicText::sqlNormalize('name') . ' LIKE ?', [$like])
+                  ->orWhereRaw(ArabicText::sqlNormalize('guardian_name') . ' LIKE ?', [$like])
+                  ->orWhereRaw(ArabicText::sqlNormalize('former_teacher_name') . ' LIKE ?', [$like])
+                  ->orWhereRaw(ArabicText::sqlNormalize('nationality_name') . ' LIKE ?', [$like])
+                  ->orWhereHas('center', fn ($c) => $c->whereRaw(ArabicText::sqlNormalize('name') . ' LIKE ?', [$like]))
+                  ->orWhereHas('teacher', fn ($t) => $t->whereRaw(ArabicText::sqlNormalize('name') . ' LIKE ?', [$like]));
+                // كلمتا التصنيف: «ليبي» و«أجنبي» (بعد التطبيع: اجنبي)
+                if (mb_strpos($norm, 'ليبي') !== false) {
+                    $w->orWhere('nationality_type', 'libyan');
+                }
+                if (mb_strpos($norm, 'اجنبي') !== false) {
+                    $w->orWhere('nationality_type', 'foreigner');
+                }
                 if ($digits) {
                     $w->orWhere('national_id', 'like', "%{$q}%")
                       ->orWhere('phone', 'like', "%{$digits}%");
