@@ -86,6 +86,7 @@
                 <nav class="mq-nav">${nav}</nav>
                 <button type="button" id="mq-logout" class="mq-logout">${UI.ic('logout', 19)}<span>تسجيل الخروج</span></button>
             </aside>
+            <div class="mq-overlay" id="mq-overlay"></div>
             <main class="mq-main">
                 <header class="mq-topbar">
                     <div style="display:flex;align-items:center;gap:14px;min-width:0;">
@@ -117,11 +118,25 @@
             if (confirm('تسجيل الخروج من النظام؟')) Auth.logout();
         });
 
-        // زر طيّ/فتح الشريط الجانبي — الحالة تُحفظ وتبقى عبر الصفحات
+        // زر ☰ واعٍ بحجم الشاشة:
+        //   موبايل (<768px): يفتح/يغلق درجاً منزلقاً فوق خلفية معتمة (بلا حفظ حالة)
+        //   سطح المكتب/تابلت: طيّ/فتح محفوظ بين الصفحات كما كان
+        const mobileMq = window.matchMedia('(max-width: 767.98px)');
         document.getElementById('mq-sidebar-toggle').addEventListener('click', () => {
             const layout = document.getElementById('mq-layout');
+            if (mobileMq.matches) {
+                layout.classList.toggle('mq-mobile-open');
+                return;
+            }
             const isCollapsed = layout.classList.toggle('mq-collapsed');
             localStorage.setItem('mutqin_sidebar_collapsed', isCollapsed ? '1' : '0');
+        });
+        document.getElementById('mq-overlay').addEventListener('click', () => {
+            document.getElementById('mq-layout').classList.remove('mq-mobile-open');
+        });
+        // عند عبور نقطة التوقّف (تدوير الجهاز/تغيير الحجم) نغلق الدرج تفادياً لحالة عالقة
+        mobileMq.addEventListener('change', () => {
+            document.getElementById('mq-layout').classList.remove('mq-mobile-open');
         });
 
         wireNotifications();

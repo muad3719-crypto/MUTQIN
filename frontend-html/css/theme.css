@@ -122,7 +122,7 @@ a { text-decoration:none; }
     border:none; border-top:1px solid rgba(212,175,55,.18); border-radius:0; background:none; color:#E7B6B6;
     font-family:var(--font-body); font-size:14.5px; font-weight:600; cursor:pointer; width:100%; }
 .mq-logout:hover { color:#ffd0d0; }
-.mq-main { margin-right:260px; flex:1; min-height:100vh; display:flex; flex-direction:column; }
+.mq-main { margin-right:260px; flex:1; min-width:0; min-height:100vh; display:flex; flex-direction:column; }
 
 /* طيّ الشريط الجانبي (زر ☰ في الشريط العلوي) — انزلاق سلس خارج الحافة اليمنى */
 .mq-sidebar { transition:transform .25s ease; }
@@ -164,9 +164,33 @@ a { text-decoration:none; }
     display:flex; align-items:center; justify-content:center; }
 .mq-quick span { font-size:14px; font-weight:700; color:var(--emerald-dark); }
 
-@media (max-width:860px){
-    .mq-sidebar { position:relative; width:100%; height:auto; flex-direction:column; }
+/* ============================================================
+   التجاوب — موبايل < 768px · تابلت 768–1024px · سطح المكتب > 1024px (كما هو)
+   ============================================================ */
+
+/* الخلفية المعتمة لدرج الموبايل (يحقنها layout.js — مخفية دائماً خارج وضع الدرج) */
+.mq-overlay { display:none; position:fixed; inset:0; background:rgba(4,54,31,.5); z-index:99; }
+
+/* تابلت: الشريط الجانبي يبقى ظاهراً بكامل نصوصه لكن أنحف، مع تكثيف الهوامش */
+@media (min-width:768px) and (max-width:1024px){
+    .mq-sidebar { width:225px; padding:18px 12px; }
+    .mq-main { margin-right:225px; }
+    .mq-topbar { padding:16px 20px; }
+    .mq-page-title { font-size:24px; }
+    .mq-content { padding:22px 20px 50px; }
+}
+
+/* موبايل: الشريط الجانبي درج منزلق (off-canvas) يفتحه زر ☰ وتُغلقه الخلفية المعتمة */
+@media (max-width:767.98px){
+    .mq-sidebar { transform:translateX(100%); width:min(290px,84vw);
+        box-shadow:-24px 0 60px -20px rgba(4,54,31,.55); }
     .mq-main { margin-right:0; }
-    .mq-layout { flex-direction:column; }
+    .mq-layout.mq-mobile-open .mq-sidebar { transform:none; }
+    .mq-layout.mq-mobile-open .mq-overlay { display:block; }
+    .mq-topbar { padding:12px 14px; }
+    .mq-topbar-actions { gap:10px; }
+    .mq-date { display:none; }
+    .mq-page-title { font-size:20px; }
+    .mq-content { padding:18px 14px 50px; }
     .mq-quick-grid { grid-template-columns:1fr; }
 }
