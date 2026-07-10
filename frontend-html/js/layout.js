@@ -63,8 +63,11 @@
 
         const today = new Date().toLocaleDateString('ar-LY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
+        // حالة طيّ الشريط الجانبي محفوظة بين الصفحات (تُطبَّق قبل الرسم — لا وميض)
+        const collapsed = localStorage.getItem('mutqin_sidebar_collapsed') === '1';
+
         shell.innerHTML = `
-        <div class="mq-layout">
+        <div class="mq-layout ${collapsed ? 'mq-collapsed' : ''}" id="mq-layout">
             <aside class="mq-sidebar">
                 <div class="mq-brand">
                     ${LOGO}
@@ -85,7 +88,10 @@
             </aside>
             <main class="mq-main">
                 <header class="mq-topbar">
-                    <h1 class="mq-page-title">${UI.escapeHtml(title || '')}</h1>
+                    <div style="display:flex;align-items:center;gap:14px;min-width:0;">
+                        <button type="button" id="mq-sidebar-toggle" class="mq-sidebar-toggle" title="إظهار/إخفاء القائمة الجانبية">${UI.ic('menu', 20)}</button>
+                        <h1 class="mq-page-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${UI.escapeHtml(title || '')}</h1>
+                    </div>
                     <div class="mq-topbar-actions">
                         <span class="mq-date">${today}</span>
                         <div class="mq-notif" style="position:relative;">
@@ -109,6 +115,13 @@
 
         document.getElementById('mq-logout').addEventListener('click', () => {
             if (confirm('تسجيل الخروج من النظام؟')) Auth.logout();
+        });
+
+        // زر طيّ/فتح الشريط الجانبي — الحالة تُحفظ وتبقى عبر الصفحات
+        document.getElementById('mq-sidebar-toggle').addEventListener('click', () => {
+            const layout = document.getElementById('mq-layout');
+            const isCollapsed = layout.classList.toggle('mq-collapsed');
+            localStorage.setItem('mutqin_sidebar_collapsed', isCollapsed ? '1' : '0');
         });
 
         wireNotifications();

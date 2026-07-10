@@ -123,6 +123,15 @@ a { text-decoration:none; }
     font-family:var(--font-body); font-size:14.5px; font-weight:600; cursor:pointer; width:100%; }
 .mq-logout:hover { color:#ffd0d0; }
 .mq-main { margin-right:260px; flex:1; min-height:100vh; display:flex; flex-direction:column; }
+
+/* طيّ الشريط الجانبي (زر ☰ في الشريط العلوي) — انزلاق سلس خارج الحافة اليمنى */
+.mq-sidebar { transition:transform .25s ease; }
+.mq-main { transition:margin-right .25s ease; }
+.mq-layout.mq-collapsed .mq-sidebar { transform:translateX(100%); }
+.mq-layout.mq-collapsed .mq-main { margin-right:0; }
+.mq-sidebar-toggle { background:none; border:1px solid rgba(4,83,47,.2); border-radius:10px; width:40px; height:40px;
+    display:inline-flex; align-items:center; justify-content:center; cursor:pointer; color:#04532F; flex:none; }
+.mq-sidebar-toggle:hover { background:rgba(4,83,47,.08); }
 .mq-topbar { background:rgba(251,249,238,.85); backdrop-filter:blur(12px); border-bottom:1px solid var(--line);
     padding:18px 32px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:50; }
 .mq-page-title { font-size:28px; margin:0; }
