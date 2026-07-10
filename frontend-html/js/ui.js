@@ -47,15 +47,29 @@
     }
 
     // ===== بحث/تصفية صفوف جدول =====
+    // يبحث في «كل أعمدة الصف» (نصّ الصف كاملاً) مع تطبيع عربي مطابق لخادمنا
+    // (ArabicText::normalize): «البيضا»=«البيضاء»، «فاطمه»=«فاطمة»، ٠٤١=041.
+    function normalizeSearch(s) {
+        return String(s || '')
+            .toLowerCase()
+            // أرقام عربية-هندية → غربية
+            .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+            // إزالة التطويل والتشكيل
+            .replace(/[ـً-ْٰ]/g, '')
+            // توحيد صور الألف والياء والتاء المربوطة والهمزات
+            .replace(/[أإآٱ]/g, 'ا')
+            .replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/ؤ/g, 'و').replace(/ئ/g, 'ي').replace(/ء/g, '')
+            .replace(/\s+/g, ' ').trim();
+    }
     // searchInputId: حقل البحث، tableId: الجدول
     function bindTableSearch(searchInputId, tableId) {
         const input = document.getElementById(searchInputId);
         const table = document.getElementById(tableId);
         if (!input || !table) return;
         input.addEventListener('input', () => {
-            const q = input.value.trim().toLowerCase();
+            const q = normalizeSearch(input.value);
             table.querySelectorAll('tbody tr').forEach(tr => {
-                tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
+                tr.style.display = normalizeSearch(tr.textContent).includes(q) ? '' : 'none';
             });
         });
     }
