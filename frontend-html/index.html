@@ -20,6 +20,11 @@
   .card-soft{background:#FBF9E9;border:1px solid rgba(212,175,55,.3);border-radius:20px;padding:34px;transition:all .25s;}
   .card-soft:hover{border-color:#D4AF37;transform:translateY(-4px);box-shadow:0 22px 50px -34px rgba(4,54,31,.5);}
   @media(max-width:820px){.hero{grid-template-columns:1fr !important;text-align:center;} .lnav .navlinks{display:none !important;} .sec{padding:60px 22px;}}
+  /* الهواتف الضيقة: تصغير رسمة الـhero (عرضها الثابت 380px كان يوسّع عمود الـgrid ويكسر الصفحة) */
+  @media(max-width:480px){.hero-art{zoom:.75;}}
+  @media(max-width:359.98px){.hero-art{zoom:.6;}}
+  /* موبايل: كل شبكات الأقسام (رؤيتنا/الإحصاءات/ماذا نعلّم/التذييل) تتكدّس عموداً واحداً */
+  @media(max-width:767.98px){section [style*="grid-template-columns"],footer [style*="grid-template-columns"]{grid-template-columns:1fr !important;}}
 </style>
 </head>
 <body style="font-family:'Cairo',sans-serif;color:#0A3D27;overflow-x:hidden;">
@@ -62,7 +67,7 @@
       </div>
     </div>
     <div style="display:flex;justify-content:center;">
-      <div style="position:relative;width:380px;height:380px;display:flex;align-items:center;justify-content:center;">
+      <div class="hero-art" style="position:relative;width:380px;height:380px;display:flex;align-items:center;justify-content:center;">
         <svg viewBox="0 0 200 200" width="340" height="340" style="position:absolute;animation:mtqnSpin 90s linear infinite;opacity:.9;">
           <circle cx="100" cy="100" r="96" fill="none" stroke="#D4AF37" stroke-width="0.6" stroke-dasharray="2 5"/>
         </svg>

@@ -216,4 +216,14 @@ a { text-decoration:none; }
     .mq-btn { min-height:44px; }
     .mq-card-header { padding:14px 16px; }
     .mq-card-body { padding:18px 16px; }
+
+    /* بطاقات الإحصاءات: عمودان مضغوطان بدل عمود طويل */
+    .mq-stats { grid-template-columns:1fr 1fr; gap:10px; }
+    .mq-stat { padding:14px 12px; gap:10px; }
+    .mq-stat-ico { width:40px; height:40px; font-size:18px; border-radius:11px; }
+    .mq-stat-val { font-size:24px; }
+
+    /* شريط الأدوات: البحث يأخذ صفاً كاملاً والأزرار تلتف تحته */
+    .mq-toolbar { flex-wrap:wrap; }
+    .mq-search { flex-basis:100%; max-width:100%; }
 }
