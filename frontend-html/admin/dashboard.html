@@ -46,9 +46,6 @@
             `<tr><td colspan="2" style="text-align:center;color:#7A8F82;padding:24px;">لا يوجد معلمون</td></tr>`;
 
         pc.innerHTML = `
-            <div class="mq-toolbar" style="justify-content:flex-end;">
-              <button class="mq-btn mq-btn-gold" id="import" style="gap:7px;">${UI.ic('upload', 17)} رفع ملف الحضور</button>
-            </div>
             <div class="mq-stats">
               ${stat(s.total_teachers, 'المعلمون', '👨‍🏫', 'green')}
               ${stat(s.total_students, 'الطلاب', '👥', 'gold')}
@@ -74,7 +71,6 @@
                 </div>
               </div></div>
             </div>`;
-        document.getElementById('import').onclick = () => UI.runAttendanceImport();
     } catch (e) { UI.toast(e.message, 'danger'); }
 })();
 </script>
