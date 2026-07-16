@@ -80,14 +80,15 @@ class ManagerManagementController extends Controller
             ]);
         }
 
-        $manager = User::create([
+        // transaction: إنشاء المدير + حجز كود العرض (CA..) ينجحان معاً أو يُلغيان معاً
+        $manager = \Illuminate\Support\Facades\DB::transaction(fn () => User::create([
             'name'      => $request->name,
             'email'     => $email,
             'phone'     => PhoneNumber::normalize($request->phone),
             'role'      => 'center_manager',
             'password'  => Hash::make($request->password),
             'center_id' => $request->center_id,
-        ]);
+        ]));
 
         return response()->json([
             'success' => true,

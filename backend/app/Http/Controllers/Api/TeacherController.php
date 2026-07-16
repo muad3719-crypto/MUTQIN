@@ -59,7 +59,8 @@ class TeacherController extends Controller
         // قاعدة: محفّظ أساسي واحد فقط لكل مركز
         $this->assertSinglePrimary($request->center_id, $request->type);
 
-        $teacher = User::create([
+        // transaction: إنشاء المحفّظ + حجز كود العرض (T..) ينجحان معاً أو يُلغيان معاً
+        $teacher = \Illuminate\Support\Facades\DB::transaction(fn () => User::create([
             'name'     => $request->name,
             'email'    => $request->email,
             'phone'    => \App\Support\PhoneNumber::normalize($request->phone),
@@ -67,7 +68,7 @@ class TeacherController extends Controller
             'password' => Hash::make($request->password),
             'center_id'=> $request->center_id,
             'type'     => $request->type,
-        ]);
+        ]));
 
         return response()->json([
             'success' => true,

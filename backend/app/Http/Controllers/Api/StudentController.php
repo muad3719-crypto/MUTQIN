@@ -171,33 +171,36 @@ class StudentController extends Controller
         //  (B) parent_id موجود → ربط مباشر بحساب موجود، بلا إنشاء حساب جديد.
         //  (A) بيانات ولي → المنطق الموحّد ParentResolver (هوية → هاتف مطبَّع → بريد، وإلا إنشاء).
         //  (C) لا شيء → null.
-        $parentId = $request->filled('parent_id')
-            ? (int) $request->parent_id
-            : ParentResolver::resolve([
-                'name'             => $request->guardian_name,
-                'email'            => $request->guardian_email,
-                'phone'            => $request->guardian_phone,
-                'password'         => $request->guardian_password,
-                'nationality_type' => $gNatType,
-                'nationality_name' => $request->guardian_nationality_name,
-                'id_number'        => $request->guardian_id_number,
-            ])?->id;
+        // transaction: إنشاء ولي الأمر + الطالب + حجز كود العرض (S..) تنجح كلها أو تُلغى معاً
+        $student = \Illuminate\Support\Facades\DB::transaction(function () use ($request, $natType, $gNatType) {
+            $parentId = $request->filled('parent_id')
+                ? (int) $request->parent_id
+                : ParentResolver::resolve([
+                    'name'             => $request->guardian_name,
+                    'email'            => $request->guardian_email,
+                    'phone'            => $request->guardian_phone,
+                    'password'         => $request->guardian_password,
+                    'nationality_type' => $gNatType,
+                    'nationality_name' => $request->guardian_nationality_name,
+                    'id_number'        => $request->guardian_id_number,
+                ])?->id;
 
-        $student = Student::create([
-            'name'             => $request->name,
-            'national_id'      => $request->national_id ?: null, // اختياري (وطني لو ليبي / جواز لو أجنبي)
-            'nationality_type' => $natType,
-            'nationality_name' => $natType === 'foreigner' ? $request->nationality_name : null,
-            'phone'            => PhoneNumber::normalize($request->phone),
-            'age'              => $request->age,
-            'center_id'        => $request->center_id,
-            'teacher_id'       => $request->teacher_id,
-            'parent_id'        => $parentId,
-            'guardian_name'    => $request->guardian_name,   // يبقى للعرض فقط
-            'guardian_phone'   => PhoneNumber::normalize($request->guardian_phone),  // يبقى للعرض فقط
-            'enrollment_date'  => now(),
-            'is_active'        => true,
-        ]);
+            return Student::create([
+                'name'             => $request->name,
+                'national_id'      => $request->national_id ?: null, // اختياري (وطني لو ليبي / جواز لو أجنبي)
+                'nationality_type' => $natType,
+                'nationality_name' => $natType === 'foreigner' ? $request->nationality_name : null,
+                'phone'            => PhoneNumber::normalize($request->phone),
+                'age'              => $request->age,
+                'center_id'        => $request->center_id,
+                'teacher_id'       => $request->teacher_id,
+                'parent_id'        => $parentId,
+                'guardian_name'    => $request->guardian_name,   // يبقى للعرض فقط
+                'guardian_phone'   => PhoneNumber::normalize($request->guardian_phone),  // يبقى للعرض فقط
+                'enrollment_date'  => now(),
+                'is_active'        => true,
+            ]);
+        });
 
         return response()->json([
             'success' => true,

@@ -14,6 +14,7 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name',
+        'display_code',
         'email',
         'phone',
         'role',
@@ -24,6 +25,17 @@ class User extends Authenticatable
         'nationality_name',
         'id_number',
     ];
+
+    // كود العرض يُحجز تلقائياً عند الإنشاء حسب الدور: محفّظ T1..، مدير مركز CA1..
+    // (الأدمن وولي الأمر بلا كود — يبقى NULL)
+    protected static function booted(): void
+    {
+        static::creating(function (User $user) {
+            if (empty($user->display_code) && in_array($user->role, ['teacher', 'center_manager'], true)) {
+                $user->display_code = \App\Support\DisplayCode::next($user->role);
+            }
+        });
+    }
 
     protected $hidden = [
         'password',

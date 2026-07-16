@@ -8,6 +8,7 @@ class Student extends Model
 {
     protected $fillable = [
         'name',
+        'display_code',
         'birth_date',
         'phone',
         'national_id',
@@ -31,6 +32,17 @@ class Student extends Model
     ];
 
     // المركز الذي ينتمي إليه
+    // كود العرض (S1..) يُحجز تلقائياً عند الإنشاء من أي مسار
+    // (لوحة الأدمن، موافقة الطلبات، البذر) — العدّاد لا يعيد الأرقام
+    protected static function booted(): void
+    {
+        static::creating(function (Student $student) {
+            if (empty($student->display_code)) {
+                $student->display_code = \App\Support\DisplayCode::next('student');
+            }
+        });
+    }
+
     public function center()
     {
         return $this->belongsTo(Center::class);
