@@ -76,7 +76,7 @@ class CenterManagerController extends Controller
             ->withCount('students')
             ->findOrFail($id);
 
-        $students = $teacher->students()->orderBy('name')->get(['id', 'name', 'age']);
+        $students = $teacher->students()->orderBy('name')->get(['id', 'name', 'display_code', 'age']);
 
         return response()->json([
             'success' => true,

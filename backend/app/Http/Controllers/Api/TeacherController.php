@@ -88,7 +88,7 @@ class TeacherController extends Controller
 
         $students = $teacher->students()
             ->orderBy('name')
-            ->get(['id', 'name', 'age']);
+            ->get(['id', 'name', 'display_code', 'age']);
 
         // سجل تغييرات كلمة المرور (للأدمن — عرض فقط، لا كلمات مرور)
         $pwdLogs = $teacher->passwordChangeLogs()

@@ -37,7 +37,7 @@ class ManagerManagementController extends Controller
             'data' => User::where('role', 'center_manager')
                 ->with('center:id,name,city')
                 ->latest()
-                ->get(['id', 'name', 'email', 'phone', 'center_id', 'created_at']),
+                ->get(['id', 'name', 'display_code', 'email', 'phone', 'center_id', 'created_at']),
         ]);
     }
 
