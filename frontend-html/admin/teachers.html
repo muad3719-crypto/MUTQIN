@@ -98,8 +98,9 @@
             ? students.map((s, i) => `<tr>
                   <td style="color:#9DB3A6;">${i + 1}</td>
                   <td style="font-weight:600;">${UI.escapeHtml(s.name)}</td>
+                  <td>${s.display_code ? `<span class="mq-code">${UI.escapeHtml(s.display_code)}</span>` : '—'}</td>
                   <td>${s.age ?? '—'}</td></tr>`).join('')
-            : `<tr><td colspan="3" style="text-align:center;color:#9DB3A6;padding:16px;">لا يوجد طلاب مسجّلون</td></tr>`;
+            : `<tr><td colspan="4" style="text-align:center;color:#9DB3A6;padding:16px;">لا يوجد طلاب مسجّلون</td></tr>`;
 
         // سجل تغييرات كلمة المرور (إن وُجد) — عرض فقط
         const methodLabels = { otp: 'عبر الهاتف (OTP)', self: 'المستخدم نفسه', admin: 'الأدمن' };
@@ -136,7 +137,7 @@
                 ${pwdLogsHtml}
                 <div style="font-weight:700;color:#04532F;margin-bottom:8px;">الطلاب المشرف عليهم</div>
                 <table class="mq-table">
-                  <thead><tr><th style="width:44px;">#</th><th>الاسم</th><th style="width:90px;">العمر</th></tr></thead>
+                  <thead><tr><th style="width:44px;">#</th><th>الاسم</th><th style="width:80px;">الكود</th><th style="width:90px;">العمر</th></tr></thead>
                   <tbody>${studentRows}</tbody>
                 </table>
               </div>
@@ -169,8 +170,8 @@
                   </div>
                 </div>
                 <div class="mq-card"><table class="mq-table" id="tbl">
-                  <thead><tr><th>المعلم</th><th>المركز</th><th style="width:150px;">الإجراءات</th></tr></thead>
-                  <tbody id="tea-body"><tr><td colspan="3" style="text-align:center;color:#7A8F82;padding:30px;">جارٍ التحميل...</td></tr></tbody>
+                  <thead><tr><th>المعلم</th><th style="width:80px;">الكود</th><th>المركز</th><th style="width:150px;">الإجراءات</th></tr></thead>
+                  <tbody id="tea-body"><tr><td colspan="4" style="text-align:center;color:#7A8F82;padding:30px;">جارٍ التحميل...</td></tr></tbody>
                 </table></div>
                 <div style="text-align:center;margin-top:16px;">
                   <button class="mq-btn mq-btn-outline" id="load-more" style="display:none;">عرض المزيد ↓</button>
@@ -211,7 +212,7 @@
                 if (reset) { page = 1; loadedCount = 0; }
                 const seq = ++fetchSeq;
                 const body = document.getElementById('tea-body');
-                if (reset) body.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#7A8F82;padding:20px;">جارٍ التحميل...</td></tr>`;
+                if (reset) body.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#7A8F82;padding:20px;">جارٍ التحميل...</td></tr>`;
                 loadMoreBtn.disabled = true;
                 try {
                     const p = new URLSearchParams({ page });
@@ -229,6 +230,7 @@
                             <span class="mq-avatar">${UI.initial(t.name)}</span>
                             <div><div style="font-weight:600;">${UI.escapeHtml(t.name)}</div>
                             <div style="font-size:12px;color:#9DB3A6;direction:ltr;text-align:right;">${UI.escapeHtml(t.email)}</div></div></div></td>
+                          <td>${t.display_code ? `<span class="mq-code">${UI.escapeHtml(t.display_code)}</span>` : '—'}</td>
                           <td>${UI.badge(UI.escapeHtml(centerName(t.center_id)), 'info')}</td>
                           <td><div class="mq-actions">
                             ${UI.actionBtn('view', `data-details="${t.id}" title="تفاصيل"`)}
@@ -236,14 +238,14 @@
                             ${UI.actionBtn('del', `data-del="${t.id}" title="حذف"`)}
                           </div></td>
                         </tr>`).join('');
-                    if (reset) body.innerHTML = batch.length ? rows : `<tr><td colspan="3" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد معلمون مطابقون</td></tr>`;
+                    if (reset) body.innerHTML = batch.length ? rows : `<tr><td colspan="4" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد معلمون مطابقون</td></tr>`;
                     else body.insertAdjacentHTML('beforeend', rows);
                     loadedCount += batch.length;
                     bindRowActions(batch);
                     counter.textContent = total ? `عرض ${loadedCount} من ${total}` : '';
                     loadMoreBtn.style.display = page < lastPage ? '' : 'none';
                 } catch (e) {
-                    if (reset) body.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#B23A48;padding:20px;">${UI.escapeHtml(e.message)}</td></tr>`;
+                    if (reset) body.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#B23A48;padding:20px;">${UI.escapeHtml(e.message)}</td></tr>`;
                 } finally { loadMoreBtn.disabled = false; }
             }
 

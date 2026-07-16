@@ -39,8 +39,8 @@
               <span id="counter" style="font-size:13px;color:#7A8F82;font-weight:600;"></span>
             </div>
             <div class="mq-card"><table class="mq-table" id="tbl">
-              <thead><tr><th>المحفّظ</th><th>النوع</th><th>الطلاب</th><th style="width:110px;">الإجراءات</th></tr></thead>
-              <tbody id="tea-body"><tr><td colspan="4" style="text-align:center;color:#7A8F82;padding:30px;">جارٍ التحميل...</td></tr></tbody>
+              <thead><tr><th>المحفّظ</th><th style="width:80px;">الكود</th><th>النوع</th><th>الطلاب</th><th style="width:110px;">الإجراءات</th></tr></thead>
+              <tbody id="tea-body"><tr><td colspan="5" style="text-align:center;color:#7A8F82;padding:30px;">جارٍ التحميل...</td></tr></tbody>
             </table></div>
             <div style="text-align:center;margin-top:16px;">
               <button class="mq-btn mq-btn-outline" id="load-more" style="display:none;">عرض المزيد ↓</button>
@@ -66,7 +66,7 @@
             if (reset) { page = 1; loadedCount = 0; }
             const seq = ++fetchSeq;
             const body = document.getElementById('tea-body');
-            if (reset) body.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#7A8F82;padding:20px;">جارٍ التحميل...</td></tr>`;
+            if (reset) body.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#7A8F82;padding:20px;">جارٍ التحميل...</td></tr>`;
             loadMoreBtn.disabled = true;
             try {
                 const p = new URLSearchParams({ page });
@@ -82,18 +82,19 @@
                         <span class="mq-avatar">${UI.initial(t.name)}</span>
                         <div><div style="font-weight:600;">${UI.escapeHtml(t.name)}</div>
                         <div style="font-size:12px;color:#9DB3A6;direction:ltr;text-align:right;">${UI.escapeHtml(t.email)}</div></div></div></td>
+                      <td>${t.display_code ? `<span class="mq-code">${UI.escapeHtml(t.display_code)}</span>` : '—'}</td>
                       <td>${UI.escapeHtml(t.type || '—')}</td>
                       <td>${UI.badge((t.students_count ?? 0) + ' طالب', 'primary')}</td>
                       <td><div class="mq-actions">${UI.actionBtn('edit', `data-edit="${t.id}" title="تعديل"`)}</div></td>
                     </tr>`).join('');
-                if (reset) body.innerHTML = batch.length ? rows : `<tr><td colspan="4" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد محفّظون مطابقون</td></tr>`;
+                if (reset) body.innerHTML = batch.length ? rows : `<tr><td colspan="5" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد محفّظون مطابقون</td></tr>`;
                 else body.insertAdjacentHTML('beforeend', rows);
                 loadedCount += batch.length;
                 bindRowActions(batch);
                 counter.textContent = total ? `عرض ${loadedCount} من ${total}` : '';
                 loadMoreBtn.style.display = page < lastPage ? '' : 'none';
             } catch (e) {
-                if (reset) body.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#B23A48;padding:20px;">${UI.escapeHtml(e.message)}</td></tr>`;
+                if (reset) body.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#B23A48;padding:20px;">${UI.escapeHtml(e.message)}</td></tr>`;
             } finally { loadMoreBtn.disabled = false; }
         }
 

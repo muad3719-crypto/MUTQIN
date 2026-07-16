@@ -66,13 +66,14 @@
                     <span class="mq-avatar">${UI.initial(m.name)}</span>
                     <div><div style="font-weight:600;">${UI.escapeHtml(m.name)}</div>
                     <div style="font-size:12px;color:#9DB3A6;direction:ltr;text-align:right;">${UI.escapeHtml(m.email)}</div></div></div></td>
+                  <td>${m.display_code ? `<span class="mq-code">${UI.escapeHtml(m.display_code)}</span>` : '—'}</td>
                   <td>${UI.badge(UI.escapeHtml(m.center?.name || '—'), 'info')}</td>
                   <td style="white-space:nowrap;">${UI.fmtDate(m.created_at)}</td>
                   <td><div class="mq-actions">
                     ${UI.actionBtn('edit', `data-edit="${m.id}" title="تعديل"`)}
                     ${UI.actionBtn('del', `data-del="${m.id}" title="حذف"`)}
                   </div></td>
-                </tr>`).join('') || `<tr><td colspan="4" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد مدراء مراكز بعد</td></tr>`;
+                </tr>`).join('') || `<tr><td colspan="5" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد مدراء مراكز بعد</td></tr>`;
 
             pc.innerHTML = `
                 <div class="mq-toolbar">
@@ -80,7 +81,7 @@
                   <button class="mq-btn mq-btn-primary" id="add">${UI.ic('plus', 17)} إضافة مدير مركز</button>
                 </div>
                 <div class="mq-card"><table class="mq-table" id="tbl">
-                  <thead><tr><th>مدير المركز</th><th>المركز</th><th>تاريخ الإنشاء</th><th style="width:110px;">الإجراءات</th></tr></thead>
+                  <thead><tr><th>مدير المركز</th><th style="width:80px;">الكود</th><th>المركز</th><th>تاريخ الإنشاء</th><th style="width:110px;">الإجراءات</th></tr></thead>
                   <tbody>${rows}</tbody></table></div>`;
 
             UI.bindTableSearch('search', 'tbl');

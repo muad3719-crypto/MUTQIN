@@ -118,6 +118,7 @@
               <td><div style="display:flex;align-items:center;gap:10px;"><span class="mq-avatar">${UI.initial(s.name)}</span>
                 <div><div style="font-weight:600;">${UI.escapeHtml(s.name)}</div>
                 <div style="font-size:12px;color:#9DB3A6;">${UI.escapeHtml(s.guardian_name || '')}</div></div></div></td>
+              <td>${s.display_code ? `<span class="mq-code">${UI.escapeHtml(s.display_code)}</span>` : '—'}</td>
               <td>${UI.escapeHtml(s.guardian_phone || '—')}</td>
               <td>${s.age ?? '—'}</td>
               <td>${UI.escapeHtml(s.center?.name || '—')}</td>
@@ -125,12 +126,12 @@
               <td><div class="mq-actions">
                 <button class="mq-btn mq-btn-primary mq-btn-sm" data-view="${s.id}" style="gap:6px;">${UI.ic('eye', 15)} التفاصيل</button>
               </div></td>
-            </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد طلاب مرتبطون بك</td></tr>`;
+            </tr>`).join('') || `<tr><td colspan="7" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد طلاب مرتبطون بك</td></tr>`;
 
         pc.innerHTML = `
             <div class="mq-toolbar"><div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="بحث عن طالب..."></div></div>
             <div class="mq-card"><table class="mq-table" id="tbl">
-              <thead><tr><th>الطالب</th><th>هاتف ولي الأمر</th><th>العمر</th><th>المركز</th><th>الحالة</th><th>التفاصيل</th></tr></thead>
+              <thead><tr><th>الطالب</th><th style="width:80px;">الكود</th><th>هاتف ولي الأمر</th><th>العمر</th><th>المركز</th><th>الحالة</th><th>التفاصيل</th></tr></thead>
               <tbody>${rows}</tbody></table></div>`;
         UI.bindTableSearch('search', 'tbl');
         pc.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => openDetails(b.dataset.view)));
