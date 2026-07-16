@@ -23,23 +23,25 @@ class DatabaseSeeder extends Seeder
 
         // خريطة نقحرة الأسماء العربية → لاتيني (الاسم الأول + العائلة)
         $translit = [
-            'أحمد محمد الصويعي'          => 'ahmed.alsuwaii',
-            'محمود علي الورفلي'          => 'mahmoud.alwarfalli',
-            'عبد السلام مفتاح التاورغي'  => 'abdulsalam.altawergi',
-            'سليم عبد الله الفرجاني'     => 'salim.alferjani',
-            'عبدالله الطاهر'            => 'abdullah.altaher',
-            'خالد البوسيفي'             => 'khaled.albusaifi',
-            'محمد الترهوني'             => 'mohammed.altarhouni',
-            'ناجي العدل'                => 'naji.aladel',
-            'أحمد الزروق'               => 'ahmed.alzarrouk',
-            'محمود الكيلاني'            => 'mahmoud.alkilani',
-            'حسن المهدوي'               => 'hassan.almahdawi',
-            'جمال القطراني'             => 'jamal.alqatrani',
-            'مسعود غيث'                 => 'masoud.gheith',
-            'مفتاح السويحلي'            => 'muftah.alsuwaihli',
-            'خالد بن دردف'             => 'khaled.bindardaf',
-            'طارق الجهمي'               => 'tariq.aljahmi',
-            'طارق بن علي'              => 'tariq.binali',
+            // المحفّظون
+            'عبدالباسط عمران الككلي'   => 'abdulbaset.alkakli',
+            'الهادي رمضان الغرياني'    => 'alhadi.algharyani',
+            'نوري الصادق العريبي'      => 'nuri.alaribi',
+            'فرج امحمد الدرقاش'        => 'faraj.aldarqash',
+            // أولياء الأمور
+            'عمر بن عاشور'             => 'omar.binashour',
+            'سالم الرقيعي'             => 'salem.alruqaii',
+            'فتحي الجضران'             => 'fathi.aljadran',
+            'عادل الفاخري'             => 'adel.alfakhri',
+            'نبيل البرعصي'             => 'nabil.albarassi',
+            'رجب المجدوب'              => 'rajab.almajdoub',
+            'صلاح الحصادي'             => 'salah.alhasadi',
+            'جلال بن غزي'              => 'jalal.binghazi',
+            'فوزي الجبالي'             => 'fawzi.aljabali',
+            'رافع أبو زقية'            => 'rafa.abuzaqia',
+            'منير الرياني'             => 'munir.alriani',
+            'بشير الفلاح'              => 'bashir.alfallah',
+            'عياد القرقني'             => 'ayad.alqarqani',
         ];
 
         // يبني بريداً ذا معنى من الاسم + المعرّف ضمن النطاق المطلوب.
@@ -65,93 +67,115 @@ class DatabaseSeeder extends Seeder
             return $user;
         };
 
+        // كلمة المرور الموحّدة لكل الحسابات التجريبية (تُعرض في صفحة الدخول)
+        $demoPassword = Hash::make('mutqin2026');
+
         // 1. إنشاء المدير
         $admin = User::create([
             'name'     => 'مدير النظام',
             'email'    => 'admin@mutqin.ly',
             'phone'    => '0913000001',
             'role'     => 'admin',
-            'password' => Hash::make('password'),
+            'password' => $demoPassword,
         ]);
 
         // 2. إنشاء مراكز حفظ ليبية
         $center1 = Center::create([
-            'name'    => 'مركز بلال بن رباح لتحفيظ القرآن',
+            'name'    => 'مركز عقبة بن نافع لتحفيظ القرآن',
             'city'    => 'طرابلس',
-            'address' => 'الفرناج',
-            'phone'   => '021333001',
+            'address' => 'تاجوراء',
+            'phone'   => '021444101',
         ]);
 
         $center2 = Center::create([
-            'name'    => 'مركز الإمام مالك لتحفيظ القرآن',
+            'name'    => 'مركز معاذ بن جبل لتحفيظ القرآن',
             'city'    => 'بنغازي',
-            'address' => 'الحدائق',
-            'phone'   => '061222002',
+            'address' => 'سيدي حسين',
+            'phone'   => '061555102',
         ]);
 
         $center3 = Center::create([
-            'name'    => 'مركز الفتح المبين لتحفيظ القرآن',
+            'name'    => 'مركز الفرقان لتحفيظ القرآن',
             'city'    => 'مصراتة',
-            'address' => 'وسط المدينة',
-            'phone'   => '051444003',
+            'address' => 'الزروق',
+            'phone'   => '051666103',
         ]);
 
         // 3. إنشاء معلمين ليبيين وربطهم بالمراكز — ببريد ذي معنى (الاسم + id)
         $teacher1 = $createUserWithEmail([
-            'phone' => '0913000002', 'role' => 'teacher', 'password' => Hash::make('password'),
+            'phone' => '0913000002', 'role' => 'teacher', 'password' => $demoPassword,
             'center_id' => $center1->id, 'type' => 'محفظ أساسي',
-        ], 'أحمد محمد الصويعي');
+        ], 'عبدالباسط عمران الككلي');
 
         $teacher2 = $createUserWithEmail([
-            'phone' => '0913000003', 'role' => 'teacher', 'password' => Hash::make('password'),
+            'phone' => '0913000003', 'role' => 'teacher', 'password' => $demoPassword,
             'center_id' => $center1->id, 'type' => 'محفظ معاون',
-        ], 'محمود علي الورفلي');
+        ], 'الهادي رمضان الغرياني');
 
         $teacher3 = $createUserWithEmail([
-            'phone' => '0913000004', 'role' => 'teacher', 'password' => Hash::make('password'),
+            'phone' => '0913000004', 'role' => 'teacher', 'password' => $demoPassword,
             'center_id' => $center2->id, 'type' => 'محفظ أساسي',
-        ], 'عبد السلام مفتاح التاورغي');
+        ], 'نوري الصادق العريبي');
 
         $teacher4 = $createUserWithEmail([
-            'phone' => '0913000005', 'role' => 'teacher', 'password' => Hash::make('password'),
+            'phone' => '0913000005', 'role' => 'teacher', 'password' => $demoPassword,
             'center_id' => $center3->id, 'type' => 'محفظ أساسي',
-        ], 'سليم عبد الله الفرجاني');
+        ], 'فرج امحمد الدرقاش');
 
-        // 4. إنشاء طلاب ليبيين
+        // 3.ب مدراء المراكز — بريد بنظام {الاسم اللاتيني}.centeradmin@mutqin.ly (بلا id)
+        $managersData = [
+            ['عبدالحكيم علي البشتي',  'abdulhakim', $center1->id, '0913000006'],
+            ['السنوسي محمد العقوري',  'alsanusi',   $center2->id, '0913000007'],
+            ['الطيب خالد الساعدي',    'altayeb',    $center3->id, '0913000008'],
+        ];
+        foreach ($managersData as [$mName, $mLatin, $mCenterId, $mPhone]) {
+            User::create([
+                'name'      => $mName,
+                'email'     => $mLatin . '.centeradmin@mutqin.ly',
+                'phone'     => $mPhone,
+                'role'      => 'center_manager',
+                'center_id' => $mCenterId,
+                'password'  => $demoPassword,
+            ]);
+        }
+
+        // 4. إنشاء طلاب ليبيين (كلهم ذكور)
         $studentsData = [
-            // طلاب الأستاذ أحمد (المركز الأول)
-            ['name' => 'يوسف عبدالله الطاهر', 'guardian_name' => 'عبدالله الطاهر', 'guardian_phone' => '0913100001', 'teacher_id' => $teacher1->id, 'center_id' => $center1->id, 'age' => 12, 'phone' => '0914000010'],
-            // أخٌ ليوسف: نفس ولي الأمر (عبدالله الطاهر، نفس الهاتف) → حساب ولي أمر واحد لطفلين
-            ['name' => 'إبراهيم عبدالله الطاهر', 'guardian_name' => 'عبدالله الطاهر', 'guardian_phone' => '0913100001', 'teacher_id' => $teacher1->id, 'center_id' => $center1->id, 'age' => 10, 'phone' => '0914000011'],
-            ['name' => 'عمر خالد البوسيفي', 'guardian_name' => 'خالد البوسيفي', 'guardian_phone' => '0913100003', 'teacher_id' => $teacher1->id, 'center_id' => $center1->id, 'age' => 14, 'phone' => '0914000012'],
-            ['name' => 'عبد الرحمن محمد الترهوني', 'guardian_name' => 'محمد الترهوني', 'guardian_phone' => '0913100004', 'teacher_id' => $teacher1->id, 'center_id' => $center1->id, 'age' => 9, 'phone' => '0914000013'],
-            ['name' => 'معاذ ناجي العدل', 'guardian_name' => 'ناجي العدل', 'guardian_phone' => '0913100005', 'teacher_id' => $teacher1->id, 'center_id' => $center1->id, 'age' => 15, 'phone' => '0914000014'],
+            // طلاب الشيخ عبدالباسط (المركز الأول)
+            ['name' => 'الزبير عمر بن عاشور', 'guardian_name' => 'عمر بن عاشور', 'guardian_phone' => '0913100001', 'teacher_id' => $teacher1->id, 'center_id' => $center1->id, 'age' => 12, 'phone' => '0914000010'],
+            // أخٌ للزبير: نفس ولي الأمر (عمر بن عاشور، نفس الهاتف) → حساب ولي أمر واحد لطفلين
+            ['name' => 'البراء عمر بن عاشور', 'guardian_name' => 'عمر بن عاشور', 'guardian_phone' => '0913100001', 'teacher_id' => $teacher1->id, 'center_id' => $center1->id, 'age' => 10, 'phone' => '0914000011'],
+            ['name' => 'حذيفة سالم الرقيعي', 'guardian_name' => 'سالم الرقيعي', 'guardian_phone' => '0913100003', 'teacher_id' => $teacher1->id, 'center_id' => $center1->id, 'age' => 14, 'phone' => '0914000012'],
+            ['name' => 'عبدالملك فتحي الجضران', 'guardian_name' => 'فتحي الجضران', 'guardian_phone' => '0913100004', 'teacher_id' => $teacher1->id, 'center_id' => $center1->id, 'age' => 9, 'phone' => '0914000013'],
+            ['name' => 'سراج عادل الفاخري', 'guardian_name' => 'عادل الفاخري', 'guardian_phone' => '0913100005', 'teacher_id' => $teacher1->id, 'center_id' => $center1->id, 'age' => 15, 'phone' => '0914000014'],
 
-            // طلاب الأستاذ محمود (المركز الأول)
-            ['name' => 'محمد أحمد الزروق', 'guardian_name' => 'أحمد الزروق', 'guardian_phone' => '0913100006', 'teacher_id' => $teacher2->id, 'center_id' => $center1->id, 'age' => 11, 'phone' => '0914000015'],
-            ['name' => 'عيسى محمود الكيلاني', 'guardian_name' => 'محمود الكيلاني', 'guardian_phone' => '0913100007', 'teacher_id' => $teacher2->id, 'center_id' => $center1->id, 'age' => 13, 'phone' => '0914000016'],
-            ['name' => 'علي حسن المهدوي', 'guardian_name' => 'حسن المهدوي', 'guardian_phone' => '0913100008', 'teacher_id' => $teacher2->id, 'center_id' => $center1->id, 'age' => 16, 'phone' => '0914000017'],
-            ['name' => 'مصطفى جمال القطراني', 'guardian_name' => 'جمال القطراني', 'guardian_phone' => '0913100009', 'teacher_id' => $teacher2->id, 'center_id' => $center1->id, 'age' => 8, 'phone' => '0914000018'],
-            ['name' => 'أنس مسعود غيث', 'guardian_name' => 'مسعود غيث', 'guardian_phone' => '0913100010', 'teacher_id' => $teacher2->id, 'center_id' => $center1->id, 'age' => 17, 'phone' => '0914000019'],
+            // طلاب الشيخ الهادي (المركز الأول)
+            ['name' => 'أويس نبيل البرعصي', 'guardian_name' => 'نبيل البرعصي', 'guardian_phone' => '0913100006', 'teacher_id' => $teacher2->id, 'center_id' => $center1->id, 'age' => 11, 'phone' => '0914000015'],
+            ['name' => 'صهيب رجب المجدوب', 'guardian_name' => 'رجب المجدوب', 'guardian_phone' => '0913100007', 'teacher_id' => $teacher2->id, 'center_id' => $center1->id, 'age' => 13, 'phone' => '0914000016'],
+            ['name' => 'الأمين صلاح الحصادي', 'guardian_name' => 'صلاح الحصادي', 'guardian_phone' => '0913100008', 'teacher_id' => $teacher2->id, 'center_id' => $center1->id, 'age' => 16, 'phone' => '0914000017'],
+            ['name' => 'وسيم جلال بن غزي', 'guardian_name' => 'جلال بن غزي', 'guardian_phone' => '0913100009', 'teacher_id' => $teacher2->id, 'center_id' => $center1->id, 'age' => 8, 'phone' => '0914000018'],
+            ['name' => 'معتصم فوزي الجبالي', 'guardian_name' => 'فوزي الجبالي', 'guardian_phone' => '0913100010', 'teacher_id' => $teacher2->id, 'center_id' => $center1->id, 'age' => 17, 'phone' => '0914000019'],
 
-            // طلاب الأستاذ عبد السلام (المركز الثاني)
-            ['name' => 'عبد المهيمن مفتاح السويحلي', 'guardian_name' => 'مفتاح السويحلي', 'guardian_phone' => '0913100011', 'teacher_id' => $teacher3->id, 'center_id' => $center2->id, 'age' => 12, 'phone' => '0914000020'],
-            ['name' => 'أسامة خالد بن دردف', 'guardian_name' => 'خالد بن دردف', 'guardian_phone' => '0913100012', 'teacher_id' => $teacher3->id, 'center_id' => $center2->id, 'age' => 14, 'phone' => '0914000021'],
-            ['name' => 'مالك طارق الجهمي', 'guardian_name' => 'طارق الجهمي', 'guardian_phone' => '0913100013', 'teacher_id' => $teacher3->id, 'center_id' => $center2->id, 'age' => 15, 'phone' => '0914000022'],
+            // طلاب الشيخ نوري (المركز الثاني)
+            ['name' => 'المنتصر رافع أبو زقية', 'guardian_name' => 'رافع أبو زقية', 'guardian_phone' => '0913100011', 'teacher_id' => $teacher3->id, 'center_id' => $center2->id, 'age' => 12, 'phone' => '0914000020'],
+            ['name' => 'قصي منير الرياني', 'guardian_name' => 'منير الرياني', 'guardian_phone' => '0913100012', 'teacher_id' => $teacher3->id, 'center_id' => $center2->id, 'age' => 14, 'phone' => '0914000021'],
+            ['name' => 'عبدالمولى بشير الفلاح', 'guardian_name' => 'بشير الفلاح', 'guardian_phone' => '0913100013', 'teacher_id' => $teacher3->id, 'center_id' => $center2->id, 'age' => 15, 'phone' => '0914000022'],
 
-            // طلاب الأستاذ سليم (المركز الثالث)
-            ['name' => 'منذر طارق بن علي', 'guardian_name' => 'طارق بن علي', 'guardian_phone' => '0913100014', 'teacher_id' => $teacher4->id, 'center_id' => $center3->id, 'age' => 13, 'phone' => '0914000023'],
-            // طالب بالغ بلا ولي أمر — لإثبات المسار الاختياري (parent_id = null، بلا حساب ولي)
-            ['name' => 'معتز عادل المقرحي', 'teacher_id' => $teacher4->id, 'center_id' => $center3->id, 'age' => 19, 'phone' => '0914000024'],
+            // طلاب الشيخ فرج (المركز الثالث)
+            ['name' => 'الطاهر عياد القرقني', 'guardian_name' => 'عياد القرقني', 'guardian_phone' => '0913100014', 'teacher_id' => $teacher4->id, 'center_id' => $center3->id, 'age' => 13, 'phone' => '0914000023'],
+            // طالب بالغ أجنبي بلا ولي أمر — لإثبات المسارين الاختياريين (parent_id = null + جنسية غير ليبية)
+            ['name' => 'سليمان جمعة التونسي', 'teacher_id' => $teacher4->id, 'center_id' => $center3->id, 'age' => 19, 'phone' => '0914000024',
+             'nationality_type' => 'foreigner', 'nationality_name' => 'تونس'],
         ];
 
         // إنشاء الطلاب:
         //  - ولي الأمر اختياري: إن لم تُذكر بياناته → parent_id = null بلا حساب.
         //  - المطابقة بالهاتف: ولي أمر واحد (نفس الهاتف) ↔ عدة أبناء = حساب واحد ببريد واحد.
-        //  - رقم وطني ليبي صالح فريد لكل طالب، مع ترك «منذر طارق بن علي» بلا رقم وطني (null).
+        //  - رقم وطني ليبي صالح فريد لكل طالب يبدأ بـ 1 (ذكر — لا إناث في البيانات)،
+        //    مع ترك «الطاهر عياد القرقني» بلا رقم وطني والأجنبي بلا رقم ليبي.
         $createdStudents = [];
         $parentsByPhone = [];                      // كاش: الهاتف => مستخدم ولي الأمر
-        $natIdNullName = 'منذر طارق بن علي';        // الطالب بلا رقم وطني
+        $natIdNullName = 'الطاهر عياد القرقني';     // الطالب الليبي بلا رقم وطني
         foreach ($studentsData as $i => $s) {
             $parentId = null;
             if (!empty($s['guardian_phone']) || !empty($s['guardian_name'])) {
@@ -164,17 +188,17 @@ class DatabaseSeeder extends Seeder
                 }
                 if (!$parent) {
                     $parent = $createUserWithEmail([
-                        'phone' => $phone, 'role' => 'parent', 'password' => Hash::make('password'),
+                        'phone' => $phone, 'role' => 'parent', 'password' => $demoPassword,
                     ], $s['guardian_name'], 'parent.mutqin.ly'); // نطاق أولياء الأمور
                 }
                 if ($phone) $parentsByPhone[$phone] = $parent;
                 $parentId = $parent->id;
             }
 
-            // رقم وطني: '1'(ذكر)/'2'(أنثى) + 11 رقماً فريداً — إلا الطالب المحدّد فـ null
-            $nationalId = ($s['name'] === $natIdNullName)
+            // رقم وطني: يبدأ دائماً بـ '1' (ذكر) + 11 رقماً فريداً — إلا المحدّد بلا رقم والأجنبي
+            $nationalId = ($s['name'] === $natIdNullName || ($s['nationality_type'] ?? 'libyan') !== 'libyan')
                 ? null
-                : (($i % 2 === 0 ? '1' : '2') . str_pad((string) (99000000001 + $i), 11, '0', STR_PAD_LEFT));
+                : ('1' . str_pad((string) (99000000001 + $i), 11, '0', STR_PAD_LEFT));
 
             $createdStudents[] = Student::create(array_merge($s, [
                 'national_id'     => $nationalId,

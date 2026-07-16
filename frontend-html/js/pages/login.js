@@ -15,7 +15,7 @@
     // تعبئة الحقول عند الضغط على حساب تجريبي
     function fill(email) {
         document.getElementById('email').value = email;
-        document.getElementById('password').value = 'password';
+        document.getElementById('password').value = 'mutqin2026';
     }
 
     // جلب الحسابات التجريبية وعرضها مجمّعة حسب الدور

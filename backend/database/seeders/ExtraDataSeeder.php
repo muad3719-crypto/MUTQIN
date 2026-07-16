@@ -31,26 +31,29 @@ class ExtraDataSeeder extends Seeder
             return $u;
         };
 
+        // كلمة المرور الموحّدة لكل الحسابات التجريبية (تُعرض في صفحة الدخول)
+        $demoPassword = Hash::make('mutqin2026');
+
         // ===== 1) مراكز جديدة =====
         $centersData = [
-            ['name' => 'مركز التوحيد لتحفيظ القرآن', 'city' => 'الزاوية', 'address' => 'حي الأندلس', 'phone' => '023111201'],
-            ['name' => 'مركز النور لتحفيظ القرآن', 'city' => 'سبها', 'address' => 'وسط المدينة', 'phone' => '071222202'],
-            ['name' => 'مركز الهدى لتحفيظ القرآن', 'city' => 'درنة', 'address' => 'حي الفنار', 'phone' => '081333203'],
-            ['name' => 'مركز السلام لتحفيظ القرآن', 'city' => 'البيضاء', 'address' => 'حي الزهور', 'phone' => '084444204'],
-            ['name' => 'مركز الإيمان لتحفيظ القرآن', 'city' => 'زليتن', 'address' => 'قرب الجامع الكبير', 'phone' => '052555205'],
+            ['name' => 'مركز التقوى لتحفيظ القرآن', 'city' => 'الخمس', 'address' => 'سوق الخميس', 'phone' => '031777301'],
+            ['name' => 'مركز الاستقامة لتحفيظ القرآن', 'city' => 'غريان', 'address' => 'حي الياسمين', 'phone' => '041888302'],
+            ['name' => 'مركز البشائر لتحفيظ القرآن', 'city' => 'سرت', 'address' => 'الجيزة البحرية', 'phone' => '054999303'],
+            ['name' => 'مركز الرضوان لتحفيظ القرآن', 'city' => 'طبرق', 'address' => 'حي النصر', 'phone' => '087111304'],
+            ['name' => 'مركز المتقين لتحفيظ القرآن', 'city' => 'أجدابيا', 'address' => 'وسط المدينة', 'phone' => '064222305'],
         ];
         $centers = collect($centersData)->map(fn ($c) => Center::create($c))->values();
 
         // ===== 2) معلمون جدد (اسم عربي + نقحرة + نوع) =====
         $teachersData = [
-            ['أحمد عمر القماطي', 'ahmed.alqamati', 'محفظ أساسي'],
-            ['عبدالرحمن أبوبكر الزنتاني', 'abdulrahman.alzentani', 'محفظ أساسي'],
-            ['يوسف خليفة المسماري', 'youssef.almismari', 'محفظ معاون'],
-            ['إدريس علي الشريف', 'idris.alsharif', 'محفظ أساسي'],
-            ['بشير حسن العماري', 'bashir.alammari', 'محفظ أساسي'],
-            ['منصور سالم القبائلي', 'mansour.alqabaili', 'محفظ معاون'],
-            ['خالد مفتاح الدرسي', 'khaled.aldarsi', 'محفظ أساسي'],
-            ['الصديق محمد الزوي', 'alsiddiq.alzawi', 'محفظ أساسي'],
+            ['عبدالناصر سعد الزوام', 'abdulnaser.alzuwam', 'محفظ أساسي'],
+            ['الصادق عوض المغربي', 'alsadiq.almaghrabi', 'محفظ أساسي'],
+            ['عصام فرج بالنور', 'issam.balnour', 'محفظ معاون'],
+            ['نادر حسين الأوجلي', 'nader.alawjali', 'محفظ أساسي'],
+            ['المهدي عاشور الكوافي', 'almahdi.alkawafi', 'محفظ أساسي'],
+            ['رمزي إبراهيم العرفي', 'ramzi.alorfi', 'محفظ معاون'],
+            ['وليد عبدالسلام بن حليم', 'walid.binhalim', 'محفظ أساسي'],
+            ['عادل منصور الأسطى', 'adel.alosta', 'محفظ أساسي'],
         ];
         $teachers = [];
         $primaryCenters = []; // المراكز التي حصلت على محفّظ أساسي (قاعدة: واحد فقط لكل مركز)
@@ -69,24 +72,24 @@ class ExtraDataSeeder extends Seeder
                 'name'      => $name,
                 'phone'     => '09255' . str_pad((string) (300 + $k), 5, '0', STR_PAD_LEFT),
                 'role'      => 'teacher',
-                'password'  => Hash::make('password'),
+                'password'  => $demoPassword,
                 'center_id' => $centerId,
                 'type'      => $type,
             ], $latin);
         }
 
-        // ===== 3) أُسر وطلاب (أبناء أخوة لنفس الأب) =====
+        // ===== 3) أُسر وطلاب (أبناء أخوة لنفس الأب) — أسماء ذكور فقط =====
         $firstNames = [
-            ['محمد', 'mohammed'], ['عمر', 'omar'], ['يوسف', 'youssef'], ['خالد', 'khaled'],
-            ['إبراهيم', 'ibrahim'], ['عبدالله', 'abdullah'], ['مصطفى', 'mustafa'], ['علي', 'ali'],
-            ['حمزة', 'hamza'], ['أنس', 'anas'], ['بلال', 'bilal'], ['طارق', 'tariq'],
-            ['سيف', 'saif'], ['ياسين', 'yassin'], ['زكريا', 'zakaria'], ['آدم', 'adam'],
+            ['حذيفة', 'hudhayfa'], ['عثمان', 'othman'], ['صهيب', 'suhaib'], ['معاذ', 'muadh'],
+            ['سراج', 'siraj'], ['أيمن', 'ayman'], ['وليد', 'walid'], ['منير', 'munir'],
+            ['رمزي', 'ramzi'], ['عصام', 'issam'], ['نادر', 'nader'], ['فؤاد', 'fuad'],
+            ['سالم', 'salem'], ['عياد', 'ayyad'], ['البراء', 'albaraa'], ['أويس', 'uwais'],
         ];
         $families = [
-            ['الفيتوري', 'alfituri'], ['المبروك', 'almabrouk'], ['الدرناوي', 'aldarnawi'], ['الزوي', 'alzwai'],
-            ['القاضي', 'alqadi'], ['بن طاهر', 'bintaher'], ['المقري', 'almaqari'], ['الهنشيري', 'alhanshiri'],
-            ['العبيدي', 'alobaidi'], ['المسلاتي', 'almisllati'], ['الترهوني', 'altarhouni2'], ['الزليتني', 'alzliteni'],
-            ['الشلوي', 'alshalwi'], ['القبلاوي', 'alqablawi'],
+            ['العجيلي', 'alojaili'], ['الرقيعي', 'alruqaii'], ['بن عاشور', 'binashour'], ['الجضران', 'aljadran'],
+            ['الفاخري', 'alfakhri'], ['البرعصي', 'albarassi'], ['المجدوب', 'almajdoub'], ['الحصادي', 'alhasadi'],
+            ['بن غزي', 'binghazi'], ['الجبالي', 'aljabali'], ['أبو زقية', 'abuzaqia'], ['الرياني', 'alriani'],
+            ['الفلاح', 'alfallah'], ['الكوافي', 'alkawafi'],
         ];
 
         // قاعدة أرقام وطنية جديدة للذكور فقط (تبدأ بـ 1) — لا تتعارض مع الموجود
@@ -107,7 +110,7 @@ class ExtraDataSeeder extends Seeder
                 'name'     => $guardianName,
                 'phone'    => $guardianPhone,
                 'role'     => 'parent',
-                'password' => Hash::make('password'),
+                'password' => $demoPassword,
             ], $fFirstLat . '.' . $famLat, 'parent.mutqin.ly'); // نطاق أولياء الأمور
             $parentCount++;
 

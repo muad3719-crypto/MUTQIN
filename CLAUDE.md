@@ -29,7 +29,7 @@ C:\xampp\php\php.exe artisan tinker --execute='...' # quick DB/logic checks (use
 
 Serving the frontend: it is static, so `cd frontend-html && C:\xampp\php\php.exe -S localhost:8080` or Apache at `http://localhost/MUTQENQ/frontend-html/`. The API URL lives in one place — `frontend-html/js/config.js` (`API_BASE_URL`). Auth state is kept in `localStorage` under keys `mutqin_token` / `mutqin_user`.
 
-Demo accounts (password `password`): `admin@mutqin.ly` (admin), teachers `@mutqin.ly`, parents `@parent.mutqin.ly`. The login page pulls a live list from `/api/public/demo-accounts`.
+Demo accounts (password `mutqin2026`): `admin@mutqin.ly` (admin), managers `{name}.centeradmin@mutqin.ly`, teachers `@mutqin.ly`, parents `@parent.mutqin.ly`. The login page pulls a live list from `/api/public/demo-accounts`. (Feature tests create their own users with password `password` — independent of seeders.)
 
 > The `تشغيل-المشروع.bat` launcher is partly stale — its web step runs `cd frontend && php artisan serve`, but there is no `frontend/` Laravel app (the real client is the static `frontend-html/`). Its MySQL + API (9090) steps are fine.
 
