@@ -22,6 +22,7 @@
         ],
         teacher: [
             ['dashboard',   'الرئيسية', 'home', 'teacher/dashboard.html'],
+            ['profile',     'ملفّي الشخصي', 'teachers', 'teacher/profile.html'],
             ['students',    'طلابي', 'students', 'teacher/students.html'],
             ['requests',    'طلباتي', 'requests', 'teacher/requests.html'],
             ['attendance',  'الحضور والغياب', 'attendance', 'teacher/attendance.html'],

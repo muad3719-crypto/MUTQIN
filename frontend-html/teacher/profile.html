@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ملفّي الشخصي | مُتقِن</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+<link href="../css/theme.css" rel="stylesheet">
+<style>
+  .pf-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:22px;align-items:start;}
+  .pf-info{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;}
+  .pf-item{background:var(--ivory-soft);border:1px solid rgba(212,175,55,.28);border-radius:13px;padding:13px 16px;}
+  .pf-item .lbl{font-size:12px;color:#7A8F82;font-weight:700;margin-bottom:4px;}
+  .pf-item .val{font-weight:700;color:#04361F;font-size:15px;}
+  @media(max-width:1024px){.pf-grid{grid-template-columns:1fr;}}
+  @media(max-width:767.98px){.pf-info{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div id="app-shell"></div>
+
+<script src="../js/config.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/layout.js"></script>
+<script>
+(function () {
+    const user = Auth.requireAuth(['teacher']);
+    if (!user) return;
+    const pc = Layout.mount({ user, active: 'profile', title: 'ملفّي الشخصي' });
+
+    async function load() {
+        pc.innerHTML = '<div class="mq-card"><div class="mq-card-body">جارٍ التحميل...</div></div>';
+        let d;
+        try { d = (await API.get('/profile')).data; }
+        catch (e) { UI.toast(e.message, 'danger'); return; }
+
+        pc.innerHTML = `
+          <div class="pf-grid">
+            <!-- بطاقة العرض (للقراءة فقط) -->
+            <div class="mq-card">
+              <div class="mq-card-body">
+                <div style="display:flex;align-items:center;gap:16px;margin-bottom:22px;">
+                  <span class="mq-avatar" style="width:64px;height:64px;font-size:26px;border-radius:16px;">${UI.initial(d.name)}</span>
+                  <div>
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                      <h2 style="font-family:'Amiri',serif;font-size:26px;margin:0;color:#04361F;">${UI.escapeHtml(d.name || '—')}</h2>
+                      ${d.display_code ? `<span class="mq-code" style="font-size:13.5px;">${UI.escapeHtml(d.display_code)}</span>` : ''}
+                    </div>
+                    <div style="font-size:13px;color:#7A8F82;font-weight:600;margin-top:4px;">${UI.escapeHtml(d.type || 'محفّظ')}</div>
+                  </div>
+                </div>
+                <div class="pf-info">
+                  <div class="pf-item"><div class="lbl">🕌 المركز</div><div class="val">${UI.escapeHtml(d.center_name || '—')}</div></div>
+                  <div class="pf-item"><div class="lbl">📿 النوع</div><div class="val">${UI.escapeHtml(d.type || '—')}</div></div>
+                  <div class="pf-item"><div class="lbl">👥 عدد الطلاب</div><div class="val">${d.students_count ?? 0} طالب</div></div>
+                  <div class="pf-item"><div class="lbl">✉️ البريد الإلكتروني</div><div class="val" style="direction:ltr;text-align:right;font-size:13.5px;">${UI.escapeHtml(d.email || '—')}</div></div>
+                </div>
+                <p style="font-size:12.5px;color:#9DB3A6;font-weight:600;margin:16px 0 0;">هذه البيانات يديرها مدير النظام — لتصحيحها تواصل مع الإدارة.</p>
+              </div>
+            </div>
+
+            <!-- بطاقتا التعديل: الهاتف + كلمة المرور -->
+            <div style="display:flex;flex-direction:column;gap:22px;">
+              <div class="mq-card">
+                <div class="mq-card-header"><h3 class="mq-card-title" style="font-size:19px;">📱 رقم الهاتف</h3></div>
+                <form class="mq-card-body" id="phone-form">
+                  <label class="mq-label">الرقم الحالي</label>
+                  <input class="mq-input" name="phone" value="${UI.escapeHtml(d.phone || '')}" placeholder="0912345678" style="direction:ltr;text-align:right;">
+                  <div class="mq-field-error" data-error="phone"></div>
+                  <button type="submit" class="mq-btn mq-btn-primary mq-btn-sm" style="margin-top:12px;">حفظ الرقم</button>
+                </form>
+              </div>
+
+              <div class="mq-card">
+                <div class="mq-card-header"><h3 class="mq-card-title" style="font-size:19px;">🔒 تغيير كلمة المرور</h3></div>
+                <form class="mq-card-body" id="pass-form">
+                  <label class="mq-label">كلمة المرور الحالية</label>
+                  <input class="mq-input" name="current_password" type="password" autocomplete="current-password">
+                  <div class="mq-field-error" data-error="current_password"></div>
+                  <label class="mq-label" style="margin-top:10px;">كلمة المرور الجديدة</label>
+                  <input class="mq-input" name="password" type="password" autocomplete="new-password">
+                  <div class="mq-field-error" data-error="password"></div>
+                  <label class="mq-label" style="margin-top:10px;">تأكيد الكلمة الجديدة</label>
+                  <input class="mq-input" name="password_confirmation" type="password" autocomplete="new-password">
+                  <div style="font-size:12px;color:#9A7A1E;font-weight:600;margin-top:10px;">⚠ بعد التغيير ستُسجَّل خروجاً وتدخل بالكلمة الجديدة.</div>
+                  <button type="submit" class="mq-btn mq-btn-gold mq-btn-sm" style="margin-top:12px;">تغيير كلمة المرور</button>
+                </form>
+              </div>
+            </div>
+          </div>`;
+
+        // ===== تعديل الهاتف =====
+        document.getElementById('phone-form').addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            UI.setFieldErrors(null);
+            const phone = ev.target.phone.value.trim();
+            try {
+                const res = await API.put('/profile/phone', { phone });
+                UI.toast(res.message || 'تم تحديث رقم الهاتف');
+                ev.target.phone.value = res.data.phone; // الرقم المطبَّع (0912...)
+            } catch (e) {
+                UI.setFieldErrors(e.errors);
+                if (!e.errors || !Object.keys(e.errors).length) UI.toast(e.message, 'danger');
+            }
+        });
+
+        // ===== تغيير كلمة المرور — التوكن يُبطل فنحوّل لتسجيل الدخول =====
+        document.getElementById('pass-form').addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            UI.setFieldErrors(null);
+            const f = ev.target;
+            try {
+                const res = await API.post('/profile/password', {
+                    current_password: f.current_password.value,
+                    password: f.password.value,
+                    password_confirmation: f.password_confirmation.value,
+                });
+                UI.toast(res.message || 'تم تغيير كلمة المرور');
+                setTimeout(() => {
+                    localStorage.removeItem(window.MutqinConfig.STORAGE_TOKEN);
+                    localStorage.removeItem(window.MutqinConfig.STORAGE_USER);
+                    location.href = window.MutqinConfig.APP_ROOT + 'login.html';
+                }, 1600);
+            } catch (e) {
+                UI.setFieldErrors(e.errors);
+                if (!e.errors || !Object.keys(e.errors).length) UI.toast(e.message, 'danger');
+            }
+        });
+    }
+    load();
+})();
+</script>
+</body>
+</html>
