@@ -10,11 +10,12 @@
 
     // كائن خطأ موحّد يحمل الرسالة العربية وقائمة أخطاء الحقول
     class ApiError extends Error {
-        constructor(message, status, errors) {
+        constructor(message, status, errors, payload = null) {
             super(message || 'حدث خطأ غير متوقع');
             this.name = 'ApiError';
             this.status = status;
             this.errors = errors || {};
+            this.data = payload; // حمولة data من الغلاف (مثل conflicts في 409 الحضور)
         }
     }
 
@@ -65,7 +66,8 @@
             throw new ApiError(
                 data.message || 'فشل تنفيذ الطلب (' + res.status + ')',
                 res.status,
-                data.errors || {}
+                data.errors || {},
+                data.data || null
             );
         }
 

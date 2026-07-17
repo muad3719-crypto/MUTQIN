@@ -356,6 +356,30 @@
         try { await fn(); } catch (err) { toast(err.message || 'تعذّر الحذف', 'danger'); }
     }
 
+    // ===== نافذة تأكيد بالهوية (أزرار عربية) — تعيد Promise<boolean> =====
+    // بديل window.confirm حيث تلزم أزرار عربية مخصّصة ومحتوى HTML (كقائمة تعارضات الحضور)
+    function confirmAction({ title = 'تأكيد', html = '', okText = 'تأكيد', cancelText = 'إلغاء' } = {}) {
+        return new Promise((resolve) => {
+            const ov = document.createElement('div');
+            ov.style.cssText = 'position:fixed;inset:0;z-index:1700;background:rgba(4,54,31,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:24px;';
+            ov.innerHTML = `
+              <div class="mq-card" style="width:100%;max-width:480px;margin:0;">
+                <div class="mq-card-header"><h3 class="mq-card-title" style="font-size:19px;">${escapeHtml(title)}</h3></div>
+                <div class="mq-card-body" style="font-size:14.5px;color:#3D6B52;line-height:1.9;">${html}
+                  <div style="display:flex;gap:10px;justify-content:flex-start;margin-top:20px;">
+                    <button type="button" class="mq-btn mq-btn-primary" data-ok>${escapeHtml(okText)}</button>
+                    <button type="button" class="mq-btn mq-btn-outline" data-cancel>${escapeHtml(cancelText)}</button>
+                  </div>
+                </div>
+              </div>`;
+            const done = (val) => { ov.remove(); resolve(val); };
+            ov.querySelector('[data-ok]').onclick = () => done(true);
+            ov.querySelector('[data-cancel]').onclick = () => done(false);
+            ov.addEventListener('click', (e) => { if (e.target === ov) done(false); });
+            document.body.appendChild(ov);
+        });
+    }
+
     // ===== أيقونات SVG خطّية (هوية مُتقِن) =====
     const ICON_PATHS = {
         home: '<path d="M3 11l9-8 9 8"/><path d="M5 10v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9"/>',
@@ -392,7 +416,7 @@
     }
 
     window.UI = {
-        toast, confirmDialog, confirmDelete, formModal, runAttendanceImport, attachAthmanSearch, openPdf,
+        toast, confirmDialog, confirmDelete, confirmAction, formModal, runAttendanceImport, attachAthmanSearch, openPdf,
         bindPasswordToggle, bindTableSearch, setFieldErrors,
         attendanceBadge, qualityBadge, resultBadge, badge, escapeHtml, initial, fmtDate, todayStr,
         ic, star, actionBtn, ICON_PATHS,
