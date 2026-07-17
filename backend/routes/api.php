@@ -92,6 +92,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('teacher')->group(function () {
         // «ملفّي الشخصي» — بيانات صاحب التوكن حصراً (لا معرّف من الطلب)
         Route::get('/profile', [\App\Http\Controllers\Api\TeacherProfileController::class, 'show']);
+        Route::put('/profile/phone', [\App\Http\Controllers\Api\TeacherProfileController::class, 'updatePhone']);       // الهاتف فقط
+        Route::post('/profile/password', [\App\Http\Controllers\Api\TeacherProfileController::class, 'changePassword']); // يعيد استخدام recordPasswordChange('self')
 
         Route::apiResource('students', StudentController::class)->except(['store']); // استثناء إضافة طالب للمعلم
 
