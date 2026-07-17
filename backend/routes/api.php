@@ -90,6 +90,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // مسارات المعلم والمدير (Teacher & Admin)
     Route::middleware('teacher')->group(function () {
+        // «ملفّي الشخصي» — بيانات صاحب التوكن حصراً (لا معرّف من الطلب)
+        Route::get('/profile', [\App\Http\Controllers\Api\TeacherProfileController::class, 'show']);
+
         Route::apiResource('students', StudentController::class)->except(['store']); // استثناء إضافة طالب للمعلم
 
         // طلبات الطلاب — إنشاء/متابعة من المحفّظ (لا تغيير فعلي على students؛ ينتظر موافقة الأدمن)
