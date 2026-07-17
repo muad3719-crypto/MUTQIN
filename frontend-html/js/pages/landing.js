@@ -51,5 +51,30 @@
         });
     }
 
+    // ===== الظهور التدريجي عند التمرير (scroll reveal) =====
+    // تحسين تدريجي: الوسم بـ .reveal يتم هنا (لا في HTML) — فبلا JS أو مع
+    // prefers-reduced-motion تبقى الصفحة ظاهرة كاملة بلا أي إخفاء.
+    (function () {
+        if (!('IntersectionObserver' in window)) return;
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+        const targets = document.querySelectorAll(
+            '.card-soft, .gallery-grid figure, .sec > div:first-child, #stats [id^="stat-"], .ayah > *'
+        );
+        const io = new IntersectionObserver((entries) => {
+            entries.forEach(en => {
+                if (!en.isIntersecting) return;
+                en.target.classList.add('in');
+                io.unobserve(en.target);
+            });
+        }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+        targets.forEach((el, i) => {
+            el.classList.add('reveal');
+            el.style.transitionDelay = ((i % 4) * 70) + 'ms'; // تدرّج خفيف داخل الصف الواحد
+            io.observe(el);
+        });
+    })();
+
     loadStats();
 })();

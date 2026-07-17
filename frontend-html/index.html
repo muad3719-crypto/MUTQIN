@@ -90,6 +90,22 @@
   /* تجاوب شبكة الأدوار (بعد تعريفها الأساسي كي تغلبه داخل نقاط التوقف) */
   @media(max-width:1024px){.roles-grid{grid-template-columns:repeat(2,1fr);}}
   @media(max-width:767.98px){.roles-grid{grid-template-columns:1fr;}}
+
+  /* ===== الأنيميشن: ظهور تدريجي عند التمرير (CSS-first، محتشم) =====
+     landing.js يضيف .in عبر IntersectionObserver؛ التأخير المتدرّج يُضبط هناك */
+  .reveal{opacity:0;transform:translateY(18px);}
+  .reveal.in{opacity:1;transform:none;transition:opacity .38s ease-out,transform .38s ease-out;}
+  /* hover موحّد: رفع خفيف + ظل ذهبي ناعم (card-soft يملكه أصلاً — نضبط الظل ذهبياً) */
+  .card-soft:hover{box-shadow:0 22px 50px -30px rgba(154,122,30,.55);}
+  /* احترام من يعطّل الحركة: كل شيء يظهر ثابتاً فوراً والنجوم لا تدور */
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto;}
+    .reveal{opacity:1 !important;transform:none !important;transition:none !important;}
+    svg{animation:none !important;}
+    .gallery-grid img,.card-soft,.mq-btn,.pill{transition:none !important;}
+    .card-soft:hover{transform:none;}
+    .gallery-grid figure:hover img{transform:none;}
+  }
 </style>
 </head>
 <body style="font-family:'Cairo',sans-serif;color:#0A3D27;overflow-x:hidden;">
