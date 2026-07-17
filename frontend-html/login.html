@@ -8,11 +8,16 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
 <link href="css/theme.css" rel="stylesheet">
 <style>
-  body { display:flex; align-items:center; justify-content:center; min-height:100vh; padding:40px 24px; }
+  /* نفس نمط النجمة الثمانية الخلفي في الصفحة الرئيسية — اتساق بصري */
+  body { display:flex; align-items:center; justify-content:center; min-height:100vh; padding:40px 24px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='132' height='132' viewBox='0 0 132 132'%3E%3Cg fill='none' stroke='%23D4AF37' stroke-opacity='.09' stroke-width='1.3'%3E%3Crect x='44' y='44' width='44' height='44'/%3E%3Crect x='44' y='44' width='44' height='44' transform='rotate(45 66 66)'/%3E%3C/g%3E%3C/svg%3E"); }
   @keyframes mtqnSpin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
-  .login-btn { transition:all .2s; }
+  .login-btn { transition:all .2s; min-height:44px; }
   .login-btn:hover { background:#D4AF37 !important; color:#04361F !important; }
+  .mq-back-home { min-height:40px; }
   .mq-back-home:hover { background:#04532F !important; color:#FBF7DA !important; border-color:#04532F !important; }
+  /* احترام من يعطّل الحركة */
+  @media (prefers-reduced-motion: reduce){ svg{animation:none !important;} .login-btn,.mq-back-home{transition:none !important;} }
   @media (max-width:860px){
     .login-grid { grid-template-columns:1fr !important; }
     .brand-side { order:1 !important; padding:40px 32px !important; }
