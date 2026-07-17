@@ -14,6 +14,10 @@
             setStat('stat-centers', s.centers);
             setStat('stat-users', s.users);
             setStat('stat-students', s.students);
+            // شريط الثقة المصغّر في الـhero (نفس الأرقام)
+            setStat('mstat-centers', s.centers);
+            setStat('mstat-users', s.users);
+            setStat('mstat-students', s.students);
         } catch (e) {
             // تبقى القيم الافتراضية في حال فشل الاتصال
         }
@@ -22,6 +26,20 @@
     function setStat(id, val) {
         const el = document.getElementById(id);
         if (el && val != null) el.textContent = ar(val) + '+';
+    }
+
+    // قائمة الموبايل (☰): فتح/إغلاق، وتُغلق عند اختيار رابط
+    const burger = document.getElementById('lnav-burger');
+    const mobileNav = document.getElementById('lnav-mobile');
+    if (burger && mobileNav) {
+        burger.addEventListener('click', () => {
+            const open = mobileNav.classList.toggle('open');
+            burger.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+        mobileNav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+            mobileNav.classList.remove('open');
+            burger.setAttribute('aria-expanded', 'false');
+        }));
     }
 
     // لو كان المستخدم مسجّلاً، غيّر زر "تسجيل الدخول" إلى "لوحتي"
