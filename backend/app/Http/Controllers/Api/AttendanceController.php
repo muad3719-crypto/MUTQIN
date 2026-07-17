@@ -38,6 +38,13 @@ class AttendanceController extends Controller
         ]);
     }
 
+    /**
+     * حفظ الحضور الجماعي — «تكرار مسموح مع تأكيد» (Upsert بتأكيد):
+     * القيد الفريد (student_id, date) يضمن سجلاً واحداً لكل طالب في اليوم.
+     * تغيير حالةٍ محفوظة (حاضر↔غائب↔متأخر) يحتاج confirm=true صريحاً —
+     * وإلا أُرجع 409 مع قائمة التعارضات بلا أي كتابة (الأمان في الطرفين:
+     * الواجهة تعرض التأكيد، وقاعدة البيانات تمنع التضاعف بالقيد الفريد).
+     */
     public function store(Request $request)
     {
         $user = $request->user();
@@ -45,34 +52,68 @@ class AttendanceController extends Controller
         $request->validate([
             'date'        => 'required|date',
             'attendance'  => 'required|array',
+            'confirm'     => 'nullable|boolean',
         ]);
 
+        // 1) تثبيت الصفوف المصرّح بها (نفس قواعد الملكية) — جلبة واحدة بلا N+1
+        $students = Student::whereIn('id', array_keys($request->attendance))->get()->keyBy('id');
+        $rows = []; // student_id => ['status' =>، 'student' =>]
         foreach ($request->attendance as $studentId => $status) {
-            // Validate that status is valid
             if (!in_array($status, ['present', 'absent', 'late'])) {
                 continue;
             }
-
-            // Optional: verify teacher owns student
-            $student = Student::find($studentId);
+            $student = $students->get((int) $studentId);
             if (!$student) continue;
-
             if (!$user->isAdmin() && $student->teacher_id !== $user->id) {
-                continue; // Skip unauthorized — الطالب ليس من طلاب هذا المعلم
+                continue; // الطالب ليس من طلاب هذا المعلم
             }
-
-            Attendance::updateOrCreate(
-                [
-                    'student_id' => $studentId,
-                    'date'       => $request->date,
-                ],
-                [
-                    'teacher_id' => $user->isAdmin() ? ($student->teacher_id ?? $user->id) : $user->id,
-                    'center_id'  => $student->center_id, // كما في الاستيراد — وإلا فقدت تقاريرُ المراكز الحضورَ اليدوي
-                    'status'     => $status,
-                ]
-            );
+            $rows[$student->id] = ['status' => $status, 'student' => $student];
         }
+
+        // 2) «موجود مسبقاً»: سجل بنفس اليوم بحالة مختلفة عن المُرسلة → تعارض
+        //    (نفس الحالة = لا تغيير؛ طالب بلا سجل = يُنشأ بحرية بلا تأكيد)
+        $existing = Attendance::where('date', $request->date)
+            ->whereIn('student_id', array_keys($rows))
+            ->get()
+            ->keyBy('student_id');
+
+        $conflicts = [];
+        foreach ($rows as $sid => $r) {
+            $cur = $existing->get($sid);
+            if ($cur && $cur->status !== $r['status']) {
+                $conflicts[] = [
+                    'student_id'     => $sid,
+                    'name'           => $r['student']->name,
+                    'current_status' => $cur->status,
+                    'new_status'     => $r['status'],
+                ];
+            }
+        }
+
+        if ($conflicts && !$request->boolean('confirm')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'تم تسجيل حضور بعض الطلاب من قبل في هذا اليوم — تغيير الحالة يحتاج تأكيداً',
+                'data'    => ['conflicts' => $conflicts],
+            ], 409);
+        }
+
+        // 3) الكتابة كلها في transaction: تنجح معاً أو تُلغى معاً
+        \Illuminate\Support\Facades\DB::transaction(function () use ($rows, $request, $user) {
+            foreach ($rows as $sid => $r) {
+                Attendance::updateOrCreate(
+                    [
+                        'student_id' => $sid,
+                        'date'       => $request->date,
+                    ],
+                    [
+                        'teacher_id' => $user->isAdmin() ? ($r['student']->teacher_id ?? $user->id) : $user->id,
+                        'center_id'  => $r['student']->center_id, // كما في الاستيراد — وإلا فقدت تقاريرُ المراكز الحضورَ اليدوي
+                        'status'     => $r['status'],
+                    ]
+                );
+            }
+        });
 
         return response()->json([
             'success' => true,
