@@ -64,6 +64,8 @@ class AttendanceImportController extends Controller
         }
 
         $imported = 0;
+        $importedNew = 0;     // سجلات حضور أُنشئت لأول مرة
+        $updated = 0;         // حضور كان مسجّلاً فحُدّث (القاعدة المعتمدة: تحديث لا تضعيف)
         $skipped = 0;
         $errors = [];
         $nameWarnings = [];   // اختلاف الاسم: يُستورد ويُحذَّر (قرار معتمد — لا إيقاف)
@@ -85,7 +87,7 @@ class AttendanceImportController extends Controller
         // واحدة: فشل جزئي في المنتصف لا يترك حضور يومٍ نصف مكتوب.
         \Illuminate\Support\Facades\DB::transaction(function () use (
             $rows, $user,
-            &$imported, &$skipped, &$errors, &$nameWarnings,
+            &$imported, &$importedNew, &$updated, &$skipped, &$errors, &$nameWarnings,
             &$present, &$late, &$absentFromFile, &$absentComputed, &$ignoredOther,
             &$datesInFile, &$seenByDate, &$centerIds
         ) {
@@ -110,6 +112,7 @@ class AttendanceImportController extends Controller
                 $skipped++;
                 $errors[] = [
                     'row' => $rowNum,
+                    'number' => null, 'name' => null,
                     'reason' => 'بيانات الصف غير مكتملة، يرجى ملء كافة الأعمدة.',
                 ];
                 continue;
@@ -126,6 +129,7 @@ class AttendanceImportController extends Controller
                 $skipped++;
                 $errors[] = [
                     'row' => $rowNum,
+                    'number' => null, 'name' => $studentName,
                     'reason' => 'حقل رقم الطالب فارغ.',
                 ];
                 continue;
@@ -142,6 +146,7 @@ class AttendanceImportController extends Controller
                 $skipped++;
                 $errors[] = [
                     'row' => $rowNum,
+                    'number' => $idRaw, 'name' => $studentName,
                     'reason' => "صيغة رقم الطالب غير مفهومة: {$idRaw} (المقبول: 121 أو S121)",
                 ];
                 continue;
@@ -153,6 +158,7 @@ class AttendanceImportController extends Controller
                 $skipped++;
                 $errors[] = [
                     'row' => $rowNum,
+                    'number' => $deviceNum, 'name' => $studentName,
                     'reason' => "الرقم {$deviceNum} غير مسجّل في النظام",
                 ];
                 continue;
@@ -166,6 +172,7 @@ class AttendanceImportController extends Controller
                 $skipped++;
                 $errors[] = [
                     'row'    => $rowNum,
+                    'number' => $deviceNum, 'name' => $studentName,
                     'reason' => "الطالب {$student->display_code} ({$student->name}) من مركز آخر — خارج نطاق صلاحيتك",
                 ];
                 continue;
@@ -207,6 +214,7 @@ class AttendanceImportController extends Controller
                 $skipped++;
                 $errors[] = [
                     'row' => $rowNum,
+                    'number' => $deviceNum, 'name' => $studentName,
                     'reason' => "تنسيق التاريخ غير صحيح: " . ($dateRaw ?? 'فارغ'),
                 ];
                 continue;
@@ -238,6 +246,7 @@ class AttendanceImportController extends Controller
                 $skipped++;
                 $errors[] = [
                     'row' => $rowNum,
+                    'number' => $deviceNum, 'name' => $studentName,
                     'reason' => "الحالة غير معروفة: '{$statusRaw}' (المقبول: حاضر، غائب، متأخر).",
                 ];
                 continue;
@@ -261,7 +270,7 @@ class AttendanceImportController extends Controller
 
             // 6. الحفظ أو التحديث بقاعدة البيانات (Upsert)
             try {
-                Attendance::updateOrCreate(
+                $rec = Attendance::updateOrCreate(
                     [
                         'student_id' => $student->id,
                         'date'       => $date,
@@ -276,6 +285,7 @@ class AttendanceImportController extends Controller
                     ]
                 );
                 $imported++;
+                if ($rec->wasRecentlyCreated) { $importedNew++; } else { $updated++; }
 
                 // إحصاء حسب الحالة + تتبّع لاحتساب الغائبين
                 if ($status === 'present')      $present++;
@@ -290,6 +300,7 @@ class AttendanceImportController extends Controller
                 $skipped++;
                 $errors[] = [
                     'row' => $rowNum,
+                    'number' => $deviceNum, 'name' => $studentName,
                     'reason' => 'فشل الحفظ في قاعدة البيانات بسبب خطأ تقني.',
                 ];
             }
@@ -346,7 +357,9 @@ class AttendanceImportController extends Controller
         // ==========================================================
         return response()->json([
             'success'                => true,
-            'imported'               => $imported,                    // صفوف الملف المحفوظة
+            'imported'               => $imported,                    // صفوف الملف المحفوظة (جديد + محدَّث)
+            'imported_new'           => $importedNew,                 // سجلات جديدة
+            'updated'                => $updated,                     // حضور كان مسجّلاً فحُدّث
             'present'                => $present,
             'late'                   => $late,
             'absent'                 => $absentFromFile + $absentComputed, // إجمالي الغائبين ضمن النطاق
