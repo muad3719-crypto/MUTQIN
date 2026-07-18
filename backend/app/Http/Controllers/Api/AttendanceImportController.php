@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Student;
 use App\Models\Attendance;
+use App\Support\ArabicText;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use Carbon\Carbon;
@@ -65,6 +66,7 @@ class AttendanceImportController extends Controller
         $imported = 0;
         $skipped = 0;
         $errors = [];
+        $nameWarnings = [];   // اختلاف الاسم: يُستورد ويُحذَّر (قرار معتمد — لا إيقاف)
         $user = $request->user();
 
         // عدّادات الملخّص
@@ -227,6 +229,20 @@ class AttendanceImportController extends Controller
 
             $status = $statusMap[$statusRaw];
 
+            // 5.ب تحقق الاسم — «أداة كشف خطأ، لا أداة مطابقة»: الرقم هو أساس
+            // المطابقة الوحيد، والصف يُستورد على كل حال. اختلاف الاسم (بعد
+            // التطبيع، مع تسامح بادئة ≥ كلمتين لأن أجهزة البصمة تبتر الأسماء
+            // الطويلة) يُدرَج في قسم تحذيرات بارز — لأنه غالباً خطأ إدخال في
+            // الجهاز يتكرر في كل رفعة، لا مجرد صف تالف.
+            if (!$this->namesMatch($studentName, $student->name)) {
+                $nameWarnings[] = [
+                    'row'         => $rowNum,
+                    'number'      => $deviceNum,
+                    'file_name'   => $studentName,
+                    'system_name' => $student->name,
+                ];
+            }
+
             // 6. الحفظ أو التحديث بقاعدة البيانات (Upsert)
             try {
                 Attendance::updateOrCreate(
@@ -320,6 +336,31 @@ class AttendanceImportController extends Controller
             'ignored_other_teachers' => $ignoredOther,                 // مُتجاهَلون بصمت (ليسوا أخطاء)
             'skipped'                => count($errors),                // أخطاء حقيقية فقط
             'errors'                 => $errors,                       // أخطاء حقيقية فقط
+            'name_warnings'          => $nameWarnings,                 // اختلاف الاسم — استُورد مع تحذير
         ]);
+    }
+
+    /**
+     * مقارنة اسم الملف باسم النظام بعد تطبيع ArabicText (همزات/تشكيل/تاء
+     * مربوطة/مسافات)، مع تسامح البادئة: أجهزة البصمة تبتر الأسماء الطويلة،
+     * فالأقصر يُعد مطابقاً إن كان بادئةً للأطول عند حدود الكلمات وبطول
+     * كلمتين على الأقل («حذيفة سالم» تطابق «حذيفة سالم الرقيعي»).
+     * اسم فارغ في الملف = لا يمكن التحقق → يمرّ بلا تحذير.
+     */
+    private function namesMatch(string $fileName, string $systemName): bool
+    {
+        $a = ArabicText::normalize($fileName);
+        $b = ArabicText::normalize($systemName);
+
+        if ($a === '' || $a === $b) {
+            return true;
+        }
+
+        [$short, $long] = mb_strlen($a) <= mb_strlen($b) ? [$a, $b] : [$b, $a];
+        if (count(array_filter(explode(' ', $short))) < 2) {
+            return false; // كلمة واحدة لا تكفي للتسامح — تحذير
+        }
+
+        return str_starts_with($long, $short . ' ');
     }
 }
