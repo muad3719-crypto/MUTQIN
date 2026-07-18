@@ -120,19 +120,29 @@ class AttendanceImportController extends Controller
                 continue;
             }
 
-            // مطابقة رقم البصمة: بالرقم الوطني أولاً (وهو رقم تسجيل البصمة الرسمي)،
-            // ثم الرجوع لمعرّف الطالب id إن لم يوجد رقم وطني مطابق.
-            $idRaw = trim((string) $studentIdRaw);
-            $student = Student::where('national_id', $idRaw)->first();
-            if (!$student && is_numeric($idRaw)) {
-                $student = Student::find((int) $idRaw);
+            // القرار المعتمد: رقم المستخدم في جهاز البصمة = الجزء الرقمي من كود
+            // العرض (الطالب S121 يُسجَّل في الجهاز بالرقم 121). المطابقة بكود
+            // العرض «حصراً» — أُلغي مسارا الرقم الوطني وmعرّف قاعدة البيانات
+            // (كان الثاني ينسب الحضور لطالب خاطئ بصمت عند افتراق الترقيمين).
+            // تُقبل الصيغ: 121 وS121/s121 وبالأرقام العربية أيضاً.
+            $idRaw  = trim((string) $studentIdRaw);
+            $digits = strtr($idRaw, ['٠'=>'0','١'=>'1','٢'=>'2','٣'=>'3','٤'=>'4','٥'=>'5','٦'=>'6','٧'=>'7','٨'=>'8','٩'=>'9']);
+            if (!preg_match('/^\s*[sS]?\s*(\d+)\s*$/u', $digits, $m)) {
+                $skipped++;
+                $errors[] = [
+                    'row' => $rowNum,
+                    'reason' => "صيغة رقم الطالب غير مفهومة: {$idRaw} (المقبول: 121 أو S121)",
+                ];
+                continue;
             }
+            $deviceNum = (int) $m[1];
+            $student = Student::where('display_code', 'S' . $deviceNum)->first();
 
             if (!$student) {
                 $skipped++;
                 $errors[] = [
                     'row' => $rowNum,
-                    'reason' => "رقم الطالب غير موجود: {$idRaw}",
+                    'reason' => "الرقم {$deviceNum} غير مسجّل في النظام",
                 ];
                 continue;
             }
