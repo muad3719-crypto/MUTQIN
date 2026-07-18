@@ -166,8 +166,8 @@
               <form class="mq-card-body" id="mq-modal-form">
                 ${fieldHtml}
                 <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:8px;">
-                  <button type="button" class="mq-btn mq-btn-outline" data-close>إلغاء</button>
-                  <button type="submit" class="mq-btn mq-btn-primary">${submitText}</button>
+                  <button type="button" class="mq-btn mq-btn--secondary" data-close>إلغاء</button>
+                  <button type="submit" class="mq-btn mq-btn--primary">${submitText}</button>
                 </div>
               </form>
             </div>`;
@@ -194,6 +194,7 @@
             new FormData(form).forEach((val, key) => values[key] = val);
             const btn = form.querySelector('button[type="submit"]');
             btn.disabled = true;
+            btn.classList.add('is-loading'); // مؤشر التحميل من منظومة الأزرار
             try {
                 await onSubmit(values, { setErrors, close });
             } catch (err) {
@@ -201,6 +202,7 @@
                 toast(err.message || 'فشل الحفظ', 'danger');
             } finally {
                 btn.disabled = false;
+                btn.classList.remove('is-loading');
             }
         });
 
@@ -262,7 +264,7 @@
               ${ignored}
               ${errs}
               <div style="display:flex;justify-content:flex-end;margin-top:18px;">
-                <button class="mq-btn mq-btn-primary" data-close>تم</button></div>
+                <button class="mq-btn mq-btn--primary" data-close>تم</button></div>
             </div></div>`;
         document.body.appendChild(overlay);
         const close = () => overlay.remove();
@@ -367,8 +369,8 @@
                 <div class="mq-card-header"><h3 class="mq-card-title" style="font-size:19px;">${escapeHtml(title)}</h3></div>
                 <div class="mq-card-body" style="font-size:14.5px;color:#3D6B52;line-height:1.9;">${html}
                   <div style="display:flex;gap:10px;justify-content:flex-start;margin-top:20px;">
-                    <button type="button" class="mq-btn mq-btn-primary" data-ok>${escapeHtml(okText)}</button>
-                    <button type="button" class="mq-btn mq-btn-outline" data-cancel>${escapeHtml(cancelText)}</button>
+                    <button type="button" class="mq-btn mq-btn--primary" data-ok>${escapeHtml(okText)}</button>
+                    <button type="button" class="mq-btn mq-btn--secondary" data-cancel>${escapeHtml(cancelText)}</button>
                   </div>
                 </div>
               </div>`;
@@ -409,10 +411,12 @@
         return `<svg viewBox="0 0 48 48" width="${size}" height="${size}"><rect x="13" y="13" width="22" height="22" fill="none" stroke="${color}" stroke-width="${sw}"/><rect x="13" y="13" width="22" height="22" fill="none" stroke="${color}" stroke-width="${sw}" transform="rotate(45 24 24)"/></svg>`;
     }
     // زر إجراء أيقوني صغير (view/edit/del)
+    // أزرار إجراءات صفوف الجداول — «هادئة» من منظومة الأزرار:
+    // شفافة بلون خافت، تتلوّن أخضر (أو أحمر للحذف) عند التحويم فقط
     function actionBtn(kind, attrs = '') {
-        const map = { view: ['eye', '4,83,47', '#04532F'], edit: ['edit', '212,175,55', '#9A7A1E'], del: ['trash', '178,58,72', '#B23A48'] };
-        const [icon, rgb, fg] = map[kind] || map.view;
-        return `<button class="mq-act" ${attrs} style="background:rgba(${rgb},.1);color:${fg};">${ic(icon, 15)}</button>`;
+        const map = { view: 'eye', edit: 'edit', del: 'trash' };
+        const quiet = kind === 'del' ? 'mq-btn--quiet-danger' : 'mq-btn--quiet';
+        return `<button class="mq-btn ${quiet} mq-btn--icon mq-btn--sm" ${attrs}>${ic(map[kind] || map.view, 17)}</button>`;
     }
 
     window.UI = {

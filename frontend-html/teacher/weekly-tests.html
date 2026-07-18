@@ -40,12 +40,12 @@
               </div>
               <div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0;">
                 <strong style="color:#04361F;">الأثمان المختبَرة</strong>
-                <button type="button" class="mq-btn mq-btn-outline mq-btn-sm" id="addrow">➕ إضافة ثمن</button>
+                <button type="button" class="mq-btn mq-btn--secondary mq-btn--sm" id="addrow">➕ إضافة ثمن</button>
               </div>
               <div id="rows"></div>
               <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:16px;">
-                <button type="button" class="mq-btn mq-btn-outline" data-close>إلغاء</button>
-                <button type="submit" class="mq-btn mq-btn-primary">💾 تسجيل الاختبار</button>
+                <button type="button" class="mq-btn mq-btn--secondary" data-close>إلغاء</button>
+                <button type="submit" class="mq-btn mq-btn--primary">💾 تسجيل الاختبار</button>
               </div>
             </form>
           </div>`;
@@ -128,7 +128,7 @@
             pc.innerHTML = `
                 <div class="mq-toolbar">
                   <div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="بحث باسم الطالب..."></div>
-                  <button class="mq-btn mq-btn-primary" id="add">${UI.ic('plus', 17)} اختبار جديد</button></div>
+                  <button class="mq-btn mq-btn--primary" id="add">${UI.ic('plus', 17)} اختبار جديد</button></div>
                 <div class="mq-card"><table class="mq-table" id="tbl">
                   <thead><tr><th>الطالب</th><th>التاريخ</th><th>الأثمان</th><th>النتيجة</th><th>حذف</th></tr></thead>
                   <tbody>${rows}</tbody></table></div>`;

@@ -105,7 +105,7 @@
                 </div>`;
             overlay.querySelector('[data-close]').addEventListener('click', close);
         } catch (e) {
-            overlay.querySelector('.mq-card').innerHTML = `<div class="mq-card-body" style="text-align:center;"><p style="color:#B23A48;">${UI.escapeHtml(e.message)}</p><button class="mq-btn mq-btn-outline" data-close>إغلاق</button></div>`;
+            overlay.querySelector('.mq-card').innerHTML = `<div class="mq-card-body" style="text-align:center;"><p style="color:#B23A48;">${UI.escapeHtml(e.message)}</p><button class="mq-btn mq-btn--secondary" data-close>إغلاق</button></div>`;
             overlay.querySelector('[data-close]').addEventListener('click', close);
         }
     }
@@ -124,7 +124,7 @@
               <td>${UI.escapeHtml(s.center?.name || '—')}</td>
               <td>${s.is_active ? UI.badge('نشط', 'success') : UI.badge('غير نشط', 'danger')}</td>
               <td><div class="mq-actions">
-                <button class="mq-btn mq-btn-primary mq-btn-sm" data-view="${s.id}" style="gap:6px;">${UI.ic('eye', 15)} التفاصيل</button>
+                <button class="mq-btn mq-btn--primary mq-btn--sm" data-view="${s.id}" style="gap:6px;">${UI.ic('eye', 15)} التفاصيل</button>
               </div></td>
             </tr>`).join('') || `<tr><td colspan="7" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد طلاب مرتبطون بك</td></tr>`;
 

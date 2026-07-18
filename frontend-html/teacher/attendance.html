@@ -53,16 +53,16 @@
                 <div class="mq-card" style="margin-bottom:20px;"><div class="mq-card-body" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
                   <label class="mq-label" style="margin:0;">📅 التاريخ:</label>
                   <input type="date" id="date" class="mq-input" value="${date}" style="max-width:200px;">
-                  <button class="mq-btn mq-btn-outline" id="go">عرض</button>
-                  <button class="mq-btn mq-btn-gold mq-btn-sm" id="import" style="gap:7px;">${UI.ic('upload', 16)} رفع ملف الحضور</button>
+                  <button class="mq-btn mq-btn--secondary" id="go">عرض</button>
+                  <button class="mq-btn mq-btn--gold mq-btn--sm" id="import" style="gap:7px;">${UI.ic('upload', 16)} رفع ملف الحضور</button>
                   <span style="flex:1;"></span>
-                  <button class="mq-btn mq-btn-outline mq-btn-sm" id="all-present">✅ الكل حاضر</button>
-                  <button class="mq-btn mq-btn-outline mq-btn-sm" id="all-absent">❌ الكل غائب</button>
+                  <button class="mq-btn mq-btn--secondary mq-btn--sm" id="all-present">✅ الكل حاضر</button>
+                  <button class="mq-btn mq-btn--secondary mq-btn--sm" id="all-absent">❌ الكل غائب</button>
                 </div></div>
                 <div class="mq-card"><table class="mq-table"><thead><tr><th style="width:55%;">الطالب</th><th style="text-align:center;">الحالة</th></tr></thead>
                   <tbody>${rows}</tbody></table>
                   <div style="padding:18px 24px;border-top:1px solid rgba(212,175,55,.3);display:flex;justify-content:flex-end;">
-                    <button class="mq-btn mq-btn-primary" id="save">💾 حفظ الحضور</button></div></div>`;
+                    <button class="mq-btn mq-btn--primary" id="save">💾 حفظ الحضور</button></div></div>`;
 
             document.getElementById('go').onclick = () => { date = document.getElementById('date').value; load(); };
             document.getElementById('import').onclick = () => UI.runAttendanceImport(() => load());

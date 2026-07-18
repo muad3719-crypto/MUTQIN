@@ -41,28 +41,28 @@
           <label class="mq-label">المركز</label>
           <select class="mq-input" id="ct-id" style="margin-bottom:12px;"><option value="all">كل المراكز</option></select>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;">${filters('ct')}</div>
-          <button class="mq-btn mq-btn-primary mq-btn-block" id="btn-center">${UI.ic('report',17)} فتح تقرير المركز (PDF)</button>
+          <button class="mq-btn mq-btn--primary mq-btn--block" id="btn-center">${UI.ic('report',17)} فتح تقرير المركز (PDF)</button>
         </div></div>
 
         <div class="mq-card"><div class="mq-card-body">
           <h3 class="mq-card-title" style="margin-bottom:6px;">👨‍🏫 أداء المعلمين</h3>
           <p style="color:#7A8F82;font-size:13px;margin:0 0 16px;">مقارنة المعلمين: عدد الطلاب، نسبة حضورهم، الاختبارات ونسبة النجاح.</p>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;">${filters('tp')}</div>
-          <button class="mq-btn mq-btn-primary mq-btn-block" id="btn-teachers">${UI.ic('report',17)} فتح تقرير الأداء (PDF)</button>
+          <button class="mq-btn mq-btn--primary mq-btn--block" id="btn-teachers">${UI.ic('report',17)} فتح تقرير الأداء (PDF)</button>
         </div></div>
 
         <div class="mq-card"><div class="mq-card-body">
           <h3 class="mq-card-title" style="margin-bottom:6px;">⚠️ الطلاب المتعثّرون</h3>
           <p style="color:#7A8F82;font-size:13px;margin:0 0 16px;">طلاب بحضور أقل من 70% أو رسوب متكرّر — مع سبب التعثّر.</p>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;">${filters('ar')}</div>
-          <button class="mq-btn mq-btn-primary mq-btn-block" id="btn-atrisk">${UI.ic('report',17)} فتح تقرير المتعثّرين (PDF)</button>
+          <button class="mq-btn mq-btn--primary mq-btn--block" id="btn-atrisk">${UI.ic('report',17)} فتح تقرير المتعثّرين (PDF)</button>
         </div></div>
 
         <div class="mq-card"><div class="mq-card-body">
           <h3 class="mq-card-title" style="margin-bottom:6px;">📊 الإحصائيات العامة</h3>
           <p style="color:#7A8F82;font-size:13px;margin:0 0 16px;">ملخّص النظام: المراكز، المعلمون، الطلاب، الاختبارات ونسبة النجاح.</p>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;">${filters('ov')}</div>
-          <button class="mq-btn mq-btn-primary mq-btn-block" id="btn-overview">${UI.ic('report',17)} فتح التقرير العام (PDF)</button>
+          <button class="mq-btn mq-btn--primary mq-btn--block" id="btn-overview">${UI.ic('report',17)} فتح التقرير العام (PDF)</button>
         </div></div>
 
       </div>`;

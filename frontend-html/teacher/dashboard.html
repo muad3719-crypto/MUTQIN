@@ -36,7 +36,7 @@
 
         const alert = (!d.attendanceToday && s.total_students > 0)
             ? `<div class="alert" style="background:rgba(212,175,55,.16);color:#9A7A1E;border-right:4px solid #9A7A1E;padding:14px 18px;border-radius:12px;font-weight:600;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;">
-                 ⚠️ لم تُسجّل الحضور اليوم بعد <a class="mq-btn mq-btn-primary mq-btn-sm" href="attendance.html">تسجيل الآن</a></div>` : '';
+                 ⚠️ لم تُسجّل الحضور اليوم بعد <a class="mq-btn mq-btn--primary mq-btn--sm" href="attendance.html">تسجيل الآن</a></div>` : '';
 
         pc.innerHTML = `
             ${alert}
@@ -49,10 +49,10 @@
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
               <div class="mq-card"><div class="mq-card-header"><h3 class="mq-card-title">طلابي</h3>
-                <a class="mq-btn mq-btn-outline mq-btn-sm" href="students.html">الكل</a></div>
+                <a class="mq-btn mq-btn--secondary mq-btn--sm" href="students.html">الكل</a></div>
                 <table class="mq-table"><thead><tr><th>الاسم</th><th>العمر</th></tr></thead><tbody>${students}</tbody></table></div>
               <div class="mq-card"><div class="mq-card-header"><h3 class="mq-card-title">آخر سجلات الحفظ</h3>
-                <a class="mq-btn mq-btn-primary mq-btn-sm" href="memorization.html">+ تسجيل</a></div>
+                <a class="mq-btn mq-btn--primary mq-btn--sm" href="memorization.html">+ تسجيل</a></div>
                 <table class="mq-table"><thead><tr><th>الطالب</th><th>السورة</th><th>التقييم</th></tr></thead><tbody>${memos}</tbody></table></div>
             </div>`;
     } catch (e) { UI.toast(e.message, 'danger'); }

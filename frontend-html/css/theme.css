@@ -27,20 +27,115 @@ h1,h2,h3,h4,.mq-display { font-family:var(--font-display); font-weight:700; colo
 a { text-decoration:none; }
 ::selection { background:var(--gold); color:var(--emerald-dark); }
 
-/* ===== الأزرار ===== */
-.mq-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; font-family:var(--font-body);
-    font-size:15px; font-weight:700; padding:12px 26px; border-radius:var(--radius-pill);
-    border:1.5px solid transparent; cursor:pointer; transition:all .2s; text-decoration:none; line-height:1; }
-.mq-btn-primary { background:var(--emerald); border-color:var(--emerald); color:var(--ivory); }
-.mq-btn-primary:hover { background:var(--gold); border-color:var(--gold); color:var(--emerald-dark); }
-.mq-btn-gold { background:var(--gold); border-color:var(--gold); color:var(--emerald-dark); }
-.mq-btn-gold:hover { background:#c39f2c; }
-.mq-btn-danger { background:var(--c-danger); border-color:var(--c-danger); color:#fff; }
-.mq-btn-danger:hover { background:#9c303c; }
-.mq-btn-outline { background:transparent; border-color:rgba(4,83,47,.4); color:var(--emerald); }
-.mq-btn-outline:hover { background:rgba(4,83,47,.06); border-color:var(--emerald); }
-.mq-btn-sm { padding:8px 18px; font-size:13px; }
-.mq-btn-block { width:100%; }
+/* ============================================================
+   منظومة الأزرار — مستوردة من مشروع التصميم «منظومة أزرار مُتقن»
+   (claude.ai/design) — 5 أنواع × 6 حالات × 3 مقاسات.
+   مواءمتان عن الأصل: مقاس md مدمج في الأساس (أي زر بلا مقاس = متوسط)،
+   و.mq-btn--block إضافة محلية. الحالات المفروضة (.is-hover..) للكتالوج
+   فقط ولم تُنقل — الحالات الحقيقية عبر pseudo-classes.
+   ============================================================ */
+:root{
+  --mq-green:#04532F;   --mq-green-hover:#063E24; --mq-green-active:#032B19;
+  --mq-green-tint:#E7F0EA; --mq-green-tint-2:#D8E7DD;
+  --mq-gold:#D4AF37;    --mq-gold-hover:#C19D2C;  --mq-gold-active:#A98823;
+  --mq-gold-tint:#F8EFD3;
+  --mq-red:#B23A48;     --mq-red-hover:#96303C;   --mq-red-active:#7C2732;
+  --mq-red-tint:#F6E7E9;
+  --mq-ink:#1E2B23;     --mq-muted:#6B7A70;
+  --mq-disabled-bg:#ECEAE0; --mq-disabled-fg:#A6A691;
+  --mq-btn-radius:10px;
+  --mq-focus-ring:0 0 0 3px #FFFFFF, 0 0 0 6px var(--mq-gold);
+  --mq-shadow-sm:0 1px 2px rgba(4,83,47,.16);
+  --mq-shadow-md:0 4px 12px rgba(4,83,47,.22);
+}
+
+/* الأساس — مقاس md الافتراضي مدمج (46px) */
+.mq-btn{ -webkit-appearance:none; appearance:none;
+  display:inline-flex; align-items:center; justify-content:center; gap:9px;
+  font-family:var(--font-body); font-weight:700; line-height:1;
+  height:46px; padding:0 22px; font-size:15.5px;
+  border:1.5px solid transparent; border-radius:var(--mq-btn-radius);
+  cursor:pointer; user-select:none; white-space:nowrap; text-decoration:none;
+  position:relative;
+  transition:background-color .18s ease,border-color .18s ease,
+             color .18s ease,box-shadow .18s ease,transform .12s ease; }
+.mq-btn svg{flex:none}
+.mq-btn:focus-visible{outline:none;box-shadow:var(--mq-focus-ring)}
+.mq-btn:disabled{cursor:not-allowed;box-shadow:none;transform:none}
+
+/* المقاسات (الحد الأدنى 40px للمس) */
+.mq-btn--sm{height:40px;padding:0 16px;font-size:14px}
+.mq-btn--md{height:46px;padding:0 22px;font-size:15.5px}
+.mq-btn--lg{height:54px;padding:0 30px;font-size:17px}
+.mq-btn--icon{padding:0;width:46px}
+.mq-btn--icon.mq-btn--sm{width:40px}
+.mq-btn--icon.mq-btn--lg{width:54px}
+.mq-btn--block{width:100%}
+
+/* أساسي (أخضر) */
+.mq-btn--primary{background:var(--mq-green);color:#FFFFFF;box-shadow:var(--mq-shadow-sm)}
+.mq-btn--primary:hover{background:var(--mq-green-hover);box-shadow:var(--mq-shadow-md);transform:translateY(-1px)}
+.mq-btn--primary:active{background:var(--mq-green-active);box-shadow:var(--mq-shadow-sm);transform:translateY(0)}
+.mq-btn--primary:disabled{background:var(--mq-disabled-bg);color:var(--mq-disabled-fg)}
+
+/* ثانوي (outline) */
+.mq-btn--secondary{background:#FFFFFF;border-color:var(--mq-green);color:var(--mq-green)}
+.mq-btn--secondary:hover{background:var(--mq-green-tint)}
+.mq-btn--secondary:active{background:var(--mq-green-tint-2)}
+.mq-btn--secondary:disabled{border-color:var(--mq-disabled-bg);color:var(--mq-disabled-fg);background:#FFFFFF}
+
+/* تمييز (ذهبي) */
+.mq-btn--gold{background:var(--mq-gold);color:var(--mq-green);box-shadow:var(--mq-shadow-sm)}
+.mq-btn--gold:hover{background:var(--mq-gold-hover);box-shadow:var(--mq-shadow-md);transform:translateY(-1px)}
+.mq-btn--gold:active{background:var(--mq-gold-active);transform:translateY(0)}
+.mq-btn--gold:disabled{background:var(--mq-disabled-bg);color:var(--mq-disabled-fg)}
+
+/* خطر (أحمر) */
+.mq-btn--danger{background:var(--mq-red);color:#FFFFFF;box-shadow:var(--mq-shadow-sm)}
+.mq-btn--danger:hover{background:var(--mq-red-hover);box-shadow:var(--mq-shadow-md);transform:translateY(-1px)}
+.mq-btn--danger:active{background:var(--mq-red-active);transform:translateY(0)}
+.mq-btn--danger:disabled{background:var(--mq-disabled-bg);color:var(--mq-disabled-fg)}
+/* نمط تأكيد الحذف: إطار أحمر قبل التأكيد النهائي */
+.mq-btn--danger-outline{background:#FFFFFF;border-color:var(--mq-red);color:var(--mq-red)}
+.mq-btn--danger-outline:hover{background:var(--mq-red-tint)}
+.mq-btn--danger-outline:active{background:#EED4D8}
+.mq-btn--danger-outline:disabled{border-color:var(--mq-disabled-bg);color:var(--mq-disabled-fg)}
+
+/* نصّي (text button) */
+.mq-btn--text{background:transparent;color:var(--mq-green);padding-inline:12px}
+.mq-btn--text:hover{background:var(--mq-green-tint)}
+.mq-btn--text:active{background:var(--mq-green-tint-2)}
+.mq-btn--text:disabled{background:transparent;color:var(--mq-disabled-fg)}
+
+/* أزرار الجداول الهادئة (icon-only) — تتلوّن عند التحويم فقط */
+.mq-btn--quiet{background:transparent;color:var(--mq-muted)}
+.mq-btn--quiet:hover{background:var(--mq-green-tint);color:var(--mq-green)}
+.mq-btn--quiet:active{background:var(--mq-green-tint-2)}
+.mq-btn--quiet-danger{background:transparent;color:var(--mq-muted)}
+.mq-btn--quiet-danger:hover{background:var(--mq-red-tint);color:var(--mq-red)}
+.mq-btn--quiet-danger:active{background:#EED4D8}
+
+/* حالة التحميل */
+.mq-btn.is-loading{pointer-events:none;color:transparent !important}
+.mq-btn.is-loading::after{
+  content:"";position:absolute;inset:0;margin:auto;
+  width:1.15em;height:1.15em;border-radius:50%;
+  border:2.5px solid rgba(255,255,255,.35);border-top-color:#FFFFFF;
+  animation:mq-spin .7s linear infinite; }
+.mq-btn--secondary.is-loading::after,
+.mq-btn--text.is-loading::after,
+.mq-btn--danger-outline.is-loading::after,
+.mq-btn--gold.is-loading::after{
+  border-color:rgba(4,83,47,.25);border-top-color:var(--mq-green); }
+.mq-btn--danger-outline.is-loading::after{border-color:rgba(178,58,72,.25);border-top-color:var(--mq-red)}
+@keyframes mq-spin{to{transform:rotate(360deg)}}
+
+/* احترام تقليل الحركة */
+@media (prefers-reduced-motion:reduce){
+  .mq-btn{transition:none}
+  .mq-btn:hover{transform:none}
+  .mq-btn.is-loading::after{animation-duration:1.6s}
+}
 
 /* ===== الشارات ===== */
 .mq-badge { display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:700;
@@ -217,8 +312,7 @@ a { text-decoration:none; }
     .mq-card[style*="max-width"] { max-width:calc(100vw - 24px) !important; }
     /* الحقول المتجاورة داخل البطاقات والنماذج تتكدّس عمودياً */
     .mq-card [style*="grid-template-columns"] { grid-template-columns:1fr !important; }
-    /* أزرار بارتفاع لمس مريح */
-    .mq-btn { min-height:44px; }
+    /* ارتفاعات الأزرار ثابتة ≥40px من منظومة الأزرار — لا حاجة لقاعدة لمس هنا */
     .mq-card-header { padding:14px 16px; }
     .mq-card-body { padding:18px 16px; }
 

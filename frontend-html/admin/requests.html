@@ -71,13 +71,13 @@
                   <td style="white-space:nowrap;">${UI.fmtDate(r.created_at)}</td>
                   <td>${r.status === 'pending'
                         ? `<div class="mq-actions">
-                             <button class="mq-btn mq-btn-primary mq-btn-sm" data-approve="${r.id}">موافقة</button>
-                             <button class="mq-btn mq-btn-outline mq-btn-sm" data-reject="${r.id}">رفض</button>
+                             <button class="mq-btn mq-btn--primary mq-btn--sm" data-approve="${r.id}">موافقة</button>
+                             <button class="mq-btn mq-btn--secondary mq-btn--sm" data-reject="${r.id}">رفض</button>
                            </div>`
                         : statusBadge(r.status) + (r.status === 'rejected' && r.admin_note ? `<div style="font-size:12px;color:#B23A48;margin-top:4px;">${UI.escapeHtml(r.admin_note)}</div>` : '')}</td>
                 </tr>`).join('') || `<tr><td colspan="7" style="text-align:center;color:#7A8F82;padding:30px;">لا توجد طلبات</td></tr>`;
 
-            const tab = (key, label) => `<button class="mq-btn ${statusFilter === key ? 'mq-btn-primary' : 'mq-btn-outline'} mq-btn-sm" data-tab="${key}">${label}</button>`;
+            const tab = (key, label) => `<button class="mq-btn ${statusFilter === key ? 'mq-btn--primary' : 'mq-btn--secondary'} mq-btn--sm" data-tab="${key}">${label}</button>`;
 
             pc.innerHTML = `
                 <div class="mq-toolbar">

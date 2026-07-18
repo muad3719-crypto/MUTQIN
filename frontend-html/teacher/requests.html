@@ -38,8 +38,8 @@
                 <div class="mq-card-body">
                   <p style="color:#04361F;font-size:14.5px;line-height:1.8;">${UI.escapeHtml(message)}</p>
                   <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:16px;">
-                    <button class="mq-btn mq-btn-outline" data-no>${UI.escapeHtml(noText)}</button>
-                    <button class="mq-btn mq-btn-primary" data-yes>${UI.escapeHtml(yesText)}</button>
+                    <button class="mq-btn mq-btn--secondary" data-no>${UI.escapeHtml(noText)}</button>
+                    <button class="mq-btn mq-btn--primary" data-yes>${UI.escapeHtml(yesText)}</button>
                   </div>
                 </div></div>`;
             document.body.appendChild(overlay);
@@ -150,7 +150,7 @@
                           <div style="font-size:12px;color:#9DB3A6;direction:ltr;text-align:right;">${UI.escapeHtml(s.national_id || '—')}</div></td>
                         <td>${UI.escapeHtml(s.center_name)}</td>
                         <td>${UI.escapeHtml(s.teacher_name)}</td>
-                        <td><button class="mq-btn mq-btn-primary mq-btn-sm" data-pick="${i}">طلب النقل</button></td>
+                        <td><button class="mq-btn mq-btn--primary mq-btn--sm" data-pick="${i}">طلب النقل</button></td>
                       </tr>`).join('')}</tbody></table></div>`;
                     box.querySelectorAll('[data-pick]').forEach(b => b.onclick = async () => {
                         const s = items[+b.dataset.pick];
@@ -187,8 +187,8 @@
                 <div class="mq-toolbar">
                   <div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="بحث في طلباتي..."></div>
                   <div style="display:flex;gap:10px;">
-                    <button class="mq-btn mq-btn-outline" id="add-btn">${UI.ic('plus', 17)} طلب إضافة طالب</button>
-                    <button class="mq-btn mq-btn-primary" id="transfer-btn">${UI.ic('requests', 17)} طلب نقل طالب</button>
+                    <button class="mq-btn mq-btn--secondary" id="add-btn">${UI.ic('plus', 17)} طلب إضافة طالب</button>
+                    <button class="mq-btn mq-btn--primary" id="transfer-btn">${UI.ic('requests', 17)} طلب نقل طالب</button>
                   </div>
                 </div>
                 <div class="mq-card"><table class="mq-table" id="tbl">
