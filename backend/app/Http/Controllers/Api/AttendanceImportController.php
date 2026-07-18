@@ -81,6 +81,15 @@ class AttendanceImportController extends Controller
         $seenByDate  = [];          // [date => [student_id => true]]
         $centerIds   = [];          // مراكز الطلاب الظاهرين (لنطاق المدير)
 
+        // 4+5. المعالجة كلها (صفوف الملف + الغياب المحتسب) داخل transaction
+        // واحدة: فشل جزئي في المنتصف لا يترك حضور يومٍ نصف مكتوب.
+        \Illuminate\Support\Facades\DB::transaction(function () use (
+            $rows, $user,
+            &$imported, &$skipped, &$errors, &$nameWarnings,
+            &$present, &$late, &$absentFromFile, &$absentComputed, &$ignoredOther,
+            &$datesInFile, &$seenByDate, &$centerIds
+        ) {
+
         // 4. معالجة الصفوف
         foreach ($rows as $index => $row) {
             $rowNum = $index + 2; // الصف 1 هو الترويسة، لذا الصفوف تبدأ من 2
@@ -149,12 +158,19 @@ class AttendanceImportController extends Controller
                 continue;
             }
 
-            // 2. التصفية الصامتة: المحفّظ قد يرفع ملف المركز كاملاً (جهاز بصمة واحد).
-            //    خارج النطاق يُتجاهَل بهدوء — النطاق: المدير=الكل، مدير المركز=مركزه، المحفّظ=طلابه.
-            $inScope = $user->isAdmin()
-                || ($user->isCenterManager() && $student->center_id === $user->center_id)
-                || $student->teacher_id === $user->id;
-            if (!$inScope) {
+            // 2. النطاق (فحص في الباك لا الواجهة): طالب خارج «مركز» المستورِد
+            //    = رفض صريح برسالة عربية (مدير المركز والمحفّظ كلاهما). أما طالب
+            //    من نفس المركز لكن عند محفّظ آخر فيُتجاهل بصمت — جهاز البصمة
+            //    واحد للمركز كله وهذا السيناريو طبيعي لا خطأ.
+            if (!$user->isAdmin() && $student->center_id !== $user->center_id) {
+                $skipped++;
+                $errors[] = [
+                    'row'    => $rowNum,
+                    'reason' => "الطالب {$student->display_code} ({$student->name}) من مركز آخر — خارج نطاق صلاحيتك",
+                ];
+                continue;
+            }
+            if ($user->isTeacher() && $student->teacher_id !== $user->id) {
                 $ignoredOther++;
                 continue;
             }
@@ -252,7 +268,7 @@ class AttendanceImportController extends Controller
                     ],
                     [
                         'teacher_id'  => $user->isTeacher() ? $user->id : ($student->teacher_id ?? $user->id),
-                        'center_id'   => $user->center_id ?? $student->center_id,
+                        'center_id'   => $student->center_id, // مركز الطالب دائماً — الأدق عند النقل بين المراكز
                         'time'        => $time,
                         'status'      => $status,
                         'notes'       => 'حضور مستورد من جهاز البصمة' . ($time ? " الساعة {$time}" : ''),
@@ -322,6 +338,8 @@ class AttendanceImportController extends Controller
                 }
             }
         }
+
+        }); // نهاية الـ transaction
 
         // ==========================================================
         // 6. ملخّص نظيف — أخطاء حقيقية فقط، والتجاهل الصامت كمعلومة هادئة
