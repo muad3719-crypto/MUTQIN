@@ -242,13 +242,33 @@
             ? `<div style="display:flex;align-items:center;gap:9px;background:rgba(42,111,142,.1);color:#2A6F8E;border-right:4px solid #2A6F8E;border-radius:11px;padding:11px 15px;font-size:13.5px;font-weight:600;margin-bottom:14px;">
                  ℹ️ تم تجاهل ${r.ignored_other_teachers} سجلاً لطلاب من خارج طلابك (تصفية تلقائية).</div>` : '';
 
+        // قسم تحذيرات الأسماء — بارز ومنفصل: الصفوف استُوردت بالرقم (أساس
+        // المطابقة)، لكن اختلاف الاسم غالباً خطأ إدخال في الجهاز يتكرر كل رفعة
+        const warns = (r.name_warnings && r.name_warnings.length)
+            ? `<div style="margin:14px 0;background:rgba(212,175,55,.12);border:1.5px solid #D4AF37;border-radius:12px;padding:14px 16px;">
+                 <div style="font-weight:800;color:#9A7A1E;margin-bottom:4px;">⚠ تحقّق من هذه الأسماء (${r.name_warnings.length})</div>
+                 <div style="font-size:12.5px;color:#7A8F82;margin-bottom:10px;">استُوردت هذه الصفوف بالرقم، لكن الاسم في الملف يخالف اسم صاحب الرقم في النظام — قد يكون تسجيلاً خاطئاً في الجهاز يتكرر في كل رفعة. راجع الجهاز أو الملف.</div>
+                 <div style="border:1px solid rgba(212,175,55,.5);border-radius:10px;overflow:hidden;max-height:200px;overflow-y:auto;background:#fff;">
+                   <table class="mq-table"><thead><tr><th>السطر</th><th>الرقم</th><th>الاسم في الملف</th><th>الاسم في النظام</th></tr></thead><tbody>
+                   ${r.name_warnings.map(w => `<tr>
+                     <td style="font-weight:700;">${w.row}</td>
+                     <td><span class="mq-code">S${w.number}</span></td>
+                     <td style="color:#B23A48;font-weight:600;">${escapeHtml(w.file_name || '—')}</td>
+                     <td style="color:#04532F;font-weight:600;">${escapeHtml(w.system_name || '—')}</td></tr>`).join('')}
+                   </tbody></table></div></div>`
+            : '';
+
         const errs = (r.errors && r.errors.length)
-            ? `<div style="margin-top:6px;"><div style="font-weight:700;color:#B23A48;margin-bottom:8px;">⚠️ صفوف بها أخطاء (${r.errors.length}):</div>
+            ? `<div style="margin-top:6px;"><div style="font-weight:700;color:#B23A48;margin-bottom:8px;">⚠️ صفوف مرفوضة (${r.errors.length}):</div>
                <div style="border:1px solid var(--hair);border-radius:12px;overflow:hidden;max-height:220px;overflow-y:auto;">
-                 <table class="mq-table"><thead><tr><th>الصف</th><th>السبب</th></tr></thead><tbody>
-                 ${r.errors.map(e => `<tr><td style="font-weight:700;color:#B23A48;">${e.row ?? '—'}</td><td style="font-size:13px;">${escapeHtml(e.reason || '—')}</td></tr>`).join('')}
+                 <table class="mq-table"><thead><tr><th>السطر</th><th>الرقم</th><th>الاسم</th><th>السبب</th></tr></thead><tbody>
+                 ${r.errors.map(e => `<tr>
+                   <td style="font-weight:700;color:#B23A48;">${e.row ?? '—'}</td>
+                   <td style="direction:ltr;text-align:right;font-weight:600;">${escapeHtml(String(e.number ?? '—'))}</td>
+                   <td style="font-size:13px;">${escapeHtml(e.name || '—')}</td>
+                   <td style="font-size:13px;">${escapeHtml(e.reason || '—')}</td></tr>`).join('')}
                  </tbody></table></div></div>`
-            : `<div style="text-align:center;color:#04532F;font-weight:600;margin-top:6px;">✓ لا توجد أخطاء في الملف</div>`;
+            : `<div style="text-align:center;color:#04532F;font-weight:600;margin-top:6px;">✓ لا توجد صفوف مرفوضة</div>`;
 
         const overlay = document.createElement('div');
         overlay.style.cssText = 'position:fixed;inset:0;z-index:1600;background:rgba(4,54,31,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:24px;';
@@ -261,7 +281,12 @@
                 ${cell(r.late || 0, 'متأخر', '#9A7A1E', 'rgba(212,175,55,.15)')}
                 ${cell(r.absent || 0, 'غائب (محتسب)', '#B23A48', 'rgba(178,58,72,.1)')}
               </div>
+              <div style="text-align:center;font-size:13.5px;color:#3D6B52;font-weight:600;margin-bottom:12px;">
+                استُورد <strong style="color:#04532F;">${r.imported || 0}</strong> صفاً
+                (${r.imported_new || 0} جديد · ${r.updated || 0} محدَّث لحضور كان مسجّلاً)
+              </div>
               ${ignored}
+              ${warns}
               ${errs}
               <div style="display:flex;justify-content:flex-end;margin-top:18px;">
                 <button class="mq-btn mq-btn--primary" data-close>تم</button></div>
