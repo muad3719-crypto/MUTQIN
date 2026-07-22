@@ -275,4 +275,19 @@ class CenterManagerController extends Controller
             ],
         ]);
     }
+
+    /**
+     * المجموعة 2 — تقارير إدارة المركز (أداء المحفّظين، التوزيع، بلا محفّظ،
+     * الملخّص العام). النطاق مفروض من الحساب، بلا N+1 (ReportService::centerManagement).
+     */
+    public function reportsManagement(Request $request)
+    {
+        $centerId = $request->user()->center_id;
+        [$month, $year] = $this->period($request);
+
+        return response()->json([
+            'success' => true,
+            'data' => app(\App\Services\ReportService::class)->centerManagement($centerId, $month, $year),
+        ]);
+    }
 }

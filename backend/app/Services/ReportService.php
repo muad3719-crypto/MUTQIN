@@ -298,6 +298,82 @@ class ReportService
     }
 
     /**
+     * تقارير إدارة المركز (المجموعة 2) — كلها لمركز واحد، مبنية على
+     * استعلامات مجمّعة (بلا N+1 مهما كثُر المحفّظون/الطلاب):
+     *  - أداء كل محفّظ: عدد طلابه، نسبة حضورهم، متوسّط تقدّم حفظهم، من أكمل القرآن
+     *  - توزيع الطلاب (عدد لكل محفّظ) — لكشف الاختلال
+     *  - طلاب بلا محفّظ: قائمة + عدد
+     *  - ملخّص المركز العام
+     */
+    public function centerManagement(int $centerId, $month, $year): array
+    {
+        $teachers = User::where('role', 'teacher')->where('center_id', $centerId)
+            ->orderBy('name')->get(['id', 'name', 'type']);
+        $students = Student::where('center_id', $centerId)->where('is_active', true)
+            ->get(['id', 'name', 'display_code', 'teacher_id']);
+        $ids = $students->pluck('id');
+
+        // استعلام مجمّع واحد للحضور + استعلام واحد لسور الحفظ
+        $attStats = Attendance::whereIn('student_id', $ids)
+            ->whereMonth('date', $month)->whereYear('date', $year)
+            ->selectRaw('student_id, COUNT(*) AS total, SUM(status = "present") AS present')
+            ->groupBy('student_id')->get()->keyBy('student_id');
+        $bySurah = Memorization::whereIn('student_id', $ids)->whereNotNull('surah_name')
+            ->get(['student_id', 'surah_name'])->groupBy('student_id');
+
+        // تقدّم كل طالب (مرة واحدة) + تجميع في الذاكرة
+        $progressOf = [];
+        foreach ($students as $s) {
+            $names = ($bySurah[$s->id] ?? collect())->pluck('surah_name')->all();
+            $progressOf[$s->id] = \App\Support\SurahReference::progress($names)['completed_count'];
+        }
+
+        $byTeacher = $students->groupBy('teacher_id');
+
+        // صف أداء لكل محفّظ
+        $teacherRows = $teachers->map(function ($t) use ($byTeacher, $attStats, $progressOf) {
+            $mine = $byTeacher->get($t->id, collect());
+            $present = 0; $totalAtt = 0; $sumJuz = 0; $completed = 0;
+            foreach ($mine as $s) {
+                $st = $attStats->get($s->id);
+                $present  += (int) ($st->present ?? 0);
+                $totalAtt += (int) ($st->total ?? 0);
+                $sumJuz   += $progressOf[$s->id];
+                if ($progressOf[$s->id] === 30) $completed++;
+            }
+            return [
+                'teacher'          => ['id' => $t->id, 'name' => $t->name, 'type' => $t->type],
+                'studentsCount'    => $mine->count(),
+                'attendancePercent'=> $this->pct($present, $totalAtt),
+                'avgCompletedJuz'  => $mine->count() ? round($sumJuz / $mine->count(), 1) : 0,
+                'completedQuran'   => $completed,
+            ];
+        })->values();
+
+        // طلاب بلا محفّظ
+        $noTeacher = $byTeacher->get(null, collect())->map(fn ($s) => [
+            'id' => $s->id, 'name' => $s->name, 'display_code' => $s->display_code,
+        ])->values();
+
+        // ملخّص المركز
+        $totalPresent = $attStats->sum('present');
+        $totalAtt = $attStats->sum('total');
+        $completedQuran = collect($progressOf)->filter(fn ($c) => $c === 30)->count();
+
+        return [
+            'teacherRows'   => $teacherRows,
+            'noTeacher'     => ['count' => $noTeacher->count(), 'rows' => $noTeacher],
+            'summary'       => [
+                'teachersCount'  => $teachers->count(),
+                'studentsCount'  => $students->count(),
+                'avgAttendance'  => $this->pct((int) $totalPresent, (int) $totalAtt),
+                'completedQuran' => $completedQuran,
+            ],
+            'month' => (int) $month, 'year' => (int) $year,
+        ];
+    }
+
+    /**
      * الإحصاء العام للنظام.
      */
     public function overview($month, $year): array
