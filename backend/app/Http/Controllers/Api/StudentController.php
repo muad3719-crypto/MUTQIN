@@ -152,7 +152,18 @@ class StudentController extends Controller
 
     public function store(Request $request)
     {
-        // المسار محميّ للمدير فقط. ينشئ الطالب ويربطه بحساب ولي أمر (role='parent').
+        // يخدم مسارين: الأدمن (POST /students) ومدير المركز (POST /manager/students).
+        // ينشئ الطالب ويربطه بحساب ولي أمر (role='parent').
+        $user = $request->user();
+
+        // أمان — مدير المركز: center_id يُفرض من نطاقه لا من الطلب (يتجاهل أي
+        // قيمة يرسلها العميل)، فلا يضيف طالباً لمركز آخر مهما زوّر الجسم.
+        if ($user->isCenterManager()) {
+            $request->merge(['center_id' => $user->center_id]);
+        }
+        // display_code لا يُقرأ من الطلب إطلاقاً — يولّده خطاف Student::creating
+        // (المصفوفة أدناه صريحة ولا تتضمّنه)، فأي قيمة واردة من العميل مُهمَلة.
+
         $natType  = $request->input('nationality_type', 'libyan');
         $gNatType = $request->input('guardian_nationality_type', 'libyan');
 

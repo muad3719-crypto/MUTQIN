@@ -50,6 +50,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/manager/dashboard', [\App\Http\Controllers\Api\CenterManagerController::class, 'dashboard']);
         Route::get('/manager/students', [StudentController::class, 'index']); // مضيَّق بمركزه داخل المتحكم (ترقيم+بحث قائمان)
         Route::get('/manager/students/next-code', [StudentController::class, 'nextCode']); // معاينة كود الطالب التالي (لا حجز)
+        Route::post('/manager/students', [StudentController::class, 'store']); // إضافة طالب — center_id مفروض بمركزه داخل store
+        Route::get('/manager/parents/search', [StudentController::class, 'searchParents']); // بحث أولياء الأمور (لاختيار ولي موجود)
         Route::get('/manager/teachers', [\App\Http\Controllers\Api\CenterManagerController::class, 'teachers']);
         Route::get('/manager/teachers/{id}', [\App\Http\Controllers\Api\CenterManagerController::class, 'showTeacher']);
         Route::put('/manager/teachers/{id}', [\App\Http\Controllers\Api\CenterManagerController::class, 'updateTeacher']); // لا حذف — لمدير النظام
