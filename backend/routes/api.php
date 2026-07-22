@@ -60,6 +60,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/manager/attendance/{id}/status', [\App\Http\Controllers\Api\CenterManagerController::class, 'correctAttendance']); // تصحيح حالة سجل واحد
         Route::get('/manager/reports/system', [\App\Http\Controllers\Api\CenterManagerController::class, 'reportsSystem']); // المجموعة1: تقارير النظام مضيَّقة بمركزه
         Route::get('/manager/reports/management', [\App\Http\Controllers\Api\CenterManagerController::class, 'reportsManagement']); // المجموعة2: تقارير إدارة المركز
+        // تصدير PDF ضمن نطاق مركزه (نفس قوالب الأدمن، center_id من الحساب)
+        Route::get('/manager/reports/center/pdf', [\App\Http\Controllers\Api\ReportPdfController::class, 'managerCenter']);
+        Route::get('/manager/reports/at-risk/pdf', [\App\Http\Controllers\Api\ReportPdfController::class, 'managerAtRisk']);
+        Route::get('/manager/reports/teachers/pdf', [\App\Http\Controllers\Api\ReportPdfController::class, 'managerTeachers']);
         // طلبات النقل الداخلية لمركزه (from=target=مركزه) — العابرة تبقى لمدير النظام
         Route::get('/manager/student-requests', [StudentRequestController::class, 'managerIndex']);
         Route::post('/manager/student-requests/{id}/approve', [StudentRequestController::class, 'approve']);

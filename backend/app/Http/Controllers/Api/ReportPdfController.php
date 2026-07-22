@@ -140,4 +140,31 @@ class ReportPdfController extends Controller
         $data = $this->reports->overview($month, $year);
         return $this->render('pdf.admin.overview', $data, $month, $year, 'overview-report.pdf');
     }
+
+    // ====== تقارير مدير المركز (نفس القوالب، النطاق مفروض من الحساب) ======
+
+    /** تقرير مركزه الشامل — center_id من الحساب، لا من الطلب. */
+    public function managerCenter(Request $request)
+    {
+        [$month, $year] = $this->period($request);
+        $center = Center::findOrFail($request->user()->center_id);
+        $data = $this->reports->centerData($center, $month, $year);
+        return $this->render('pdf.admin.center', $data, $month, $year, 'my-center-report.pdf');
+    }
+
+    /** متعثّرو مركزه فقط. */
+    public function managerAtRisk(Request $request)
+    {
+        [$month, $year] = $this->period($request);
+        $data = $this->reports->atRiskStudents($month, $year, $request->user()->center_id);
+        return $this->render('pdf.admin.at-risk', $data, $month, $year, 'my-center-at-risk.pdf');
+    }
+
+    /** أداء محفّظي مركزه فقط. */
+    public function managerTeachers(Request $request)
+    {
+        [$month, $year] = $this->period($request);
+        $data = $this->reports->teachersPerformance($month, $year, $request->user()->center_id);
+        return $this->render('pdf.admin.teachers', $data, $month, $year, 'my-center-teachers.pdf');
+    }
 }
