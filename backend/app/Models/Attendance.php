@@ -15,10 +15,13 @@ class Attendance extends Model
         'status',
         'notes',
         'imported_at',
+        'corrected_by',
+        'corrected_at',
     ];
 
     protected $casts = [
         'date' => 'date',
+        'corrected_at' => 'datetime',
         'imported_at' => 'datetime',
     ];
 

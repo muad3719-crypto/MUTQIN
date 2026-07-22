@@ -57,6 +57,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/manager/teachers/{id}', [\App\Http\Controllers\Api\CenterManagerController::class, 'updateTeacher']); // لا حذف — لمدير النظام
         Route::post('/manager/attendance/import', [\App\Http\Controllers\Api\AttendanceImportController::class, 'import']); // مضيَّق بمركزه داخل المتحكم
         Route::get('/manager/attendance', [\App\Http\Controllers\Api\CenterManagerController::class, 'attendanceIndex']); // سجل الحضور للمراجعة (مرقّم + فلاتر)
+        Route::put('/manager/attendance/{id}/status', [\App\Http\Controllers\Api\CenterManagerController::class, 'correctAttendance']); // تصحيح حالة سجل واحد
         // طلبات النقل الداخلية لمركزه (from=target=مركزه) — العابرة تبقى لمدير النظام
         Route::get('/manager/student-requests', [StudentRequestController::class, 'managerIndex']);
         Route::post('/manager/student-requests/{id}/approve', [StudentRequestController::class, 'approve']);

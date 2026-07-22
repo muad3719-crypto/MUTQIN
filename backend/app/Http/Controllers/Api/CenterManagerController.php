@@ -197,8 +197,50 @@ class CenterManagerController extends Controller
             'date'         => $a->date?->toDateString(), // Y-m-d نظيف (لا طابع زمني)
             'status'       => $a->status,
             'source'       => $a->imported_at ? 'fingerprint' : 'manual', // بصمة / يدوي
+            'corrected_at' => $a->corrected_at?->toDateTimeString(),      // متى صُحّح (إن صُحّح)
         ]);
 
         return response()->json(['success' => true, 'data' => $page]);
+    }
+
+    /**
+     * تصحيح حالة سجل حضور واحد (حاضر↔غائب↔متأخر) — مضيَّق بطلاب مركزه:
+     * السجل الذي طالبه خارج مركز المستخدم → 403 «خارج نطاق صلاحيتك».
+     * تحديث سجلٍ واحد بالـ id، فلا يمكن أن يُنشئ صفاً ثانياً (القيد الفريد
+     * قائم أصلاً). transaction + تدقيق خفيف (corrected_by/at).
+     */
+    public function correctAttendance(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|in:present,absent,late',
+        ], [
+            'status.required' => 'الحالة مطلوبة',
+            'status.in'       => 'الحالة غير صالحة',
+        ]);
+
+        $user = $request->user();
+        $attendance = Attendance::with('student:id,center_id')->find($id);
+
+        // خارج النطاق (غير موجود أو طالبه من مركز آخر) → 403 موحّد
+        if (!$attendance || !$attendance->student || $attendance->student->center_id !== $user->center_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'خارج نطاق صلاحيتك',
+            ], 403);
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($attendance, $request, $user) {
+            $attendance->update([
+                'status'       => $request->status,
+                'corrected_by' => $user->id,
+                'corrected_at' => now(),
+            ]);
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تصحيح حالة الحضور',
+            'data'    => ['id' => $attendance->id, 'status' => $attendance->status],
+        ]);
     }
 }
