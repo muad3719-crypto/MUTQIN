@@ -100,7 +100,63 @@
         el('pdf-center').onclick = () => UI.openPdf('/manager/reports/center/pdf?' + my());
     }
 
-    function loadGroup2() { /* stage 7 */ }
+    async function loadGroup2() {
+        const wrap = el('g2-wrap');
+        wrap.innerHTML = `
+            <h2 class="rp-section-title">🏫 تقارير إدارة المركز</h2>
+            <p class="rp-section-sub">أداء المحفّظين وتوزيع الطلاب لإدارة مركزك.</p>
+            <div id="g2"><div class="mq-card"><div class="mq-card-body">جارٍ التحميل...</div></div></div>`;
+        let d;
+        try { d = (await API.get('/manager/reports/management?' + my())).data; }
+        catch (e) { el('g2').innerHTML = `<div class="mq-empty">${UI.escapeHtml(e.message)}</div>`; return; }
+
+        const rows = d.teacherRows || [];
+        const maxStudents = Math.max(1, ...rows.map(r => r.studentsCount));
+        // جدول أداء المحفّظين + شريط توزيع بسيط
+        const perfRows = rows.length ? rows.map(r => `<tr>
+              <td style="font-weight:600;">${UI.escapeHtml(r.teacher.name)}</td>
+              <td>${UI.escapeHtml(r.teacher.type || '—')}</td>
+              <td style="min-width:150px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div style="flex:1;height:8px;background:rgba(4,83,47,.1);border-radius:6px;overflow:hidden;">
+                    <div style="height:100%;width:${Math.round(r.studentsCount/maxStudents*100)}%;background:#04532F;"></div></div>
+                  <strong style="color:#04361F;">${r.studentsCount}</strong></div></td>
+              <td style="text-align:center;font-weight:700;color:${r.attendancePercent<70?'#B23A48':'#04532F'};">${r.attendancePercent}%</td>
+              <td style="text-align:center;">${r.avgCompletedJuz}</td>
+              <td style="text-align:center;">${r.completedQuran}</td></tr>`).join('')
+            : `<tr><td colspan="6" style="text-align:center;color:#7A8F82;padding:20px;">لا يوجد محفّظون في مركزك</td></tr>`;
+
+        // طلاب بلا محفّظ
+        const nt = d.noTeacher;
+        const ntBlock = nt.count ? `
+            <div class="mq-card" style="margin-bottom:16px;">
+              <div class="mq-card-header"><h3 class="mq-card-title" style="color:#B23A48;">⚠️ طلاب بلا محفّظ (${nt.count})</h3></div>
+              <div class="mq-card-body"><div style="display:flex;gap:8px;flex-wrap:wrap;">
+                ${nt.rows.map(s => `<span class="mq-badge mq-badge-danger">${s.display_code ? UI.escapeHtml(s.display_code)+' · ' : ''}${UI.escapeHtml(s.name)}</span>`).join('')}
+              </div></div>
+            </div>`
+            : `<div class="mq-card" style="margin-bottom:16px;"><div class="mq-card-body" style="color:#04532F;font-weight:600;">✓ كل طلاب المركز مرتبطون بمحفّظين.</div></div>`;
+
+        el('g2').innerHTML = `
+            <div class="mq-stats">
+              ${statCard(d.summary.teachersCount, 'المحفّظون', 'gold')}
+              ${statCard(d.summary.studentsCount, 'الطلاب النشطون', 'green')}
+              ${statCard(d.summary.avgAttendance + '%', 'متوسّط الحضور', 'blue')}
+              ${statCard(nt.count, 'طلاب بلا محفّظ', nt.count ? 'red' : 'green')}
+            </div>
+
+            <div class="mq-card" style="margin-bottom:16px;">
+              <div class="mq-card-header"><h3 class="mq-card-title">👨‍🏫 أداء المحفّظين وتوزيع الطلاب</h3>
+                <button class="mq-btn mq-btn--secondary mq-btn--sm" id="pdf-teachers">${UI.ic('report',15)} PDF</button></div>
+              <div style="overflow-x:auto;"><table class="mq-table">
+                <thead><tr><th>المحفّظ</th><th>النوع</th><th>عدد الطلاب</th><th style="text-align:center;">متوسّط الحضور</th><th style="text-align:center;">متوسّط الأجزاء</th><th style="text-align:center;">أكملوا القرآن</th></tr></thead>
+                <tbody>${perfRows}</tbody></table></div>
+            </div>
+
+            ${ntBlock}`;
+
+        el('pdf-teachers').onclick = () => UI.openPdf('/manager/reports/teachers/pdf?' + my());
+    }
 
     function loadAll() { loadGroup1(); loadGroup2(); }
     el('p-go').onclick = loadAll;
