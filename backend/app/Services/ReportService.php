@@ -170,10 +170,13 @@ class ReportService
 
     /**
      * تقرير أداء المعلمين (مرتّب حسب الأداء تنازلياً).
+     * $centerId اختياري: null → كل المحفّظين (الأدمن)، مُمرَّر → محفّظو المركز فقط.
      */
-    public function teachersPerformance($month, $year): array
+    public function teachersPerformance($month, $year, ?int $centerId = null): array
     {
-        $teachers = User::where('role', 'teacher')->with('center')->get();
+        $teachers = User::where('role', 'teacher')
+            ->when($centerId, fn ($q) => $q->where('center_id', $centerId))
+            ->with('center')->get();
 
         $rows = $teachers->map(function ($t) use ($month, $year) {
             $students = Student::where('teacher_id', $t->id)->where('is_active', true)->get();
@@ -201,10 +204,14 @@ class ReportService
 
     /**
      * الطلاب المتعثّرون (حضور منخفض أو رسوب متكرر).
+     * $centerId اختياري: null → كل النظام (سلوك الأدمن كما هو)، مُمرَّر →
+     * مركز واحد فقط. تصفية الطلاب الأولى فقط تتغيّر — يبقى العدد 3 استعلامات.
      */
-    public function atRiskStudents($month, $year): array
+    public function atRiskStudents($month, $year, ?int $centerId = null): array
     {
-        $students = Student::where('is_active', true)->with(['center', 'teacher'])->get();
+        $students = Student::where('is_active', true)
+            ->when($centerId, fn ($q) => $q->where('center_id', $centerId))
+            ->with(['center', 'teacher'])->get();
 
         // استعلامان مجمّعان للجميع (بدل استعلامين لكل طالب — N+1)
         $attStats = Attendance::whereIn('student_id', $students->pluck('id'))
@@ -253,6 +260,40 @@ class ReportService
             'year'          => (int) $year,
             'attThreshold'  => self::ATTENDANCE_THRESHOLD,
             'failThreshold' => self::FAIL_THRESHOLD,
+        ];
+    }
+
+    /**
+     * ملخّص تقدّم الحفظ — مؤشّر «أكمل القرآن» (كل الأجزاء الـ30) ومتوسّط
+     * الأجزاء المكتملة. مبنيّ على SurahReference بعد جلب سور الطلاب في
+     * استعلام واحد (بلا N+1). $centerId اختياري (null = كل النظام).
+     * ملاحظة: «الختمات» ميزة غير مبنية بعد — هذا مؤشّر إتمامٍ حاليّ محسوب،
+     * لا عدّاد ختمات تاريخي ولا منسوب لمحفّظ.
+     */
+    public function progressSummary($month, $year, ?int $centerId = null): array
+    {
+        $students = Student::where('is_active', true)
+            ->when($centerId, fn ($q) => $q->where('center_id', $centerId))
+            ->get(['id']);
+
+        $bySurah = Memorization::whereIn('student_id', $students->pluck('id'))
+            ->whereNotNull('surah_name')
+            ->get(['student_id', 'surah_name'])
+            ->groupBy('student_id');
+
+        $completedQuran = 0;
+        $sumJuz = 0;
+        foreach ($students as $s) {
+            $names = ($bySurah[$s->id] ?? collect())->pluck('surah_name')->all();
+            $p = \App\Support\SurahReference::progress($names);
+            $sumJuz += $p['completed_count'];
+            if ($p['completed_count'] === 30) $completedQuran++;
+        }
+
+        return [
+            'studentsCount'   => $students->count(),
+            'completedQuran'  => $completedQuran,                                        // أتمّوا كل القرآن حالياً
+            'avgCompletedJuz' => $students->count() ? round($sumJuz / $students->count(), 1) : 0,
         ];
     }
 
