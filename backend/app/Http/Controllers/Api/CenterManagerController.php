@@ -46,6 +46,23 @@ class CenterManagerController extends Controller
         ]);
     }
 
+    /**
+     * معاينة كود المحفّظ التالي (T{n}) قبل الحفظ — قراءة فقط، لا يحجز الرقم
+     * (لو أُلغي النموذج لا يُهدر كود). الرقم تقديري والفعلي يُخصَّص لحظة الحفظ.
+     * نظير GET /manager/students/next-code للطلاب.
+     */
+    public function teacherNextCode()
+    {
+        $code = \App\Support\DisplayCode::preview('teacher');
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'code'   => $code,                                // T12
+                'number' => (int) preg_replace('/\D/', '', $code), // 12
+            ],
+        ]);
+    }
+
     /** محفّظو مركزه فقط — مرقّم + بحث مطبَّع (نفس نمط قائمة المدير). */
     public function teachers(Request $request)
     {
