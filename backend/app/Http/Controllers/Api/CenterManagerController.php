@@ -144,4 +144,61 @@ class CenterManagerController extends Controller
             'data' => $teacher,
         ]);
     }
+
+    /**
+     * سجل الحضور للمراجعة — مرقّم، مضيَّق بطلاب مركزه حصراً (whereHas student
+     * center_id من الحساب، لا من المدخلات). فلاتر اختيارية: تاريخ مفرد أو مدى،
+     * محفّظ، بحث طالب حي (اسم/كود/رقم وطني)، حالة. المصدر يُشتق من imported_at.
+     */
+    public function attendanceIndex(Request $request)
+    {
+        $centerId = $request->user()->center_id;
+
+        $query = Attendance::with(['student:id,name,display_code,national_id', 'teacher:id,name'])
+            ->whereHas('student', fn ($s) => $s->where('center_id', $centerId)) // النطاق: طلاب مركزه فقط
+            ->latest('date')->latest('id');
+
+        // فلتر التاريخ: مدى (from/to) أو يوم مفرد
+        if ($request->filled('from') && $request->filled('to')) {
+            $query->whereBetween('date', [$request->from, $request->to]);
+        } elseif ($request->filled('date')) {
+            $query->whereDate('date', $request->date);
+        }
+
+        // المحفّظ (يُتحقق أنه من المركز)
+        if ($request->filled('teacher_id')) {
+            $query->where('teacher_id', (int) $request->teacher_id)
+                  ->whereHas('teacher', fn ($t) => $t->where('center_id', $centerId));
+        }
+
+        // الحالة
+        if (in_array($request->input('status'), ['present', 'absent', 'late'], true)) {
+            $query->where('status', $request->status);
+        }
+
+        // بحث الطالب الحي (اسم مطبَّع / كود العرض / رقم وطني) — نفس نمط قوائم الأدمن
+        if (($q = trim((string) $request->get('q', ''))) !== '') {
+            $norm = ArabicText::normalize($q);
+            $query->whereHas('student', function ($s) use ($q, $norm) {
+                $s->whereRaw(ArabicText::sqlNormalize('name') . ' LIKE ?', ['%' . $norm . '%'])
+                  ->orWhere('display_code', 'like', "%{$q}%")
+                  ->orWhere('national_id', 'like', "%{$q}%");
+            });
+        }
+
+        $page = $query->paginate(20)->withQueryString();
+
+        // تسطيح كل سجل: كود + اسم + محفّظ + تاريخ + حالة + مصدر + من صحّح
+        $page->getCollection()->transform(fn ($a) => [
+            'id'           => $a->id,
+            'display_code' => $a->student?->display_code,
+            'student_name' => $a->student?->name,
+            'teacher_name' => $a->teacher?->name,
+            'date'         => $a->date?->toDateString(), // Y-m-d نظيف (لا طابع زمني)
+            'status'       => $a->status,
+            'source'       => $a->imported_at ? 'fingerprint' : 'manual', // بصمة / يدوي
+        ]);
+
+        return response()->json(['success' => true, 'data' => $page]);
+    }
 }
