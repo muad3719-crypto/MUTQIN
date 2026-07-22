@@ -22,6 +22,26 @@ class DisplayCode
         'center_manager' => 'CA',
     ];
 
+    /**
+     * معاينة الكود التالي دون حجزه — قراءة فقط (SELECT بلا UPDATE)، فلا
+     * يزيد العدّاد ولا يُهدر رقم لو أُلغيت العملية. الرقم «تقديري»: قد
+     * يسبقه غيره فيتغيّر الفعلي عند الحفظ (next() هو الذي يحجز ذرّياً).
+     */
+    public static function preview(string $type): string
+    {
+        $prefix = self::PREFIXES[$type] ?? null;
+        if ($prefix === null) {
+            throw new \InvalidArgumentException("نوع لا يحمل كود عرض: {$type}");
+        }
+
+        $row = DB::selectOne('SELECT value FROM code_sequences WHERE name = ?', [$type]);
+        if ($row === null) {
+            throw new \RuntimeException("عدّاد كود العرض غير مهيأ: {$type}");
+        }
+
+        return $prefix . ((int) $row->value + 1);
+    }
+
     /** يحجز الرقم التالي للنوع ويعيد الكود جاهزاً (مثل T13). */
     public static function next(string $type): string
     {

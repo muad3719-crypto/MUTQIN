@@ -133,6 +133,23 @@ class StudentController extends Controller
         ]);
     }
 
+    /**
+     * معاينة كود الطالب التالي (S{n}) قبل الحفظ — للأدمن ومدير المركز.
+     * قراءة فقط: لا يحجز الرقم (لو أُلغي النموذج لا يُهدر كود). الرقم تقديري
+     * والفعلي يُخصَّص لحظة الحفظ ذرّياً.
+     */
+    public function nextCode()
+    {
+        $code = \App\Support\DisplayCode::preview('student');
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'code'   => $code,                               // S121
+                'number' => (int) preg_replace('/\D/', '', $code), // 121 — رقم جهاز البصمة
+            ],
+        ]);
+    }
+
     public function store(Request $request)
     {
         // المسار محميّ للمدير فقط. ينشئ الطالب ويربطه بحساب ولي أمر (role='parent').

@@ -49,6 +49,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('manager')->group(function () {
         Route::get('/manager/dashboard', [\App\Http\Controllers\Api\CenterManagerController::class, 'dashboard']);
         Route::get('/manager/students', [StudentController::class, 'index']); // مضيَّق بمركزه داخل المتحكم (ترقيم+بحث قائمان)
+        Route::get('/manager/students/next-code', [StudentController::class, 'nextCode']); // معاينة كود الطالب التالي (لا حجز)
         Route::get('/manager/teachers', [\App\Http\Controllers\Api\CenterManagerController::class, 'teachers']);
         Route::get('/manager/teachers/{id}', [\App\Http\Controllers\Api\CenterManagerController::class, 'showTeacher']);
         Route::put('/manager/teachers/{id}', [\App\Http\Controllers\Api\CenterManagerController::class, 'updateTeacher']); // لا حذف — لمدير النظام
@@ -65,6 +66,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/centers/{id}/has-primary', [TeacherController::class, 'hasPrimary']); // هل للمركز محفّظ أساسي؟
         Route::apiResource('centers', CenterController::class);
         Route::post('/students', [StudentController::class, 'store']); // نقل مسار إضافة طالب ليكون للمدير فقط
+        Route::get('/students/next-code', [StudentController::class, 'nextCode']); // معاينة كود الطالب التالي (لا حجز)
         Route::get('/parents/search', [StudentController::class, 'searchParents']); // بحث أولياء الأمور (لاختيار ولي موجود)
 
         // إدارة مدراء المراكز (مدير واحد لكل مركز كحدّ أقصى)
