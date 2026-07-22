@@ -83,6 +83,28 @@
   /* أيقونات «عن المنصة» بنفس أسلوب أيقونات الأدوار */
   .about-ico{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:14px;
     background:rgba(212,175,55,.16);border:1px solid rgba(212,175,55,.4);color:#9A7A1E;margin-bottom:14px;}
+  /* شريط ولي الأمر البارز — خلفية خضراء + نمط النجمة */
+  .parent-band{position:relative;
+    background:
+      radial-gradient(760px 340px at 15% -20%, rgba(212,175,55,.14), transparent 60%),
+      linear-gradient(180deg,#04532F,#04361F);
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='132' height='132' viewBox='0 0 132 132'%3E%3Cg fill='none' stroke='%23FFFFFF' stroke-opacity='.05' stroke-width='1.3'%3E%3Crect x='44' y='44' width='44' height='44'/%3E%3Crect x='44' y='44' width='44' height='44' transform='rotate(45 66 66)'/%3E%3C/g%3E%3C/svg%3E"),
+      radial-gradient(760px 340px at 15% -20%, rgba(212,175,55,.14), transparent 60%),
+      linear-gradient(180deg,#04532F,#04361F);}
+  .parent-grid{display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:center;}
+  .parent-list{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .parent-item{background:rgba(251,247,218,.06);border:1px solid rgba(212,175,55,.22);border-radius:15px;padding:16px;
+    transition:border-color .2s,background .2s;}
+  .parent-item:hover{border-color:rgba(212,175,55,.55);background:rgba(251,247,218,.1);}
+  .pi-ico{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:12px;
+    background:rgba(212,175,55,.16);color:#D4AF37;margin-bottom:11px;}
+  .parent-item h4{font-family:'Amiri',serif;font-size:18px;color:#FBF7DA;margin:0 0 4px;}
+  .parent-item p{font-size:12.5px;color:#9DB3A6;margin:0;line-height:1.65;font-weight:500;}
+  @media(max-width:1024px){.parent-grid{grid-template-columns:1fr;gap:30px;text-align:center;}
+    .parent-band .pill{margin:0 auto;} .parent-band p{margin-inline:auto !important;}}
+  @media(max-width:479px){.parent-list{grid-template-columns:1fr;}}
+
   /* فاصل النجمة الثمانية الصغير */
   .star-divider{display:flex;align-items:center;justify-content:center;gap:14px;margin:0 auto;}
   .star-divider::before,.star-divider::after{content:"";height:1px;width:76px;background:linear-gradient(90deg,transparent,rgba(212,175,55,.6));}
@@ -232,6 +254,35 @@
         <span class="role-ico"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V8l7-4 7 4v13"/><path d="M9.5 21v-5h5v5"/><path d="M9 21v-9M15 21v-9"/></svg></span>
         <h3>إدارة المراكز والنقل</h3>
         <p>إدارةُ عدة مراكز ومحفّظيها، ونقلُ الطلاب بينها بطلبات معتمَدة — مع كودِ عرضٍ قصير مميّز لكل طالب ومحفّظ.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- PARENT: ميزة ولي الأمر البارزة -->
+  <section class="parent-band">
+    <div class="sec" style="padding-top:72px;padding-bottom:72px;">
+      <div class="parent-grid">
+        <div>
+          <span style="display:inline-flex;align-items:center;gap:9px;background:rgba(212,175,55,.16);border:1px solid rgba(212,175,55,.45);color:#F0DFA6;font-size:13px;font-weight:700;padding:7px 15px;border-radius:40px;margin-bottom:20px;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#D4AF37;"></span> الأقرب إليك
+          </span>
+          <h2 style="font-family:'Amiri',serif;font-size:40px;color:#FBF7DA;margin:0 0 16px;line-height:1.3;">وليُّ الأمر يتابع ابنه بنفسه</h2>
+          <p style="font-size:17px;line-height:1.95;color:#CFE0D6;font-weight:500;max-width:520px;margin:0 0 26px;">
+            بحسابٍ واحد لكل الأبناء، يطّلع وليُّ الأمر على مسيرة ابنه لحظةً بلحظة —
+            دون الحاجة لمراجعة المركز أو انتظار تقرير.
+          </p>
+          <a class="pill" data-login-link href="login.html" style="background:#D4AF37;border-color:#D4AF37;color:#04361F;">دخول ولي الأمر</a>
+        </div>
+        <div class="parent-list">
+          <div class="parent-item"><span class="pi-ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2.5"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M9 15l2 2 4-4"/></svg></span>
+            <div><h4>حضور ابنه</h4><p>سجلّ الحضور والغياب والتأخير يوماً بيوم.</p></div></div>
+          <div class="parent-item"><span class="pi-ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2 2 0 0 1 6 4h6v15H6a2 2 0 0 0-2 1.5z"/><path d="M20 5.5A2 2 0 0 0 18 4h-6v15h6a2 2 0 0 1 2 1.5z"/></svg></span>
+            <div><h4>تقدّمه في الحفظ</h4><p>السور والأجزاء المكتملة ونسبة إتمامه.</p></div></div>
+          <div class="parent-item"><span class="pi-ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 4.5-3.2 7.7-8 9-4.8-1.3-8-4.5-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg></span>
+            <div><h4>نتائج اختباراته</h4><p>درجات الاختبارات الأسبوعية بالأثمان.</p></div></div>
+          <div class="parent-item"><span class="pi-ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4L4.2 7.7l5.4-.8z"/></svg></span>
+            <div><h4>سجلّ ختماته</h4><p>ما أتمّه من ختمات وإنجازاته المميّزة.</p></div></div>
+        </div>
       </div>
     </div>
   </section>
