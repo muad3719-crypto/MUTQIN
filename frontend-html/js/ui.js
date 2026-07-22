@@ -445,7 +445,7 @@
     }
 
     window.UI = {
-        toast, confirmDialog, confirmDelete, confirmAction, formModal, runAttendanceImport, attachAthmanSearch, openPdf,
+        toast, confirmDialog, confirmDelete, confirmAction, formModal, runAttendanceImport, importSummaryModal, attachAthmanSearch, openPdf,
         bindPasswordToggle, bindTableSearch, setFieldErrors,
         attendanceBadge, qualityBadge, resultBadge, badge, escapeHtml, initial, fmtDate, todayStr,
         ic, star, actionBtn, ICON_PATHS,
