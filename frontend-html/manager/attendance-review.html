@@ -112,8 +112,61 @@
         } finally { loadMoreBtn.disabled = false; }
     }
 
-    // واجهة التصحيح تُضاف في المرحلة التالية
-    function wireEdit(batch) { /* stage 5 */ }
+    // ===== واجهة التصحيح: اختيار حالة جديدة ثم تأكيد ثم PUT =====
+    function wireEdit(batch) {
+        const byId = Object.fromEntries(batch.map(a => [String(a.id), a]));
+        body.querySelectorAll('[data-edit]').forEach(btn => {
+            btn.onclick = () => openCorrect(byId[btn.dataset.edit]);
+        });
+    }
+
+    function openCorrect(a) {
+        if (!a) return;
+        const cur = STATUS[a.status] ? STATUS[a.status][0] : a.status;
+        const opts = ['present', 'absent', 'late'].map(s =>
+            `<option value="${s}" ${s === a.status ? 'selected' : ''}>${STATUS[s][0]}</option>`).join('');
+        const ov = document.createElement('div');
+        ov.style.cssText = 'position:fixed;inset:0;z-index:1600;background:rgba(4,54,31,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:24px;';
+        ov.innerHTML = `
+          <div class="mq-card" style="width:100%;max-width:440px;margin:0;">
+            <div class="mq-card-header"><h3 class="mq-card-title" style="font-size:19px;">تصحيح حالة الحضور</h3>
+              <button class="mq-act" data-close style="background:rgba(4,54,31,.06);color:#3D6B52;font-size:20px;">×</button></div>
+            <div class="mq-card-body">
+              <div style="background:var(--ivory-soft);border-radius:11px;padding:12px 14px;margin-bottom:16px;font-size:14px;">
+                <div style="font-weight:700;color:#04361F;">${UI.escapeHtml(a.student_name || '')} ${a.display_code ? `<span class="mq-code" style="font-size:12px;">${UI.escapeHtml(a.display_code)}</span>` : ''}</div>
+                <div style="color:#7A8F82;font-size:13px;margin-top:3px;">${UI.escapeHtml(a.date || '')} · الحالة الحالية: <strong>${UI.escapeHtml(cur)}</strong></div>
+              </div>
+              <label class="mq-label">الحالة الجديدة</label>
+              <select class="mq-input" id="new-status">${opts}</select>
+              <div style="display:flex;gap:10px;justify-content:flex-start;margin-top:20px;">
+                <button class="mq-btn mq-btn--primary" id="save-correct">حفظ التصحيح</button>
+                <button class="mq-btn mq-btn--secondary" data-close>إلغاء</button>
+              </div>
+            </div>
+          </div>`;
+        document.body.appendChild(ov);
+        const close = () => ov.remove();
+        ov.querySelectorAll('[data-close]').forEach(b => b.onclick = close);
+        ov.addEventListener('mousedown', e => { if (e.target === ov) close(); });
+
+        ov.querySelector('#save-correct').onclick = async () => {
+            const ns = ov.querySelector('#new-status').value;
+            if (ns === a.status) { close(); return; } // لا تغيير
+            const ok = await UI.confirmAction({
+                title: 'تأكيد التصحيح',
+                html: `تغيير حالة <strong>${UI.escapeHtml(a.student_name || '')}</strong> بتاريخ ${UI.escapeHtml(a.date || '')}<br>` +
+                      `من <strong>${UI.escapeHtml(cur)}</strong> إلى <strong style="color:#9A7A1E;">${UI.escapeHtml(STATUS[ns][0])}</strong>؟`,
+                okText: 'تأكيد التغيير', cancelText: 'إلغاء',
+            });
+            if (!ok) return;
+            try {
+                await API.put('/manager/attendance/' + a.id + '/status', { status: ns });
+                UI.toast('تم تصحيح حالة الحضور');
+                close();
+                render(true);
+            } catch (e) { UI.toast(e.message, 'danger'); }
+        };
+    }
 
     loadMoreBtn.onclick = () => { page++; render(false); };
     ['f-from', 'f-to', 'f-teacher', 'f-status'].forEach(id => el(id).addEventListener('change', () => render(true)));
