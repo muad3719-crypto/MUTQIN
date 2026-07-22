@@ -21,10 +21,15 @@
     if (!user) return;
     const pc = Layout.mount({ user, active: 'students', title: 'طلاب مركزي' });
 
+    let teachers = []; // محفّظو مركزه (لقائمة المعلّم)
+
     pc.innerHTML = `
         <div class="mq-toolbar">
           <div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="ابحث بالاسم أو الرقم الوطني أو الهاتف..."></div>
-          <span id="counter" style="font-size:13px;color:#7A8F82;font-weight:600;"></span>
+          <div style="display:flex;align-items:center;gap:14px;">
+            <span id="counter" style="font-size:13px;color:#7A8F82;font-weight:600;white-space:nowrap;"></span>
+            <button class="mq-btn mq-btn--primary" id="add">${UI.ic('plus', 17)} طالب جديد</button>
+          </div>
         </div>
         <div class="mq-card"><table class="mq-table" id="tbl">
           <thead><tr><th>الطالب</th><th style="width:80px;">الكود</th><th>الرقم الوطني</th><th>المحفّظ</th><th>العمر</th></tr></thead>
@@ -80,10 +85,250 @@
         } finally { loadMoreBtn.disabled = false; }
     }
 
+    // نافذة نجاح بارزة: تُبقي الكود الفعلي أمام المدير (يسجّله في الجهاز)
+    function showSuccess(actualCode, previewed) {
+        const num = String(actualCode || '').replace(/\D/g, '');
+        const changed = previewed && actualCode && previewed !== actualCode;
+        const ov = document.createElement('div');
+        ov.style.cssText = 'position:fixed;inset:0;z-index:1700;background:rgba(4,54,31,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:24px;';
+        ov.innerHTML = `
+          <div class="mq-card" style="width:100%;max-width:460px;margin:0;text-align:center;">
+            <div class="mq-card-body">
+              <div style="font-size:40px;line-height:1;margin-bottom:8px;">✅</div>
+              <h3 style="font-family:'Amiri',serif;font-size:22px;color:#04361F;margin:0 0 6px;">تمت إضافة الطالب</h3>
+              <p style="font-size:14.5px;color:#3D6B52;margin:0 0 14px;">سجّله في جهاز البصمة بالرقم:</p>
+              <div style="display:inline-flex;align-items:baseline;gap:10px;background:rgba(4,83,47,.08);border:1.5px solid rgba(212,175,55,.5);border-radius:14px;padding:12px 26px;margin-bottom:6px;">
+                <span class="mq-code" style="font-size:22px;padding:4px 14px;">${UI.escapeHtml(actualCode || '—')}</span>
+                <span style="font-size:13px;color:#7A8F82;">الرقم في الجهاز: <strong style="color:#04532F;font-size:17px;direction:ltr;">${UI.escapeHtml(num)}</strong></span>
+              </div>
+              ${changed ? `<div style="margin-top:12px;background:rgba(212,175,55,.16);border:1.5px solid #D4AF37;border-radius:11px;padding:11px 14px;font-size:13px;color:#9A7A1E;font-weight:700;">
+                ⚠ تنبيه: الكود المتوقّع كان <span class="mq-code">${UI.escapeHtml(previewed)}</span> لكن أُضيف طالب آخر قبلك، فالكود الفعلي هو <span class="mq-code">${UI.escapeHtml(actualCode)}</span>. اعتمد هذا الأخير.</div>` : ''}
+              <div style="margin-top:18px;"><button class="mq-btn mq-btn--primary" data-close>تم</button></div>
+            </div>
+          </div>`;
+        document.body.appendChild(ov);
+        const close = () => ov.remove();
+        ov.querySelector('[data-close]').onclick = close;
+        ov.addEventListener('mousedown', e => { if (e.target === ov) close(); });
+    }
+
+    // ===== نموذج إضافة طالب (مركز المدير مفروض من الخادم) =====
+    async function openAddStudent() {
+        let chosenParent = null;
+        // معاينة الكود التالي (لا تحجز) — تفشل بهدوء دون تعطيل النموذج
+        let previewed = null;
+        try { previewed = (await API.get('/manager/students/next-code')).data.code; } catch (e) { previewed = null; }
+
+        const teacherOptions = '<option value="">— بدون محفّظ —</option>' +
+            teachers.map(t => `<option value="${t.id}">${UI.escapeHtml(t.name)}</option>`).join('');
+
+        const NAT_HELP = 'اختياري — رقم وطني ليبي: 12 رقماً يبدأ بـ 1 (ذكر). يُستخدم لتقارير الأوقاف.';
+        const ov = document.createElement('div');
+        ov.style.cssText = 'position:fixed;inset:0;z-index:1500;background:rgba(4,54,31,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:24px;';
+        const inp = (name, label, opts = {}) => `
+            <div style="margin-bottom:13px;">
+              <label class="mq-label">${label} ${opts.req ? '<span style="color:#B23A48;">*</span>' : ''}</label>
+              ${opts.type === 'select'
+                ? `<select class="mq-input" name="${name}">${opts.options}</select>`
+                : `<input class="mq-input" name="${name}" type="${opts.type || 'text'}" placeholder="${opts.ph || ''}">`}
+              ${opts.help ? `<div style="font-size:12px;color:#7A8F82;margin-top:4px;">${opts.help}</div>` : ''}
+              <div class="mq-field-error" data-error="${name}"></div>
+            </div>`;
+
+        // حقل «الكود المتوقّع» — عرض فقط
+        const codeField = `
+            <div style="margin-bottom:13px;">
+              <label class="mq-label">الكود المتوقّع للطالب</label>
+              <input class="mq-input" value="${previewed ? UI.escapeHtml(previewed) : 'سيُخصَّص عند الحفظ'}" readonly disabled
+                     style="direction:ltr;text-align:right;font-weight:700;color:#04532F;background:rgba(212,175,55,.12);border-color:rgba(212,175,55,.5);">
+              <div style="font-size:12px;color:#9A7A1E;font-weight:600;margin-top:4px;">${previewed
+                ? 'رقمٌ تقديري — يُخصَّص نهائياً عند الحفظ. سجّله في جهاز البصمة بعد التأكيد.'
+                : 'تعذّرت المعاينة — سيظهر الكود الفعلي بعد الحفظ.'}</div>
+            </div>`;
+
+        ov.innerHTML = `
+          <div class="mq-card" style="width:100%;max-width:620px;max-height:92vh;overflow:auto;margin:0;">
+            <div class="mq-card-header"><h3 class="mq-card-title">إضافة طالب لمركزي</h3>
+              <button class="mq-act" data-close style="background:rgba(4,54,31,.06);color:#3D6B52;font-size:20px;">×</button></div>
+            <form class="mq-card-body" id="add-form">
+              ${codeField}
+              ${inp('name', 'اسم الطالب', { req: true })}
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div style="margin-bottom:13px;">
+                  <label class="mq-label">الجنسية</label>
+                  <select class="mq-input" name="nationality_type" id="s-nat">
+                    <option value="libyan">ليبي</option><option value="foreigner">أجنبي</option>
+                  </select>
+                </div>
+                <div style="margin-bottom:13px;display:none;" id="s-natname-wrap">
+                  <label class="mq-label">اسم الجنسية <span style="color:#B23A48;">*</span></label>
+                  <input class="mq-input" name="nationality_name" placeholder="مثال: تشاد">
+                  <div class="mq-field-error" data-error="nationality_name"></div>
+                </div>
+              </div>
+              <div style="margin-bottom:13px;">
+                <label class="mq-label" id="s-idlabel">الرقم الوطني (اختياري)</label>
+                <input class="mq-input" name="national_id" placeholder="مثال: 199000000001">
+                <div style="font-size:12px;color:#7A8F82;margin-top:4px;" id="s-idhelp">${NAT_HELP}</div>
+                <div class="mq-field-error" data-error="national_id"></div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                ${inp('teacher_id', 'المحفّظ', { type: 'select', options: teacherOptions })}
+                ${inp('age', 'العمر', { type: 'number' })}
+              </div>
+              ${inp('phone', 'هاتف الطالب')}
+
+              <div style="border-top:1px solid var(--line);margin:6px 0 14px;"></div>
+              <label class="mq-label">ولي الأمر</label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+                <label style="cursor:pointer;"><input type="radio" name="gmode" value="new" checked style="margin-left:5px;">ولي أمر جديد</label>
+                <label style="cursor:pointer;"><input type="radio" name="gmode" value="existing" style="margin-left:5px;">ولي أمر موجود</label>
+                <label style="cursor:pointer;"><input type="radio" name="gmode" value="none" style="margin-left:5px;">بدون ولي أمر</label>
+              </div>
+
+              <div id="gm-new">
+                ${inp('guardian_name', 'اسم ولي الأمر')}
+                ${inp('guardian_email', 'بريد ولي الأمر', { type: 'email', help: 'يُنشأ به حساب دخول لولي الأمر' })}
+                <div style="margin-bottom:13px;">
+                  <label class="mq-label">الرقم الوطني لولي الأمر (اختياري)</label>
+                  <input class="mq-input" name="guardian_id_number" placeholder="مثال: 199000000001">
+                  <div style="font-size:12px;color:#7A8F82;margin-top:4px;">المعرّف الأساسي لولي الأمر (يربط الإخوة بحساب واحد).</div>
+                  <div class="mq-field-error" data-error="guardian_id_number"></div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  ${inp('guardian_phone', 'هاتف ولي الأمر')}
+                  ${inp('guardian_password', 'كلمة المرور', { type: 'password', help: 'إن تُركت: password' })}
+                </div>
+              </div>
+
+              <div id="gm-existing" style="display:none;">
+                <div style="position:relative;">
+                  <input class="mq-input" id="parent-search" autocomplete="off" placeholder="ابحث باسم ولي الأمر أو رقم هاتفه...">
+                  <div id="parent-dd" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:30;background:#fff;border:1px solid rgba(4,83,47,.2);border-radius:12px;margin-top:5px;max-height:240px;overflow-y:auto;box-shadow:0 18px 44px -16px rgba(4,54,31,.5);"></div>
+                </div>
+                <div id="parent-chip" style="display:none;margin-top:10px;"></div>
+                <div class="mq-field-error" data-error="parent_id"></div>
+              </div>
+
+              <div id="gm-none" style="display:none;color:#7A8F82;font-size:13px;background:#FBF9EE;border-radius:10px;padding:11px 14px;">سيُسجَّل الطالب بدون ولي أمر (يمكن ربطه لاحقاً).</div>
+
+              <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:18px;">
+                <button type="button" class="mq-btn mq-btn--secondary" data-close>إلغاء</button>
+                <button type="submit" class="mq-btn mq-btn--primary">حفظ الطالب</button>
+              </div>
+            </form>
+          </div>`;
+        document.body.appendChild(ov);
+        const close = () => ov.remove();
+        ov.querySelectorAll('[data-close]').forEach(b => b.onclick = close);
+        ov.addEventListener('mousedown', e => { if (e.target === ov) close(); });
+
+        // تبديل أوضاع ولي الأمر
+        const secNew = ov.querySelector('#gm-new'), secEx = ov.querySelector('#gm-existing'), secNone = ov.querySelector('#gm-none');
+        ov.querySelectorAll('input[name="gmode"]').forEach(r => r.onchange = () => {
+            const m = ov.querySelector('input[name="gmode"]:checked').value;
+            secNew.style.display = m === 'new' ? 'block' : 'none';
+            secEx.style.display = m === 'existing' ? 'block' : 'none';
+            secNone.style.display = m === 'none' ? 'block' : 'none';
+        });
+
+        // جنسية الطالب: إظهار «اسم الجنسية» وتغيير تسمية الرقم
+        const natSel = ov.querySelector('#s-nat');
+        natSel.onchange = () => {
+            const foreign = natSel.value === 'foreigner';
+            ov.querySelector('#s-natname-wrap').style.display = foreign ? 'block' : 'none';
+            ov.querySelector('#s-idlabel').textContent = foreign ? 'رقم الجواز/الإقامة (اختياري)' : 'الرقم الوطني (اختياري)';
+        };
+
+        // بحث ولي أمر موجود (debounced) — نطاق المدير
+        const psearch = ov.querySelector('#parent-search'), pdd = ov.querySelector('#parent-dd'), pchip = ov.querySelector('#parent-chip');
+        let t = null, last = 0;
+        psearch.addEventListener('input', () => {
+            clearTimeout(t);
+            const q = psearch.value.trim();
+            chosenParent = null; pchip.style.display = 'none';
+            if (q.length < 2) { pdd.style.display = 'none'; return; }
+            t = setTimeout(async () => {
+                const rid = ++last;
+                try {
+                    const res = await API.get('/manager/parents/search?q=' + encodeURIComponent(q));
+                    if (rid !== last) return;
+                    const items = res.data || [];
+                    if (!items.length) { pdd.innerHTML = '<div style="padding:10px 13px;color:#9DB3A6;font-size:13px;">لا يوجد ولي أمر مطابق</div>'; pdd.style.display = 'block'; return; }
+                    pdd.innerHTML = items.map((p, i) => `
+                        <div class="pitem" data-i="${i}" style="padding:10px 13px;cursor:pointer;border-bottom:1px solid rgba(4,54,31,.06);">
+                          <div style="font-weight:700;color:#04361F;font-size:14px;">${UI.escapeHtml(p.name)}</div>
+                          <div style="font-size:12px;color:#7A8F82;margin-top:2px;">📞 ${UI.escapeHtml(p.phone || '—')} · عدد الأبناء: ${p.children_count}</div>
+                        </div>`).join('');
+                    pdd.querySelectorAll('.pitem').forEach(el => el.onmousedown = (e) => {
+                        e.preventDefault();
+                        const p = items[+el.dataset.i];
+                        chosenParent = p; psearch.value = ''; pdd.style.display = 'none';
+                        pchip.innerHTML = `<span style="display:inline-flex;align-items:center;gap:8px;background:rgba(4,83,47,.1);border:1px solid rgba(4,83,47,.25);color:#04532F;border-radius:30px;padding:7px 14px;font-size:13px;font-weight:700;">
+                            ✓ ${UI.escapeHtml(p.name)} — ${UI.escapeHtml(p.phone || '')} (${p.children_count} أبناء)
+                            <button type="button" id="clear-parent" style="background:none;border:none;color:#B23A48;cursor:pointer;font-size:16px;">×</button></span>`;
+                        pchip.style.display = 'block';
+                        pchip.querySelector('#clear-parent').onclick = () => { chosenParent = null; pchip.style.display = 'none'; };
+                    });
+                    pdd.style.display = 'block';
+                } catch (e) { pdd.style.display = 'none'; }
+            }, 300);
+        });
+        psearch.addEventListener('blur', () => setTimeout(() => pdd.style.display = 'none', 150));
+
+        // الحفظ — center_id يُفرض في الخادم (لا نرسله)
+        ov.querySelector('#add-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            ov.querySelectorAll('[data-error]').forEach(el => el.textContent = '');
+            const f = e.target;
+            const v = {
+                name: f.name.value,
+                national_id: f.national_id.value || null,
+                nationality_type: f.nationality_type.value,
+                nationality_name: f.nationality_type.value === 'foreigner' ? (f.nationality_name.value || null) : null,
+                teacher_id: f.teacher_id.value || null,
+                age: f.age.value || null,
+                phone: f.phone.value || null,
+            };
+            const mode = ov.querySelector('input[name="gmode"]:checked').value;
+            if (mode === 'new') {
+                v.guardian_name = f.guardian_name.value || null;
+                v.guardian_email = f.guardian_email.value || null;
+                v.guardian_phone = f.guardian_phone.value || null;
+                v.guardian_password = f.guardian_password.value || null;
+                v.guardian_id_number = f.guardian_id_number.value || null;
+            } else if (mode === 'existing') {
+                if (!chosenParent) { ov.querySelector('[data-error="parent_id"]').textContent = 'اختر ولي أمر من نتائج البحث'; return; }
+                v.parent_id = chosenParent.id;
+            }
+            const btn = f.querySelector('button[type="submit"]');
+            btn.disabled = true; btn.classList.add('is-loading');
+            try {
+                const res = await API.post('/manager/students', v);
+                const actualCode = res.data && res.data.display_code;
+                close();
+                showSuccess(actualCode, previewed);
+                render(true);
+            } catch (err) {
+                if (err.errors) Object.keys(err.errors).forEach(k => { const b = ov.querySelector(`[data-error="${k}"]`); if (b) b.textContent = err.errors[k][0]; });
+                UI.toast(err.message || 'تعذّر الحفظ', 'danger');
+            } finally { btn.disabled = false; btn.classList.remove('is-loading'); }
+        });
+    }
+
+    document.getElementById('add').onclick = () => {
+        if (!teachers.length) UI.toast('لا يوجد محفّظون في مركزك بعد — يمكنك الإضافة بلا محفّظ', 'info');
+        openAddStudent();
+    };
     loadMoreBtn.onclick = () => { page++; render(false); };
-    let t = null;
-    searchInput.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => render(true), 300); });
-    render(true);
+    let st = null;
+    searchInput.addEventListener('input', () => { clearTimeout(st); st = setTimeout(() => render(true), 300); });
+
+    // تحميل محفّظي المركز (لقائمة الإضافة) ثم القائمة
+    (async () => {
+        try { teachers = (await API.get('/manager/teachers?all=1')).data || []; } catch (e) { teachers = []; }
+        render(true);
+    })();
 })();
 </script>
 </body>

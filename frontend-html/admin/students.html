@@ -99,8 +99,11 @@
     }
 
     // ===== نموذج إضافة طالب مع اختيار ولي الأمر (جديد / موجود / بدون) =====
-    function openAddStudent() {
+    async function openAddStudent() {
         let chosenParent = null;            // ولي الأمر المختار (الوضع B)
+        // معاينة الكود التالي (لا تحجز) — تفشل بهدوء دون تعطيل النموذج
+        let previewed = null;
+        try { previewed = (await API.get('/students/next-code')).data.code; } catch (e) { previewed = null; }
         const ov = document.createElement('div');
         ov.style.cssText = 'position:fixed;inset:0;z-index:1500;background:rgba(4,54,31,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:24px;';
         const inp = (name, label, opts = {}) => `
@@ -118,6 +121,14 @@
             <div class="mq-card-header"><h3 class="mq-card-title">إضافة طالب جديد</h3>
               <button class="mq-act" data-close style="background:rgba(4,54,31,.06);color:#3D6B52;font-size:20px;">×</button></div>
             <form class="mq-card-body" id="add-form">
+              <div style="margin-bottom:13px;">
+                <label class="mq-label">الكود المتوقّع للطالب</label>
+                <input class="mq-input" value="${previewed ? UI.escapeHtml(previewed) : 'سيُخصَّص عند الحفظ'}" readonly disabled
+                       style="direction:ltr;text-align:right;font-weight:700;color:#04532F;background:rgba(212,175,55,.12);border-color:rgba(212,175,55,.5);">
+                <div style="font-size:12px;color:#9A7A1E;font-weight:600;margin-top:4px;">${previewed
+                  ? 'رقمٌ تقديري — يُخصَّص نهائياً عند الحفظ (سجّله في جهاز البصمة بعد التأكيد).'
+                  : 'تعذّرت المعاينة — سيظهر الكود الفعلي بعد الحفظ.'}</div>
+              </div>
               ${inp('name', 'اسم الطالب', { req: true })}
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                 <div style="margin-bottom:13px;">
@@ -300,15 +311,21 @@
                 if (!chosenParent) { ov.querySelector('[data-error="parent_id"]').textContent = 'اختر ولي أمر من نتائج البحث'; return; }
                 v.parent_id = chosenParent.id;
             }
-            const btn = f.querySelector('button[type="submit"]'); btn.disabled = true;
+            const btn = f.querySelector('button[type="submit"]'); btn.disabled = true; btn.classList.add('is-loading');
             try {
-                await API.post('/students', v);
-                UI.toast('تم إضافة الطالب بنجاح');
+                const res = await API.post('/students', v);
+                const actual = res.data && res.data.display_code;
+                const num = String(actual || '').replace(/\D/g, '');
+                if (actual && previewed && actual !== previewed) {
+                    UI.toast(`تمت الإضافة بالكود ${actual} (المتوقّع كان ${previewed}) — سجّله بالرقم ${num}`, 'warning');
+                } else {
+                    UI.toast(`تمت إضافة الطالب بالكود ${actual || ''} — سجّله في جهاز البصمة بالرقم ${num}`);
+                }
                 close(); load();
             } catch (err) {
                 if (err.errors) Object.keys(err.errors).forEach(k => { const b = ov.querySelector(`[data-error="${k}"]`); if (b) b.textContent = err.errors[k][0]; });
                 UI.toast(err.message || 'تعذّر الحفظ', 'danger');
-                btn.disabled = false;
+                btn.disabled = false; btn.classList.remove('is-loading');
             }
         });
     }
