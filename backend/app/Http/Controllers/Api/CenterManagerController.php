@@ -243,4 +243,36 @@ class CenterManagerController extends Controller
             'data'    => ['id' => $attendance->id, 'status' => $attendance->status],
         ]);
     }
+
+    /** شهر/سنة من الطلب (افتراض: الشهر الحالي بتوقيت طرابلس). */
+    private function period(Request $request): array
+    {
+        return [(int) $request->get('month', now()->month), (int) $request->get('year', now()->year)];
+    }
+
+    /**
+     * المجموعة 1 — تقارير النظام مضيَّقة بمركزه: ملخّص المركز (حضور/اختبارات)،
+     * الطلاب المتعثّرون، ومؤشّر تقدّم الحفظ. النطاق مفروض من الحساب (center_id)،
+     * لا يُقبل أي مركز من العميل. يُعاد استخدام ReportService الموجود.
+     */
+    public function reportsSystem(Request $request)
+    {
+        $centerId = $request->user()->center_id;
+        [$month, $year] = $this->period($request);
+        $reports = app(\App\Services\ReportService::class);
+
+        $center = \App\Models\Center::find($centerId);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'center'   => $center,
+                'summary'  => $reports->centerData($center, $month, $year),          // حضور/اختبارات/نجاح
+                'atRisk'   => $reports->atRiskStudents($month, $year, $centerId),     // المتعثّرون (مضيَّق)
+                'progress' => $reports->progressSummary($month, $year, $centerId),    // أكمل القرآن + متوسّط الأجزاء
+                'month'    => $month,
+                'year'     => $year,
+            ],
+        ]);
+    }
 }
