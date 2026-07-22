@@ -35,6 +35,7 @@
             ['teachers',   'محفّظو مركزي', 'teachers', 'manager/teachers.html'],
             ['students',   'طلاب مركزي', 'students', 'manager/students.html'],
             ['attendance', 'استيراد الحضور', 'attendance', 'manager/attendance.html'],
+            ['attendance-review', 'مراجعة الحضور', 'report', 'manager/attendance-review.html'],
             ['requests',   'طلبات النقل الداخلية', 'requests', 'manager/requests.html'],
         ],
         parent: [

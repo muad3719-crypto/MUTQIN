@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مراجعة الحضور | مُتقِن</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+<link href="../css/theme.css" rel="stylesheet">
+<style>
+  .ar-filters{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:end;}
+  @media(max-width:1024px){.ar-filters{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:767.98px){.ar-filters{grid-template-columns:1fr;}}
+  .ar-lbl{font-size:12.5px;color:#7A8F82;font-weight:700;margin-bottom:5px;display:block;}
+</style>
+</head>
+<body>
+<div id="app-shell"></div>
+
+<script src="../js/config.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/layout.js"></script>
+<script>
+(function () {
+    const user = Auth.requireAuth(['center_manager']);
+    if (!user) return;
+    const pc = Layout.mount({ user, active: 'attendance-review', title: 'مراجعة الحضور' });
+
+    let teachers = [];
+    const STATUS = { present: ['حاضر', 'success'], absent: ['غائب', 'danger'], late: ['متأخر', 'warning'] };
+    const statusBadge = s => { const [l, k] = STATUS[s] || [s, 'secondary']; return UI.badge(l, k); };
+    const sourceBadge = s => s === 'fingerprint'
+        ? '<span class="mq-badge mq-badge-info">بصمة</span>'
+        : '<span class="mq-badge mq-badge-secondary">يدوي</span>';
+
+    pc.innerHTML = `
+        <div class="mq-card" style="margin-bottom:18px;"><div class="mq-card-body">
+          <div class="ar-filters">
+            <div><label class="ar-lbl">من تاريخ</label><input type="date" id="f-from" class="mq-input"></div>
+            <div><label class="ar-lbl">إلى تاريخ</label><input type="date" id="f-to" class="mq-input"></div>
+            <div><label class="ar-lbl">المحفّظ</label><select id="f-teacher" class="mq-input"><option value="">كل المحفّظين</option></select></div>
+            <div><label class="ar-lbl">الحالة</label><select id="f-status" class="mq-input">
+              <option value="">كل الحالات</option><option value="present">حاضر</option><option value="absent">غائب</option><option value="late">متأخر</option>
+            </select></div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap;">
+            <div class="mq-search" style="flex:1;min-width:220px;">${UI.ic('search', 18, '#9A7A1E')}<input id="f-q" placeholder="ابحث بالاسم أو الكود أو الرقم الوطني..."></div>
+            <button class="mq-btn mq-btn--secondary mq-btn--sm" id="f-clear">مسح الفلاتر</button>
+            <span id="counter" style="font-size:13px;color:#7A8F82;font-weight:600;white-space:nowrap;"></span>
+          </div>
+        </div></div>
+
+        <div class="mq-card"><table class="mq-table" id="tbl">
+          <thead><tr>
+            <th>الكود</th><th>الطالب</th><th>المحفّظ</th><th>التاريخ</th>
+            <th style="text-align:center;">الحالة</th><th style="text-align:center;">المصدر</th><th style="text-align:center;">تصحيح</th>
+          </tr></thead>
+          <tbody id="body"><tr><td colspan="7" style="text-align:center;color:#7A8F82;padding:30px;">جارٍ التحميل...</td></tr></tbody>
+        </table></div>
+        <div style="text-align:center;margin-top:16px;">
+          <button class="mq-btn mq-btn--secondary" id="load-more" style="display:none;">عرض المزيد ↓</button>
+        </div>`;
+
+    const el = id => document.getElementById(id);
+    const body = el('body'), counter = el('counter'), loadMoreBtn = el('load-more');
+    let page = 1, lastPage = 1, total = 0, loadedCount = 0, fetchSeq = 0;
+
+    function params() {
+        const p = new URLSearchParams({ page });
+        const from = el('f-from').value, to = el('f-to').value;
+        if (from && to) { p.set('from', from); p.set('to', to); }
+        else if (from) { p.set('date', from); }
+        else if (to) { p.set('date', to); }
+        if (el('f-teacher').value) p.set('teacher_id', el('f-teacher').value);
+        if (el('f-status').value) p.set('status', el('f-status').value);
+        const q = el('f-q').value.trim(); if (q) p.set('q', q);
+        return p;
+    }
+
+    function rowHtml(a) {
+        return `<tr data-id="${a.id}">
+          <td>${a.display_code ? `<span class="mq-code">${UI.escapeHtml(a.display_code)}</span>` : '—'}</td>
+          <td style="font-weight:600;">${UI.escapeHtml(a.student_name || '—')}</td>
+          <td>${UI.escapeHtml(a.teacher_name || '—')}</td>
+          <td style="white-space:nowrap;">${UI.escapeHtml(a.date || '—')}</td>
+          <td style="text-align:center;" data-status>${statusBadge(a.status)}</td>
+          <td style="text-align:center;">${sourceBadge(a.source)}${a.corrected_at ? ' <span title="صُحّح يدوياً" style="color:#9A7A1E;">✎</span>' : ''}</td>
+          <td style="text-align:center;">${UI.actionBtn('edit', `data-edit="${a.id}" title="تصحيح الحالة"`)}</td>
+        </tr>`;
+    }
+
+    async function render(reset = true) {
+        if (reset) { page = 1; loadedCount = 0; }
+        const seq = ++fetchSeq;
+        if (reset) body.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#7A8F82;padding:20px;">جارٍ التحميل...</td></tr>`;
+        loadMoreBtn.disabled = true;
+        try {
+            const res = await API.get('/manager/attendance?' + params().toString());
+            if (seq !== fetchSeq) return;
+            const pg = res.data, batch = pg.data || [];
+            lastPage = pg.last_page ?? 1; total = pg.total ?? batch.length;
+            const rows = batch.map(rowHtml).join('');
+            if (reset) body.innerHTML = batch.length ? rows : `<tr><td colspan="7" style="text-align:center;color:#7A8F82;padding:30px;">لا توجد سجلات مطابقة</td></tr>`;
+            else body.insertAdjacentHTML('beforeend', rows);
+            loadedCount += batch.length;
+            counter.textContent = total ? `عرض ${loadedCount} من ${total}` : '';
+            loadMoreBtn.style.display = page < lastPage ? '' : 'none';
+            wireEdit(batch);
+        } catch (e) {
+            if (reset) body.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#B23A48;padding:20px;">${UI.escapeHtml(e.message)}</td></tr>`;
+        } finally { loadMoreBtn.disabled = false; }
+    }
+
+    // واجهة التصحيح تُضاف في المرحلة التالية
+    function wireEdit(batch) { /* stage 5 */ }
+
+    loadMoreBtn.onclick = () => { page++; render(false); };
+    ['f-from', 'f-to', 'f-teacher', 'f-status'].forEach(id => el(id).addEventListener('change', () => render(true)));
+    let t = null;
+    el('f-q').addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => render(true), 300); });
+    el('f-clear').onclick = () => {
+        ['f-from', 'f-to', 'f-q'].forEach(id => el(id).value = '');
+        el('f-teacher').value = ''; el('f-status').value = '';
+        render(true);
+    };
+
+    (async () => {
+        try {
+            teachers = (await API.get('/manager/teachers?all=1')).data || [];
+            el('f-teacher').insertAdjacentHTML('beforeend',
+                teachers.map(tt => `<option value="${tt.id}">${UI.escapeHtml(tt.name)}</option>`).join(''));
+        } catch (e) { /* الفلتر يبقى «كل المحفّظين» */ }
+        render(true);
+    })();
+})();
+</script>
+</body>
+</html>
