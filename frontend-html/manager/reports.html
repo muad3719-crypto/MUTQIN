@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>التقارير | مُتقِن</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+<link href="../css/theme.css" rel="stylesheet">
+<style>
+  .rp-period{display:flex;gap:12px;align-items:end;flex-wrap:wrap;}
+  .rp-period > div{min-width:120px;}
+  .rp-lbl{font-size:12.5px;color:#7A8F82;font-weight:700;margin-bottom:5px;display:block;}
+  .rp-section-title{font-family:'Amiri',serif;font-size:24px;color:#04361F;margin:0 0 4px;}
+  .rp-section-sub{font-size:13px;color:#7A8F82;margin:0 0 18px;}
+</style>
+</head>
+<body>
+<div id="app-shell"></div>
+
+<script src="../js/config.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/layout.js"></script>
+<script>
+(function () {
+    const user = Auth.requireAuth(['center_manager']);
+    if (!user) return;
+    const pc = Layout.mount({ user, active: 'reports', title: 'تقارير مركزي' });
+
+    const now = new Date();
+    const MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+
+    pc.innerHTML = `
+        <div class="mq-card" style="margin-bottom:22px;"><div class="mq-card-body">
+          <div class="rp-period">
+            <div><label class="rp-lbl">الشهر</label>
+              <select id="p-month" class="mq-input">${MONTHS.map((m,i)=>`<option value="${i+1}" ${i+1===now.getMonth()+1?'selected':''}>${m}</option>`).join('')}</select></div>
+            <div><label class="rp-lbl">السنة</label>
+              <select id="p-year" class="mq-input">${[0,1,2].map(k=>{const y=now.getFullYear()-k; return `<option value="${y}">${y}</option>`}).join('')}</select></div>
+            <button class="mq-btn mq-btn--primary mq-btn--sm" id="p-go">عرض</button>
+          </div>
+        </div></div>
+
+        <!-- المجموعة 1 -->
+        <h2 class="rp-section-title">📊 تقارير النظام — مركزي</h2>
+        <p class="rp-section-sub">التقارير العامة مقيّدة على مركزك: الحضور والتقدّم والمتعثّرون.</p>
+        <div id="g1"><div class="mq-card"><div class="mq-card-body">جارٍ التحميل...</div></div></div>
+
+        <!-- المجموعة 2 (تُملأ في المرحلة التالية) -->
+        <div id="g2-wrap" style="margin-top:34px;"></div>`;
+
+    const el = id => document.getElementById(id);
+    const my = () => `month=${el('p-month').value}&year=${el('p-year').value}`;
+
+    function statCard(val, label, kind) {
+        return `<div class="mq-stat ${kind || ''}"><span class="mq-stat-ico">${UI.star(22)}</span>
+            <div><div class="mq-stat-val">${val}</div><div class="mq-stat-lbl">${label}</div></div></div>`;
+    }
+
+    async function loadGroup1() {
+        el('g1').innerHTML = `<div class="mq-card"><div class="mq-card-body">جارٍ التحميل...</div></div>`;
+        let d;
+        try { d = (await API.get('/manager/reports/system?' + my())).data; }
+        catch (e) { el('g1').innerHTML = `<div class="mq-empty">${UI.escapeHtml(e.message)}</div>`; return; }
+
+        const s = d.summary, pr = d.progress, risk = d.atRisk.rows || [];
+        const riskRows = risk.length ? risk.map(r => `<tr>
+              <td>${r.student.display_code ? `<span class="mq-code">${UI.escapeHtml(r.student.display_code)}</span>` : '—'}</td>
+              <td style="font-weight:600;">${UI.escapeHtml(r.student.name)}</td>
+              <td>${UI.escapeHtml(r.student.teacher?.name || '— بدون محفّظ —')}</td>
+              <td style="text-align:center;font-weight:700;color:${r.attendancePercent<70?'#B23A48':'#04532F'};">${r.attendancePercent}%</td>
+              <td style="text-align:center;">${r.fails}</td>
+              <td>${UI.badge(r.reason, 'warning')}</td></tr>`).join('')
+            : `<tr><td colspan="6" style="text-align:center;color:#04532F;padding:20px;">✓ لا يوجد طلاب متعثّرون</td></tr>`;
+
+        el('g1').innerHTML = `
+            <div class="mq-stats">
+              ${statCard(s.studentsCount, 'الطلاب', 'green')}
+              ${statCard(s.teachersCount, 'المحفّظون', 'gold')}
+              ${statCard(s.avgAttendance + '%', 'متوسّط الحضور', 'blue')}
+              ${statCard(s.passRate + '%', 'نسبة النجاح', 'green')}
+              ${statCard(pr.completedQuran, 'أكملوا القرآن', 'gold')}
+              ${statCard(pr.avgCompletedJuz, 'متوسّط الأجزاء المكتملة', 'blue')}
+            </div>
+
+            <div class="mq-card" style="margin-bottom:16px;">
+              <div class="mq-card-header"><h3 class="mq-card-title">⚠️ الطلاب المتعثّرون (${risk.length})</h3>
+                <button class="mq-btn mq-btn--secondary mq-btn--sm" id="pdf-atrisk">${UI.ic('report',15)} PDF</button></div>
+              <div style="overflow-x:auto;"><table class="mq-table">
+                <thead><tr><th>الكود</th><th>الطالب</th><th>المحفّظ</th><th style="text-align:center;">الحضور</th><th style="text-align:center;">مرات الرسوب</th><th>السبب</th></tr></thead>
+                <tbody>${riskRows}</tbody></table></div>
+            </div>
+
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button class="mq-btn mq-btn--gold mq-btn--sm" id="pdf-center">${UI.ic('report',15)} تقرير المركز الشامل (PDF)</button>
+            </div>`;
+
+        el('pdf-atrisk').onclick = () => UI.openPdf('/manager/reports/at-risk/pdf?' + my());
+        el('pdf-center').onclick = () => UI.openPdf('/manager/reports/center/pdf?' + my());
+    }
+
+    function loadGroup2() { /* stage 7 */ }
+
+    function loadAll() { loadGroup1(); loadGroup2(); }
+    el('p-go').onclick = loadAll;
+    loadAll();
+})();
+</script>
+</body>
+</html>
