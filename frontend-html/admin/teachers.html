@@ -151,7 +151,7 @@
     async function load() {
         pc.innerHTML = '<div class="mq-card"><div class="mq-card-body">جارٍ التحميل...</div></div>';
         try {
-            const cRes = await API.get('/centers?all=1');
+            const cRes = await API.get('/centers?all=1&active=1');
             centers = cRes.data.data || cRes.data || [];
             const centerName = (id) => (centers.find(c => c.id == id) || {}).name || '—';
 

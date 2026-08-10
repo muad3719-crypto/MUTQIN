@@ -28,77 +28,137 @@
         { name: 'phone', label: 'رقم الهاتف', value: c.phone },
     ];
 
-    // قائمة المدن المميّزة (تُشتق من كل المراكز؛ الفلترة نفسها تتم في الـ Backend)
-    let allCities = [];
+    // ===== نافذة تفاصيل المركز (استعلامان في الخادم — بلا N+1) =====
+    async function showCenterDetails(id) {
+        let d;
+        try { d = (await API.get('/centers/' + id)).data || {}; }
+        catch (e) { UI.toast(e.message, 'danger'); return; }
+
+        const info = (lbl, val) => `<div style="padding:11px 13px;background:var(--ivory-soft);border-radius:10px;">
+            <div style="font-size:11.5px;color:#7A8F82;margin-bottom:2px;">${lbl}</div>
+            <div style="font-size:14px;font-weight:700;color:#04361F;">${UI.escapeHtml(val ?? '—')}</div></div>`;
+
+        const teacherRows = (d.teachers || []).length
+            ? d.teachers.map(t => `<tr>
+                  <td>${t.display_code ? `<span class="mq-code">${UI.escapeHtml(t.display_code)}</span>` : '—'}</td>
+                  <td style="font-weight:600;">${UI.escapeHtml(t.name)}</td>
+                  <td>${t.type === 'محفظ أساسي'
+                      ? UI.badge('محفظ أساسي', 'success')
+                      : UI.badge('محفظ معاون', 'secondary')}</td>
+                  <td style="text-align:center;">${t.is_active ? UI.badge('نشط', 'success') : UI.badge('غير نشط', 'danger')}</td>
+                </tr>`).join('')
+            : `<tr><td colspan="4" style="text-align:center;color:#9DB3A6;padding:16px;">لا يوجد محفّظون في هذا المركز</td></tr>`;
+
+        const ov = document.createElement('div');
+        ov.style.cssText = 'position:fixed;inset:0;background:rgba(4,54,31,.45);z-index:1500;display:flex;align-items:center;justify-content:center;padding:24px;';
+        ov.innerHTML = `
+            <div class="mq-card" style="width:100%;max-width:640px;max-height:90vh;overflow:auto;margin:0;">
+              <div class="mq-card-header" style="position:sticky;top:0;">
+                <h3 class="mq-card-title">تفاصيل المركز</h3>
+                <button class="mq-act" data-close style="background:rgba(4,54,31,.06);color:#3D6B52;font-size:20px;">×</button></div>
+              <div class="mq-card-body">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;">
+                  <h2 style="font-family:'Amiri',serif;font-size:24px;margin:0;color:#04361F;">${UI.escapeHtml(d.name || '—')}</h2>
+                  ${d.display_code ? `<span class="mq-code" style="font-size:14px;">${UI.escapeHtml(d.display_code)}</span>` : ''}
+                  ${d.is_active ? UI.badge('نشط', 'success') : UI.badge('غير نشط', 'danger')}
+                </div>
+
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:22px;">
+                  ${info('🏙️ المدينة', d.city)}
+                  ${info('📍 العنوان', d.address)}
+                  ${info('📞 الهاتف', d.phone)}
+                  ${info('👥 عدد الطلاب', (d.students_count ?? 0) + ' طالب')}
+                  ${info('🧑‍🏫 عدد المحفّظين', (d.teachers_count ?? 0) + ' محفّظ')}
+                </div>
+
+                <h4 style="font-family:'Amiri',serif;color:#04532F;margin:0 0 10px;">🧑‍🏫 محفّظو المركز</h4>
+                <div style="border:1px solid var(--hair);border-radius:12px;overflow:hidden;">
+                  <table class="mq-table">
+                    <thead><tr><th style="width:80px;">الكود</th><th>الاسم</th><th>النوع</th><th style="text-align:center;width:100px;">الحالة</th></tr></thead>
+                    <tbody>${teacherRows}</tbody></table>
+                </div>
+              </div>
+            </div>`;
+        document.body.appendChild(ov);
+        const close = () => ov.remove();
+        ov.querySelector('[data-close]').onclick = close;
+        ov.addEventListener('mousedown', e => { if (e.target === ov) close(); });
+    }
 
     function rowsHtml(centers) {
         return centers.map(c => `
             <tr>
+              <td>${c.display_code ? `<span class="mq-code">${UI.escapeHtml(c.display_code)}</span>` : '—'}</td>
               <td style="font-weight:600;">${UI.escapeHtml(c.name)}</td>
               <td>${c.city ? UI.badge(UI.escapeHtml(c.city), 'primary') : '—'}</td>
               <td>${UI.escapeHtml(c.address || '—')}</td>
               <td>${UI.escapeHtml(c.phone || '—')}</td>
               <td>${UI.badge((c.students_count ?? 0) + ' طالب', 'info')}</td>
+              <td style="text-align:center;">${c.is_active ? UI.badge('نشط', 'success') : UI.badge('غير نشط', 'danger')}</td>
               <td><div class="mq-actions">
-                ${UI.actionBtn('edit', `data-edit="${c.id}"`)}
-                ${UI.actionBtn('del', `data-del="${c.id}"`)}
+                ${UI.actionBtn('view', `data-details="${c.id}" title="تفاصيل"`)}
+                ${UI.actionBtn('edit', `data-edit="${c.id}" title="تعديل"`)}
+                <button class="mq-btn ${c.is_active ? 'mq-btn--quiet-danger' : 'mq-btn--quiet'} mq-btn--icon mq-btn--sm"
+                        data-toggle="${c.id}" title="${c.is_active ? 'تعطيل المركز' : 'تفعيل المركز'}">
+                  ${c.is_active
+                    ? '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>'
+                    : '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg>'}
+                </button>
               </div></td>
-            </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:#7A8F82;padding:30px;">لا توجد مراكز</td></tr>`;
+            </tr>`).join('') || `<tr><td colspan="8" style="text-align:center;color:#7A8F82;padding:30px;">لا توجد مراكز</td></tr>`;
     }
 
     async function load() {
         pc.innerHTML = '<div class="mq-card"><div class="mq-card-body">جارٍ التحميل...</div></div>';
         try {
-            // تحميل أولي لكل المراكز لاشتقاق قائمة المدن
             const res0 = await API.get('/centers?all=1');
-            const initial = res0.data.data || res0.data || [];
-            allCities = [...new Set(initial.map(c => c.city).filter(Boolean))].sort();
-            const cityOpts = '<option value="">كل المدن</option>' +
-                allCities.map(city => `<option value="${UI.escapeHtml(city)}">${UI.escapeHtml(city)}</option>`).join('');
+            const centers = res0.data.data || res0.data || [];
 
             pc.innerHTML = `
                 <div class="mq-toolbar">
-                  <div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="ابحث في أي عمود: الاسم، المدينة، العنوان، الهاتف..."></div>
-                  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-                    <div style="display:flex;align-items:center;gap:8px;">
-                      <label class="mq-label" style="margin:0;font-size:13px;white-space:nowrap;">المدينة:</label>
-                      <select class="mq-input" id="city-filter" style="max-width:200px;">${cityOpts}</select>
-                    </div>
-                    <button class="mq-btn mq-btn--primary" id="add">${UI.ic('plus', 17)} مركز جديد</button>
-                  </div>
+                  <div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="ابحث في أي عمود: الكود، الاسم، المدينة، العنوان، الهاتف..."></div>
+                  <button class="mq-btn mq-btn--primary" id="add">${UI.ic('plus', 17)} مركز جديد</button>
                 </div>
                 <div class="mq-card"><table class="mq-table" id="tbl">
-                  <thead><tr><th>اسم المركز</th><th>المدينة</th><th>العنوان</th><th>الهاتف</th><th>الطلاب</th><th>الإجراءات</th></tr></thead>
-                  <tbody id="ctr-body">${rowsHtml(initial)}</tbody></table></div>`;
+                  <thead><tr>
+                    <th style="width:80px;">الكود</th><th>اسم المركز</th><th>المدينة</th><th>العنوان</th>
+                    <th>الهاتف</th><th>الطلاب</th><th style="width:100px;text-align:center;">الحالة</th><th style="width:150px;">الإجراءات</th>
+                  </tr></thead>
+                  <tbody id="ctr-body">${rowsHtml(centers)}</tbody></table></div>`;
 
-            const cityFilter = document.getElementById('city-filter');
-
-            async function renderCenters(city) {
+            function bindRowActions(list) {
                 const body = document.getElementById('ctr-body');
-                body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#7A8F82;padding:20px;">جارٍ التحميل...</td></tr>`;
-                try {
-                    const res = await API.get('/centers?all=1' + (city ? '&city=' + encodeURIComponent(city) : ''));
-                    const centers = res.data.data || res.data || [];
-                    body.innerHTML = rowsHtml(centers);
-                    bindRowActions(centers);
-                    const s = document.getElementById('search'); if (s.value.trim()) s.dispatchEvent(new Event('input'));
-                } catch (e) { body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#B23A48;padding:20px;">${UI.escapeHtml(e.message)}</td></tr>`; }
-            }
-
-            function bindRowActions(centers) {
-                const body = document.getElementById('ctr-body');
+                body.querySelectorAll('[data-details]').forEach(b => b.onclick = () => showCenterDetails(b.dataset.details));
                 body.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => {
-                    const c = centers.find(x => x.id == b.dataset.edit);
+                    const c = list.find(x => x.id == b.dataset.edit);
                     UI.formModal({ title: 'تعديل المركز', submitText: 'حفظ التعديلات', fields: fields(c),
                         onSubmit: async (v, h) => { await API.put('/centers/' + c.id, v); UI.toast('تم التحديث'); h.close(); load(); } });
                 });
-                body.querySelectorAll('[data-del]').forEach(b => b.onclick = () =>
-                    UI.confirmDelete('حذف هذا المركز؟', async () => { await API.del('/centers/' + b.dataset.del); UI.toast('تم الحذف'); load(); }));
+                // تفعيل/تعطيل — بديل الحذف: التاريخ يبقى كاملاً
+                body.querySelectorAll('[data-toggle]').forEach(b => b.onclick = async () => {
+                    const c = list.find(x => x.id == b.dataset.toggle);
+                    const deact = !!c.is_active;
+                    const html = deact
+                        ? `تعطيل مركز <strong>${UI.escapeHtml(c.name)}</strong>؟<br>`
+                          + `<span style="color:#B23A48;font-weight:700;">سيُمنع محفّظوه ومدير المركز من الدخول، وتُنهى جلساتهم فوراً.</span><br>`
+                          + `<span style="color:#7A8F82;">تبقى كل بياناته وطلابه وسجلّاته كما هي، ولن يظهر في قوائم إضافة الطلاب والمحفّظين. يمكن إعادة تفعيله لاحقاً.</span>`
+                        : `تفعيل مركز <strong>${UI.escapeHtml(c.name)}</strong>؟<br>`
+                          + `<span style="color:#7A8F82;">سيعود منتسبوه للدخول ويظهر في قوائم الإضافة.</span>`;
+                    const ok = await UI.confirmAction({
+                        title: deact ? 'تعطيل المركز' : 'تفعيل المركز',
+                        html, okText: deact ? 'تأكيد التعطيل' : 'تأكيد التفعيل', cancelText: 'إلغاء',
+                    });
+                    if (!ok) return;
+                    try {
+                        const r = await API.put('/centers/' + c.id + '/status', { is_active: !c.is_active });
+                        UI.toast(r.message || 'تم تحديث الحالة');
+                        load();
+                    } catch (e) { UI.toast(e.message, 'danger'); }
+                });
             }
 
             UI.bindTableSearch('search', 'tbl');
-            bindRowActions(initial);
-            cityFilter.onchange = () => renderCenters(cityFilter.value);
+            bindRowActions(centers);
             document.getElementById('add').onclick = () => UI.formModal({
                 title: 'إضافة مركز', fields: fields(),
                 onSubmit: async (v, h) => { await API.post('/centers', v); UI.toast('تم إضافة المركز'); h.close(); load(); }

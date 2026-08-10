@@ -56,7 +56,7 @@
     async function load() {
         pc.innerHTML = '<div class="mq-card"><div class="mq-card-body">جارٍ التحميل...</div></div>';
         try {
-            const [mRes, cRes] = await Promise.all([API.get('/admin/managers'), API.get('/centers?all=1')]);
+            const [mRes, cRes] = await Promise.all([API.get('/admin/managers'), API.get('/centers?all=1&active=1')]);
             managers = mRes.data || [];
             centers = cRes.data.data || cRes.data || [];
 

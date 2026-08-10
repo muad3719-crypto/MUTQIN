@@ -333,7 +333,7 @@
     async function load() {
         pc.innerHTML = '<div class="mq-card"><div class="mq-card-body">جارٍ التحميل...</div></div>';
         try {
-            const [cRes, tRes] = await Promise.all([API.get('/centers?all=1'), API.get('/teachers?all=1')]);
+            const [cRes, tRes] = await Promise.all([API.get('/centers?all=1&active=1'), API.get('/teachers?all=1')]);
             centers = cRes.data.data || cRes.data || [];
             teachers = tRes.data.data || tRes.data || [];
 
