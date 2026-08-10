@@ -48,13 +48,35 @@ class CenterController extends Controller
         ], 201);
     }
 
+    /**
+     * تفاصيل المركز لنافذة العرض: بياناته + عدد الطلاب والمحفّظين + قائمة
+     * المحفّظين بنوعهم وحالتهم. فعّال: استعلام للمركز (بعدّين مجمّعين عبر
+     * withCount) + استعلام واحد للمحفّظين — بلا N+1 مهما كثُر المحفّظون.
+     */
     public function show($id)
     {
-        $center = Center::findOrFail($id);
+        $center = Center::withCount(['students', 'teachers'])->findOrFail($id);
+
+        $teachers = \App\Models\User::where('role', 'teacher')
+            ->where('center_id', $center->id)
+            ->orderByRaw("FIELD(type,'محفظ أساسي','محفظ معاون')") // الأساسي أولاً
+            ->orderBy('name')
+            ->get(['id', 'name', 'display_code', 'type', 'is_active', 'email']);
 
         return response()->json([
             'success' => true,
-            'data' => $center
+            'data' => [
+                'id'             => $center->id,
+                'display_code'   => $center->display_code,
+                'name'           => $center->name,
+                'city'           => $center->city,
+                'address'        => $center->address,
+                'phone'          => $center->phone,
+                'is_active'      => $center->is_active,
+                'students_count' => $center->students_count,
+                'teachers_count' => $center->teachers_count,
+                'teachers'       => $teachers,
+            ],
         ]);
     }
 
