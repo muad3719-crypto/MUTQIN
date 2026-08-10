@@ -47,6 +47,27 @@ class CenterManagerController extends Controller
     }
 
     /**
+     * بيانات مركزه لنموذج إضافة المحفّظ: اسم المركز (يُعرض للقراءة فقط) وهل
+     * له محفّظ أساسي (لتعطيل الخيار في الواجهة — والفحص الفعلي يبقى في الباك).
+     * نظير /centers/{id}/has-primary المحصور بالأدمن، لكن مضيَّق بمركزه.
+     */
+    public function myCenter(Request $request)
+    {
+        $centerId = $request->user()->center_id;
+        $primary = User::where('role', 'teacher')->where('type', 'محفظ أساسي')
+            ->where('center_id', $centerId)->first(['id', 'name']);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'center'          => \App\Models\Center::find($centerId, ['id', 'name', 'city']),
+                'has_primary'     => (bool) $primary,
+                'primary_teacher' => $primary ? ['id' => $primary->id, 'name' => $primary->name] : null,
+            ],
+        ]);
+    }
+
+    /**
      * معاينة كود المحفّظ التالي (T{n}) قبل الحفظ — قراءة فقط، لا يحجز الرقم
      * (لو أُلغي النموذج لا يُهدر كود). الرقم تقديري والفعلي يُخصَّص لحظة الحفظ.
      * نظير GET /manager/students/next-code للطلاب.

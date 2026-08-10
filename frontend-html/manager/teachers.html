@@ -31,12 +31,152 @@
         { name: 'password_confirmation', label: 'تأكيد كلمة المرور', type: 'password' },
     ];
 
+    // نافذة نجاح بارزة: تُبقي الكود الفعلي والبريد أمام المدير
+    function showSuccess(t, previewed) {
+        const num = String(t.display_code || '').replace(/\D/g, '');
+        const changed = previewed && t.display_code && previewed !== t.display_code;
+        const ov = document.createElement('div');
+        ov.style.cssText = 'position:fixed;inset:0;z-index:1700;background:rgba(4,54,31,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:24px;';
+        ov.innerHTML = `
+          <div class="mq-card" style="width:100%;max-width:470px;margin:0;text-align:center;">
+            <div class="mq-card-body">
+              <div style="font-size:40px;line-height:1;margin-bottom:8px;">✅</div>
+              <h3 style="font-family:'Amiri',serif;font-size:22px;color:#04361F;margin:0 0 6px;">تمت إضافة المحفّظ</h3>
+              <p style="font-size:14.5px;color:#3D6B52;margin:0 0 14px;">كوده ورقمه في النظام:</p>
+              <div style="display:inline-flex;align-items:baseline;gap:10px;background:rgba(4,83,47,.08);border:1.5px solid rgba(212,175,55,.5);border-radius:14px;padding:12px 26px;">
+                <span class="mq-code" style="font-size:22px;padding:4px 14px;">${UI.escapeHtml(t.display_code || '—')}</span>
+                <span style="font-size:13px;color:#7A8F82;">الرقم: <strong style="color:#04532F;font-size:17px;direction:ltr;">${UI.escapeHtml(num)}</strong></span>
+              </div>
+              <div style="margin-top:14px;background:var(--ivory-soft);border-radius:11px;padding:11px 14px;">
+                <div style="font-size:12px;color:#7A8F82;font-weight:700;margin-bottom:3px;">بريد الدخول</div>
+                <div style="direction:ltr;font-weight:700;color:#04532F;font-size:14px;">${UI.escapeHtml(t.email || '')}</div>
+              </div>
+              ${changed ? `<div style="margin-top:12px;background:rgba(212,175,55,.16);border:1.5px solid #D4AF37;border-radius:11px;padding:11px 14px;font-size:13px;color:#9A7A1E;font-weight:700;">
+                ⚠ الكود المتوقّع كان <span class="mq-code">${UI.escapeHtml(previewed)}</span> لكن أُضيف محفّظ آخر قبلك — اعتمد <span class="mq-code">${UI.escapeHtml(t.display_code)}</span>.</div>` : ''}
+              <div style="margin-top:18px;"><button class="mq-btn mq-btn--primary" data-close>تم</button></div>
+            </div>
+          </div>`;
+        document.body.appendChild(ov);
+        const close = () => ov.remove();
+        ov.querySelector('[data-close]').onclick = close;
+        ov.addEventListener('mousedown', e => { if (e.target === ov) close(); });
+    }
+
+    // ===== نموذج إضافة محفّظ (المركز مفروض من الخادم — يُعرض للقراءة فقط) =====
+    async function openAddTeacher(onDone) {
+        // معاينة الكود (لا تحجز) + بيانات المركز — كلاهما يفشل بهدوء
+        let previewed = null, meta = {};
+        try { previewed = (await API.get('/manager/teachers/next-code')).data.code; } catch (e) { previewed = null; }
+        try { meta = (await API.get('/manager/center')).data || {}; } catch (e) { meta = {}; }
+        const hasPrimary = !!meta.has_primary;
+
+        const ov = document.createElement('div');
+        ov.style.cssText = 'position:fixed;inset:0;z-index:1500;background:rgba(4,54,31,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:24px;';
+        const inp = (name, label, opts = {}) => `
+            <div style="margin-bottom:13px;">
+              <label class="mq-label">${label} ${opts.req ? '<span style="color:#B23A48;">*</span>' : ''}</label>
+              <input class="mq-input" name="${name}" type="${opts.type || 'text'}" placeholder="${opts.ph || ''}" ${opts.style ? `style="${opts.style}"` : ''}>
+              ${opts.help ? `<div style="font-size:12px;color:#7A8F82;margin-top:4px;">${opts.help}</div>` : ''}
+              <div class="mq-field-error" data-error="${name}"></div>
+            </div>`;
+
+        ov.innerHTML = `
+          <div class="mq-card" style="width:100%;max-width:580px;max-height:92vh;overflow:auto;margin:0;">
+            <div class="mq-card-header"><h3 class="mq-card-title">إضافة محفّظ لمركزي</h3>
+              <button class="mq-act" data-close style="background:rgba(4,54,31,.06);color:#3D6B52;font-size:20px;">×</button></div>
+            <form class="mq-card-body" id="add-form">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div style="margin-bottom:13px;">
+                  <label class="mq-label">الكود المتوقّع</label>
+                  <input class="mq-input" value="${previewed ? UI.escapeHtml(previewed) : 'سيُخصَّص عند الحفظ'}" readonly disabled
+                         style="direction:ltr;text-align:right;font-weight:700;color:#04532F;background:rgba(212,175,55,.12);border-color:rgba(212,175,55,.5);">
+                  <div style="font-size:12px;color:#9A7A1E;font-weight:600;margin-top:4px;">${previewed ? 'تقديري — يُخصَّص نهائياً عند الحفظ.' : 'تعذّرت المعاينة.'}</div>
+                </div>
+                <div style="margin-bottom:13px;">
+                  <label class="mq-label">المركز</label>
+                  <input class="mq-input" value="${UI.escapeHtml(meta.center?.name || 'مركزك')}" readonly disabled
+                         style="background:var(--ivory-soft);font-weight:700;color:#04361F;">
+                  <div style="font-size:12px;color:#7A8F82;margin-top:4px;">يُضاف لمركزك تلقائياً.</div>
+                </div>
+              </div>
+              ${inp('name', 'اسم المحفّظ', { req: true })}
+              ${inp('email_prefix', 'الاسم اللاتيني (للبريد)', { req: true, ph: 'مثال: ahmed.ali', style: 'direction:ltr;text-align:right;' })}
+              <div id="email-preview" style="font-size:12.5px;color:#04532F;font-weight:700;margin:-8px 0 13px;direction:ltr;text-align:right;display:none;"></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div style="margin-bottom:13px;">
+                  <label class="mq-label">نوع المحفّظ <span style="color:#B23A48;">*</span></label>
+                  <select class="mq-input" name="type">
+                    <option value="محفظ معاون">محفظ معاون</option>
+                    <option value="محفظ أساسي" ${hasPrimary ? 'disabled' : ''}>محفظ أساسي</option>
+                  </select>
+                  <div style="font-size:12px;color:#9A7A1E;font-weight:600;margin-top:4px;">${hasPrimary
+                    ? `لمركزك محفّظ أساسي (${UI.escapeHtml(meta.primary_teacher?.name || '')}) — يمكن إضافة معاونين فقط.`
+                    : ''}</div>
+                  <div class="mq-field-error" data-error="type"></div>
+                </div>
+                ${inp('phone', 'رقم الهاتف', { ph: '0912345678', style: 'direction:ltr;text-align:right;' })}
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                ${inp('password', 'كلمة المرور', { req: true, type: 'password', help: 'مطلوبة — سلّمها للمحفّظ' })}
+                ${inp('password_confirmation', 'تأكيد كلمة المرور', { req: true, type: 'password' })}
+              </div>
+              <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:18px;">
+                <button type="button" class="mq-btn mq-btn--secondary" data-close>إلغاء</button>
+                <button type="submit" class="mq-btn mq-btn--primary">حفظ المحفّظ</button>
+              </div>
+            </form>
+          </div>`;
+        document.body.appendChild(ov);
+        const close = () => ov.remove();
+        ov.querySelectorAll('[data-close]').forEach(b => b.onclick = close);
+        ov.addEventListener('mousedown', e => { if (e.target === ov) close(); });
+
+        // معاينة حيّة للبريد + تنظيف تلقائي لمن يلصق البريد كاملاً
+        const pfx = ov.querySelector('[name="email_prefix"]');
+        const prev = ov.querySelector('#email-preview');
+        const refresh = () => {
+            const v = pfx.value.toLowerCase().trim().replace(/@.*$/, '');
+            if (v !== pfx.value) pfx.value = v;
+            prev.textContent = v ? v + '.{رقم}@mutqin.ly' : '';
+            prev.style.display = v ? '' : 'none';
+        };
+        pfx.addEventListener('input', refresh);
+
+        ov.querySelector('#add-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            ov.querySelectorAll('[data-error]').forEach(el => el.textContent = '');
+            const f = e.target;
+            const v = {
+                name: f.name.value,
+                email_prefix: f.email_prefix.value,
+                phone: f.phone.value || null,
+                type: f.type.value,
+                password: f.password.value,
+                password_confirmation: f.password_confirmation.value,
+            };
+            const btn = f.querySelector('button[type="submit"]');
+            btn.disabled = true; btn.classList.add('is-loading');
+            try {
+                const res = await API.post('/manager/teachers', v);
+                close();
+                showSuccess(res.data || {}, previewed);
+                if (onDone) onDone();
+            } catch (err) {
+                if (err.errors) Object.keys(err.errors).forEach(k => { const b = ov.querySelector(`[data-error="${k}"]`); if (b) b.textContent = err.errors[k][0]; });
+                UI.toast(err.message || 'تعذّر الحفظ', 'danger');
+            } finally { btn.disabled = false; btn.classList.remove('is-loading'); }
+        });
+    }
+
     async function load() {
         pc.innerHTML = '<div class="mq-card"><div class="mq-card-body">جارٍ التحميل...</div></div>';
         pc.innerHTML = `
             <div class="mq-toolbar">
               <div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="ابحث باسم المحفّظ..."></div>
-              <span id="counter" style="font-size:13px;color:#7A8F82;font-weight:600;"></span>
+              <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+                <span id="counter" style="font-size:13px;color:#7A8F82;font-weight:600;white-space:nowrap;"></span>
+                <button class="mq-btn mq-btn--primary" id="add">${UI.ic('plus', 17)} محفّظ جديد</button>
+              </div>
             </div>
             <div class="mq-card"><table class="mq-table" id="tbl">
               <thead><tr><th>المحفّظ</th><th style="width:80px;">الكود</th><th>النوع</th><th>الطلاب</th><th style="width:110px;">الإجراءات</th></tr></thead>
@@ -99,6 +239,7 @@
         }
 
         loadMoreBtn.onclick = () => { page++; render(false); };
+        document.getElementById('add').onclick = () => openAddTeacher(() => render(true));
         let t = null;
         searchInput.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => render(true), 300); });
         render(true);
