@@ -206,7 +206,8 @@ class CenterManagerTest extends TestCase
         $this->assertSame(1, $admin->notifications()->count(), 'الـ fallback لمدير النظام لم يعمل');
     }
 
-    public function test_deleting_manager_hands_pending_requests_to_admin(): void
+    /** بديل الحذف: التعطيل — الطلبات المعلّقة تؤول لمدير النظام ويعتمدها فعلاً. */
+    public function test_deactivating_manager_hands_pending_requests_to_admin(): void
     {
         $admin   = $this->makeAdmin();
         $center  = $this->makeCenter(['name' => 'مركز الاختبار']);
@@ -222,8 +223,8 @@ class CenterManagerTest extends TestCase
 
         $adminNotifsBefore = $admin->notifications()->count();
         $this->authed($this->loginToken($admin))
-            ->deleteJson('/api/admin/managers/' . $manager->id)
-            ->assertOk();
+            ->putJson('/api/admin/managers/' . $manager->id . '/status', ['is_active' => false])
+            ->assertOk()->assertJsonPath('data.pending_transferred', 1);
 
         // مدير النظام أُشعر بأيلولة الطلبات إليه
         $this->assertSame($adminNotifsBefore + 1, $admin->notifications()->count());
