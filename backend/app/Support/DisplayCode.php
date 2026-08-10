@@ -20,6 +20,7 @@ class DisplayCode
         'student'        => 'S',
         'teacher'        => 'T',
         'center_manager' => 'CA',
+        'center'         => 'C',   // المراكز (C1, C2..) — كيان لا مستخدم
     ];
 
     /**
