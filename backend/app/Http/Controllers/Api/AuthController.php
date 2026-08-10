@@ -43,6 +43,16 @@ class AuthController extends Controller
                 ], 403);
             }
 
+            // مركز معطَّل = مغلق فعلياً: يُمنع منتسبوه (المحفّظون ومدير المركز —
+            // وهم وحدهم من يحملون center_id). أولياء الأمور بلا مركز فلا يتأثرون.
+            if ($user->center_id && !\App\Models\Center::where('id', $user->center_id)->value('is_active')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'مركزك غير نشط حالياً، راجع إدارة النظام',
+                    'errors'  => ['email' => ['مركزك غير نشط حالياً، راجع إدارة النظام']],
+                ], 403);
+            }
+
             // قدرات التوكن حسب الدور: ولي الأمر 'parent'، مدير المركز 'manager'،
             // المدير/المعلم '*' — الفحص المزدوج (دور+قدرة) يمنع تصعيد التوكن المسروق.
             $abilities = $user->isParent() ? ['parent']

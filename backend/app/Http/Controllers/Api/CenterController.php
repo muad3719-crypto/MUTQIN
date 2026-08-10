@@ -10,11 +10,12 @@ class CenterController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Center::withCount('students')->latest();
+        $query = Center::withCount(['students', 'teachers'])->latest();
 
-        // فلتر اختياري بالمدينة (الفلترة في الـ Backend)
-        if ($request->filled('city')) {
-            $query->where('city', $request->city);
+        // ?active=1 — المراكز النشطة فقط: لقوائم الاختيار (إضافة طالب/محفّظ/مدير)
+        // كي لا يُضاف أحد لمركز معطَّل. صفحة إدارة المراكز والتقارير تعرض الكل.
+        if ($request->boolean('active')) {
+            $query->where('is_active', true);
         }
 
         if ($request->has('all') && $request->all == 1) {
@@ -75,14 +76,43 @@ class CenterController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    /**
+     * تفعيل/تعطيل المركز — بديل الحذف نهائياً (الحذف يفقد كل تاريخ المركز).
+     * قرار معتمد: المركز المعطَّل «مغلق» فعلياً — يُمنع منتسبوه (محفّظوه ومدير
+     * مركزه، وهم وحدهم من يحملون center_id) من الدخول، وتُبطَل جلساتهم فوراً
+     * وإلا واصلوا العمل حتى انتهاء التوكن (7 أيام). أولياء الأمور والطلاب لا
+     * يتأثرون (الطلاب ليسوا مستخدمين، وأولياء الأمور بلا مركز).
+     */
+    public function toggleStatus(Request $request, $id)
     {
+        $request->validate([
+            'is_active' => 'required|boolean',
+        ], ['is_active.required' => 'الحالة مطلوبة']);
+
         $center = Center::findOrFail($id);
-        $center->delete();
+        $active = $request->boolean('is_active');
+
+        $affected = \Illuminate\Support\Facades\DB::transaction(function () use ($center, $active) {
+            $center->update(['is_active' => $active]);
+
+            if ($active) {
+                return 0;
+            }
+
+            // إبطال جلسات منتسبي المركز فوراً (نفس آلية S1)
+            $members = \App\Models\User::where('center_id', $center->id)->get();
+            foreach ($members as $m) {
+                $m->tokens()->delete();
+            }
+            return $members->count();
+        });
 
         return response()->json([
             'success' => true,
-            'message' => 'تم حذف المركز بنجاح'
+            'message' => $active
+                ? "تم تفعيل مركز «{$center->name}»"
+                : "تم تعطيل مركز «{$center->name}» — أُنهيت جلسات {$affected} من منتسبيه ولن يستطيعوا الدخول",
+            'data' => ['id' => $center->id, 'is_active' => $center->is_active, 'affected_members' => $affected],
         ]);
     }
 }

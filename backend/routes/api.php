@@ -79,7 +79,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('teachers', TeacherController::class)->except(['destroy']);
         Route::put('/teachers/{id}/status', [TeacherController::class, 'toggleStatus']); // تفعيل/تعطيل (مدير النظام فقط)
         Route::get('/centers/{id}/has-primary', [TeacherController::class, 'hasPrimary']); // هل للمركز محفّظ أساسي؟
-        Route::apiResource('centers', CenterController::class);
+        // لا حذف للمركز إطلاقاً (قرار معتمد) — بديله تفعيل/تعطيل
+        Route::apiResource('centers', CenterController::class)->except(['destroy']);
+        Route::put('/centers/{id}/status', [CenterController::class, 'toggleStatus']); // تفعيل/تعطيل (مدير النظام فقط)
         Route::post('/students', [StudentController::class, 'store']); // نقل مسار إضافة طالب ليكون للمدير فقط
         Route::get('/students/next-code', [StudentController::class, 'nextCode']); // معاينة كود الطالب التالي (لا حجز)
         Route::get('/parents/search', [StudentController::class, 'searchParents']); // بحث أولياء الأمور (لاختيار ولي موجود)
