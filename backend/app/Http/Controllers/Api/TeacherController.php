@@ -18,10 +18,24 @@ class TeacherController extends Controller
             $query->where('center_id', (int) $request->center_id);
         }
 
-        // بحث حي اختياري q بالاسم المطبَّع («احمد»=«أحمد») — يتجمّع مع فلتر المركز
+        // بحث موحّد q: الاسم المطبَّع («احمد»=«أحمد») أو كود العرض (T5 / 5 / ٥
+        // بالأرقام العربية — نفس تطبيع استيراد البصمة) أو اسم المركز المطبَّع.
         if (($q = trim((string) $request->get('q', ''))) !== '') {
             $norm = \App\Support\ArabicText::normalize($q);
-            $query->whereRaw(\App\Support\ArabicText::sqlNormalize('name') . ' LIKE ?', ['%' . $norm . '%']);
+            $like = '%' . $norm . '%';
+
+            // تطبيع الكود: أرقام عربية → غربية، ثم قبول 5 أو T5/t5
+            $digits = strtr($q, ['٠'=>'0','١'=>'1','٢'=>'2','٣'=>'3','٤'=>'4','٥'=>'5','٦'=>'6','٧'=>'7','٨'=>'8','٩'=>'9']);
+            $code = preg_match('/^\s*[tT]?\s*(\d+)\s*$/u', $digits, $m) ? 'T' . (int) $m[1] : null;
+
+            $query->where(function ($w) use ($like, $code) {
+                $w->whereRaw(\App\Support\ArabicText::sqlNormalize('name') . ' LIKE ?', [$like])
+                  // اسم المركز المطبَّع («الفرقان» بأي صورة همزة)
+                  ->orWhereHas('center', fn ($c) => $c->whereRaw(\App\Support\ArabicText::sqlNormalize('name') . ' LIKE ?', [$like]));
+                if ($code) {
+                    $w->orWhere('display_code', $code); // تطابق تام: T5 لا يلتقط T50
+                }
+            });
         }
 
         if ($request->has('all') && $request->all == 1) {
