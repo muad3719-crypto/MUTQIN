@@ -63,6 +63,76 @@ class CenterManagerController extends Controller
         ]);
     }
 
+    /**
+     * إضافة محفّظ لمركزه مباشرةً (بلا موافقة) — أمانٌ في الطرفين:
+     *  - center_id مفروض من نطاق المدير (لا يُقرأ من الطلب مهما أُرسل).
+     *  - role='teacher' مثبَّت بالكود — مدير المركز لا يستطيع إنشاء أي دور آخر.
+     *  - display_code لا يُقرأ من الطلب (يولّده خطاف User::creating).
+     *  - كلمة المرور مطلوبة صراحةً (لا توليد صامت — درس S1).
+     *  - البريد يُولّد بالصيغة المعتمدة {latin}.{id}@mutqin.ly بخطوتين.
+     *  - منع تعدد الأساسي داخل transaction (فحص + إنشاء ذرّياً ضد السباق).
+     */
+    public function storeTeacher(Request $request)
+    {
+        $centerId = $request->user()->center_id;
+
+        // تسامح مع الإدخال: من يكتب البريد كاملاً أو باللاحقة نستخرج الاسم (كنمط إنشاء المدير)
+        $prefix = strtolower(trim((string) $request->input('email_prefix', '')));
+        $prefix = preg_replace('/@.*$/', '', $prefix);
+        $request->merge(['email_prefix' => $prefix]);
+
+        $request->validate([
+            'name'         => 'required|string|max:255',
+            'email_prefix' => ['required', 'string', 'max:40', 'regex:/^[a-z]+(\.[a-z]+)*$/'],
+            'phone'        => 'nullable|string|max:20',
+            'password'     => 'required|min:6|confirmed',
+            'type'         => 'required|in:محفظ أساسي,محفظ معاون',
+        ], [
+            'name.required'         => 'اسم المحفّظ مطلوب',
+            'email_prefix.required' => 'الاسم اللاتيني مطلوب (مثل: ahmed.ali)',
+            'email_prefix.regex'    => 'الصيغة: أحرف لاتينية صغيرة (ونقطة اختيارياً)، مثل ahmed أو ahmed.ali',
+            'password.required'     => 'كلمة المرور مطلوبة',
+            'password.min'          => 'كلمة المرور 6 أحرف على الأقل',
+            'password.confirmed'    => 'كلمتا المرور غير متطابقتين',
+            'type.required'         => 'يجب تحديد نوع المحفّظ',
+        ]);
+
+        // منع تعدد الأساسي + الإنشاء داخل transaction واحدة (ضد سباق مديرين متزامنين)
+        $teacher = \Illuminate\Support\Facades\DB::transaction(function () use ($request, $centerId, $prefix) {
+            if ($request->type === 'محفظ أساسي') {
+                $primary = User::where('role', 'teacher')->where('type', 'محفظ أساسي')
+                    ->where('center_id', $centerId)->lockForUpdate()->first();
+                if ($primary) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'type' => ["يوجد محفّظ أساسي في هذا المركز بالفعل: {$primary->name}. لا يمكن إضافة أساسي ثانٍ."],
+                    ]);
+                }
+            }
+
+            // خطوتان: إنشاء ببريد مؤقت ثم ضبط النهائي {latin}.{id}@mutqin.ly (id لا يوجد إلا بعد الإدراج)
+            // الحقول صريحة: role وcenter_id مفروضان هنا لا من الطلب، وdisplay_code من الخطاف
+            $u = User::create([
+                'name'      => $request->name,
+                'email'     => 'tmp-' . \Illuminate\Support\Str::random(14) . '@mutqin.ly',
+                'phone'     => PhoneNumber::normalize($request->phone),
+                'role'      => 'teacher',       // مثبَّت — لا يُقبل من العميل
+                'center_id' => $centerId,       // من النطاق — لا يُقبل من العميل
+                'type'      => $request->type,
+                'password'  => Hash::make($request->password),
+            ]);
+            $u->email = $prefix . '.' . $u->id . '@mutqin.ly';
+            $u->save();
+
+            return $u;
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إضافة المحفّظ لمركزك بنجاح — بريده: ' . $teacher->email,
+            'data'    => $teacher,
+        ], 201);
+    }
+
     /** محفّظو مركزه فقط — مرقّم + بحث مطبَّع (نفس نمط قائمة المدير). */
     public function teachers(Request $request)
     {

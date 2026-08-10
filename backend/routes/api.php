@@ -55,6 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/manager/teachers', [\App\Http\Controllers\Api\CenterManagerController::class, 'teachers']);
         Route::get('/manager/teachers/next-code', [\App\Http\Controllers\Api\CenterManagerController::class, 'teacherNextCode']); // معاينة كود المحفّظ (قبل {id})
         Route::get('/manager/teachers/{id}', [\App\Http\Controllers\Api\CenterManagerController::class, 'showTeacher']);
+        Route::post('/manager/teachers', [\App\Http\Controllers\Api\CenterManagerController::class, 'storeTeacher']); // إضافة محفّظ — center_id/role مفروضان
         Route::put('/manager/teachers/{id}', [\App\Http\Controllers\Api\CenterManagerController::class, 'updateTeacher']); // لا حذف — لمدير النظام
         Route::post('/manager/attendance/import', [\App\Http\Controllers\Api\AttendanceImportController::class, 'import']); // مضيَّق بمركزه داخل المتحكم
         Route::get('/manager/attendance', [\App\Http\Controllers\Api\CenterManagerController::class, 'attendanceIndex']); // سجل الحضور للمراجعة (مرقّم + فلاتر)
