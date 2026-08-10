@@ -23,12 +23,15 @@ class Student extends Model
         'parent_id',
         'enrollment_date',
         'is_active',
+        'status_changed_by',
+        'status_changed_at',
     ];
 
     protected $casts = [
         'birth_date' => 'date',
         'enrollment_date' => 'date',
         'is_active' => 'boolean',
+        'status_changed_at' => 'datetime',
     ];
 
     // المركز الذي ينتمي إليه

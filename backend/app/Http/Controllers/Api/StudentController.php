@@ -90,6 +90,15 @@ class StudentController extends Controller
             $query->whereNull('national_id'); // جاهزية الأوقاف: بلا رقم وطني
         }
 
+        // فلتر الحالة — الافتراضي «النشطون فقط» اتساقاً مع التقارير والحضور
+        // والبصمة (كلها تستثني الموقوف). status=inactive/all لمراجعته صراحةً.
+        $status = $request->input('status', 'active');
+        if ($status === 'inactive') {
+            $query->where('is_active', false);
+        } elseif ($status !== 'all') {
+            $query->where('is_active', true);
+        }
+
         // بحث حي اختياري q في «كل الأعمدة»: اسم الطالب/ولي الأمر، الرقم الوطني، الهاتف،
         // اسم المركز، اسم المعلم (والسابق)، والجنسية («ليبي»/«أجنبي»/اسمها) — كلها مطبَّعة.
         // يتجمّع مع الفلاتر أعلاه بـ AND ويعمل مع الترقيم.
@@ -365,23 +374,43 @@ class StudentController extends Controller
         ]);
     }
 
-    public function destroy(Request $request, $id)
+    /**
+     * إيقاف/تفعيل الطالب — بديل الحذف نهائياً (قرار معتمد). الحذف كان يمحو
+     * كل تاريخه فعلياً: attendances/memorizations/weekly_tests مربوطة به
+     * بـ cascadeOnDelete. الموقوف يبقى بسجلّه كاملاً لكنه يخرج من الحضور
+     * والبصمة والتقارير (is_active مُحترم في تلك المسارات أصلاً).
+     * الصلاحية: مدير النظام لأي طالب، ومدير المركز لطلاب مركزه حصراً.
+     */
+    public function toggleStatus(Request $request, $id)
     {
-        $user = $request->user();
+        $request->validate([
+            'is_active' => 'required|boolean',
+        ], ['is_active.required' => 'الحالة مطلوبة']);
+
+        $user    = $request->user();
         $student = Student::findOrFail($id);
 
-        if (!$user->isAdmin() && $student->teacher_id !== $user->id) {
+        // مدير المركز مضيَّق بمركزه — لا يمسّ طالب مركز آخر
+        if ($user->isCenterManager() && (int) $student->center_id !== (int) $user->center_id) {
             return response()->json([
                 'success' => false,
-                'message' => 'غير مصرح لك بحذف هذا الطالب'
+                'message' => 'هذا الطالب ليس من طلاب مركزك',
             ], 403);
         }
 
-        $student->delete();
+        $active = $request->boolean('is_active');
+        $student->update([
+            'is_active'         => $active,
+            'status_changed_by' => $user->id,
+            'status_changed_at' => now(),
+        ]);
 
         return response()->json([
             'success' => true,
-            'message' => 'تم حذف الطالب بنجاح'
+            'message' => $active
+                ? "تم تفعيل الطالب «{$student->name}» — عاد إلى قوائم الحضور والتقارير"
+                : "تم إيقاف الطالب «{$student->name}» — خرج من الحضور والبصمة والتقارير، وسجلّه محفوظ",
+            'data' => ['id' => $student->id, 'is_active' => $student->is_active],
         ]);
     }
 
@@ -427,6 +456,7 @@ class StudentController extends Controller
                 'id' => $student->id,
                 'name' => $student->name,
                 'age' => $student->age,
+                'is_active' => $student->is_active, // الابن الموقوف يبقى ظاهراً بشارة (لا يُخفى بلا تفسير)
                 'center' => $student->center ? $student->center->name : '--',
                 'center_city' => $student->center ? $student->center->city : '--',
                 'teacher_name' => $student->teacher ? $student->teacher->name : '--',
@@ -532,6 +562,7 @@ class StudentController extends Controller
                     'center_city' => $student->center ? $student->center->city : '--',
                     'teacher_name' => $student->teacher ? $student->teacher->name : '--',
                     'enrollment_date' => $student->enrollment_date,
+                    'is_active' => $student->is_active, // موقوف: يُعرض لولي الأمر بشارة، وسجلّه كامل
                 ],
                 'memorizations' => $memorizations,
                 'attendances' => $attendances,

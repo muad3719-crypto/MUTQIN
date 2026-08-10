@@ -24,7 +24,8 @@ class OwnershipTest extends TestCase
 
         $this->authed($tokenB)->getJson("/api/students/{$student->id}")->assertStatus(403);
         $this->authed($tokenB)->putJson("/api/students/{$student->id}", ['name' => 'اختراق'])->assertStatus(403);
-        $this->authed($tokenB)->deleteJson("/api/students/{$student->id}")->assertStatus(403);
+        $this->authed($tokenB)->deleteJson("/api/students/{$student->id}")->assertStatus(405); // الحذف أُلغي لكل الأدوار
+        $this->authed($tokenB)->putJson("/api/students/{$student->id}/status", ['is_active' => false])->assertStatus(403);
 
         // صاحبه يصل
         $tokenA = $this->loginToken($teacherA);

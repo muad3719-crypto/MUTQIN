@@ -51,6 +51,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/manager/students', [StudentController::class, 'index']); // مضيَّق بمركزه داخل المتحكم (ترقيم+بحث قائمان)
         Route::get('/manager/students/next-code', [StudentController::class, 'nextCode']); // معاينة كود الطالب التالي (لا حجز)
         Route::post('/manager/students', [StudentController::class, 'store']); // إضافة طالب — center_id مفروض بمركزه داخل store
+        Route::put('/manager/students/{id}/status', [StudentController::class, 'toggleStatus']); // إيقاف/تفعيل — مضيَّق بمركزه داخل المتحكم
         Route::get('/manager/parents/search', [StudentController::class, 'searchParents']); // بحث أولياء الأمور (لاختيار ولي موجود)
         Route::get('/manager/center', [\App\Http\Controllers\Api\CenterManagerController::class, 'myCenter']); // اسم مركزه + هل له أساسي
         Route::get('/manager/teachers', [\App\Http\Controllers\Api\CenterManagerController::class, 'teachers']);
@@ -83,6 +84,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('centers', CenterController::class)->except(['destroy']);
         Route::put('/centers/{id}/status', [CenterController::class, 'toggleStatus']); // تفعيل/تعطيل (مدير النظام فقط)
         Route::post('/students', [StudentController::class, 'store']); // نقل مسار إضافة طالب ليكون للمدير فقط
+        Route::put('/students/{id}/status', [StudentController::class, 'toggleStatus']); // إيقاف/تفعيل — بديل الحذف
         Route::get('/students/next-code', [StudentController::class, 'nextCode']); // معاينة كود الطالب التالي (لا حجز)
         Route::get('/parents/search', [StudentController::class, 'searchParents']); // بحث أولياء الأمور (لاختيار ولي موجود)
 
@@ -115,7 +117,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/profile/phone', [\App\Http\Controllers\Api\TeacherProfileController::class, 'updatePhone']);       // الهاتف فقط
         Route::post('/profile/password', [\App\Http\Controllers\Api\TeacherProfileController::class, 'changePassword']); // يعيد استخدام recordPasswordChange('self')
 
-        Route::apiResource('students', StudentController::class)->except(['store']); // استثناء إضافة طالب للمعلم
+        // لا حذف للطالب إطلاقاً (قرار معتمد) — الحذف كان يمحو حضوره وحفظه
+        // واختباراته بـ cascade؛ بديله الإيقاف عبر /students/{id}/status
+        Route::apiResource('students', StudentController::class)->except(['store', 'destroy']);
 
         // طلبات الطلاب — إنشاء/متابعة من المحفّظ (لا تغيير فعلي على students؛ ينتظر موافقة الأدمن)
         Route::get('/student-requests', [StudentRequestController::class, 'index']);          // طلباتي
