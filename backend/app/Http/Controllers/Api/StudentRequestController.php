@@ -246,9 +246,12 @@ class StudentRequestController extends Controller
 
         // توجيه الإشعار: النقل الداخلي (from=target) → مدير المركز إن وُجد،
         // وإلا (أو كان عابراً للمراكز) → مدير النظام كما كان.
+        // المدير المعطَّل لا يُوجَّه إليه شيء (لا يستطيع الدخول) — الطلب يؤول
+        // لمدير النظام كما لو لم يكن للمركز مدير، وإلا بقي معلّقاً بصمت.
         $isInternal = (int) $req->from_center_id === (int) $req->target_center_id;
         $centerManager = $isInternal
-            ? User::where('role', 'center_manager')->where('center_id', $req->target_center_id)->first()
+            ? User::where('role', 'center_manager')->where('center_id', $req->target_center_id)
+                ->where('is_active', true)->first()
             : null;
         InAppNotification::sendSafe(
             $centerManager ?: User::where('role', 'admin')->get(),

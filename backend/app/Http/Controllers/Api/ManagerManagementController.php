@@ -37,7 +37,7 @@ class ManagerManagementController extends Controller
             'data' => User::where('role', 'center_manager')
                 ->with('center:id,name,city')
                 ->latest()
-                ->get(['id', 'name', 'display_code', 'email', 'phone', 'center_id', 'created_at']),
+                ->get(['id', 'name', 'display_code', 'email', 'phone', 'center_id', 'is_active', 'created_at']),
         ]);
     }
 
@@ -139,29 +139,52 @@ class ManagerManagementController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    /**
+     * تفعيل/تعطيل حساب مدير المركز — بديل الحذف نهائياً (لا تُفقد ارتباطاته
+     * التاريخية). المعطَّل يُمنع من الدخول (الفحص العام في AuthController)
+     * وتُبطَل توكناته فوراً. بما أن القاعدة «مدير واحد لكل مركز»، فالتعطيل
+     * يترك المركز بلا مدير نشط — لذا تؤول طلباته الداخلية لمدير النظام:
+     * التوجيه التلقائي يتجاهل المدير المعطَّل (StudentRequestController)،
+     * ونُشعر مدراء النظام بالمعلّق كي لا يبقى بصمت (نفس أثر الحذف سابقاً).
+     */
+    public function toggleStatus(Request $request, $id)
     {
+        $request->validate([
+            'is_active' => 'required|boolean',
+        ], ['is_active.required' => 'الحالة مطلوبة']);
+
         $manager = User::where('role', 'center_manager')->findOrFail($id);
+        $active  = $request->boolean('is_active');
         $centerId = $manager->center_id;
 
-        // الأثر: طلبات مركزه الداخلية المعلّقة تؤول فوراً لمدير النظام
-        // (الاعتماد أصلاً ديناميكي — بلا مدير للمركز يعتمدها مدير النظام —
-        // لكن نُشعر مدراء النظام بها كي لا تبقى معلّقة بصمت).
-        $pending = \App\Models\StudentRequest::where('status', 'pending')
-            ->where('type', 'transfer')
-            ->where('from_center_id', $centerId)
-            ->where('target_center_id', $centerId)
-            ->count();
+        $pending = 0;
+        \Illuminate\Support\Facades\DB::transaction(function () use ($manager, $active, $request, $centerId, &$pending) {
+            $manager->update([
+                'is_active'         => $active,
+                'status_changed_by' => $request->user()->id,
+                'status_changed_at' => now(),
+            ]);
 
-        $centerName = \App\Models\Center::where('id', $centerId)->value('name') ?? '—';
-        $manager->delete();
+            if ($active) {
+                return;
+            }
 
-        if ($pending > 0) {
+            $manager->tokens()->delete(); // إبطال جلساته فوراً (آلية S1)
+
+            $pending = \App\Models\StudentRequest::where('status', 'pending')
+                ->where('type', 'transfer')
+                ->where('from_center_id', $centerId)
+                ->where('target_center_id', $centerId)
+                ->count();
+        });
+
+        if (!$active && $pending > 0) {
+            $centerName = \App\Models\Center::where('id', $centerId)->value('name') ?? '—';
             \App\Notifications\InAppNotification::sendSafe(
                 User::where('role', 'admin')->get(),
                 'request_created',
-                'طلبات آلت إليك بعد حذف مدير مركز',
-                'حُذف مدير مركز «' . $centerName . '» وله ' . $pending . ' طلب نقل داخلي معلّق — اعتمادها أو رفضها صار إليك.',
+                'طلبات آلت إليك بعد تعطيل مدير مركز',
+                'عُطِّل مدير مركز «' . $centerName . '» وله ' . $pending . ' طلب نقل داخلي معلّق — اعتمادها أو رفضها صار إليك.',
                 null,
                 'admin/requests.html'
             );
@@ -169,7 +192,11 @@ class ManagerManagementController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تم حذف مدير المركز بنجاح' . ($pending > 0 ? " — آل {$pending} طلب معلّق لمدير النظام" : ''),
+            'message' => $active
+                ? "تم تفعيل حساب مدير المركز «{$manager->name}»"
+                : "تم تعطيل حساب «{$manager->name}» — لن يستطيع الدخول"
+                    . ($pending > 0 ? "، وآل {$pending} طلب معلّق لمدير النظام" : ''),
+            'data' => ['id' => $manager->id, 'is_active' => $manager->is_active, 'pending_transferred' => $pending],
         ]);
     }
 }

@@ -90,7 +90,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/admin/managers', [\App\Http\Controllers\Api\ManagerManagementController::class, 'index']);
         Route::post('/admin/managers', [\App\Http\Controllers\Api\ManagerManagementController::class, 'store']);
         Route::put('/admin/managers/{id}', [\App\Http\Controllers\Api\ManagerManagementController::class, 'update']);
-        Route::delete('/admin/managers/{id}', [\App\Http\Controllers\Api\ManagerManagementController::class, 'destroy']);
+        // لا حذف لمدير المركز (قرار معتمد) — بديله تفعيل/تعطيل الحساب
+        Route::put('/admin/managers/{id}/status', [\App\Http\Controllers\Api\ManagerManagementController::class, 'toggleStatus']);
 
         // جاهزية الأوقاف: الطلاب بلا رقم وطني
         Route::get('/reports/admin/missing-national-id', [ReportController::class, 'missingNationalId']);
