@@ -69,11 +69,17 @@
                   <td>${m.display_code ? `<span class="mq-code">${UI.escapeHtml(m.display_code)}</span>` : '—'}</td>
                   <td>${UI.badge(UI.escapeHtml(m.center?.name || '—'), 'info')}</td>
                   <td style="white-space:nowrap;">${UI.fmtDate(m.created_at)}</td>
+                  <td style="text-align:center;">${m.is_active ? UI.badge('نشط', 'success') : UI.badge('غير نشط', 'danger')}</td>
                   <td><div class="mq-actions">
                     ${UI.actionBtn('edit', `data-edit="${m.id}" title="تعديل"`)}
-                    ${UI.actionBtn('del', `data-del="${m.id}" title="حذف"`)}
+                    <button class="mq-btn ${m.is_active ? 'mq-btn--quiet-danger' : 'mq-btn--quiet'} mq-btn--icon mq-btn--sm"
+                            data-toggle="${m.id}" title="${m.is_active ? 'تعطيل الحساب' : 'تفعيل الحساب'}">
+                      ${m.is_active
+                        ? '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>'
+                        : '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg>'}
+                    </button>
                   </div></td>
-                </tr>`).join('') || `<tr><td colspan="5" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد مدراء مراكز بعد</td></tr>`;
+                </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد مدراء مراكز بعد</td></tr>`;
 
             pc.innerHTML = `
                 <div class="mq-toolbar">
@@ -81,7 +87,7 @@
                   <button class="mq-btn mq-btn--primary" id="add">${UI.ic('plus', 17)} إضافة مدير مركز</button>
                 </div>
                 <div class="mq-card"><table class="mq-table" id="tbl">
-                  <thead><tr><th>مدير المركز</th><th style="width:80px;">الكود</th><th>المركز</th><th>تاريخ الإنشاء</th><th style="width:110px;">الإجراءات</th></tr></thead>
+                  <thead><tr><th>مدير المركز</th><th style="width:110px;">رقم مدير المركز</th><th>المركز</th><th>تاريخ الإنشاء</th><th style="width:100px;text-align:center;">الحالة</th><th style="width:110px;">الإجراءات</th></tr></thead>
                   <tbody>${rows}</tbody></table></div>`;
 
             UI.bindTableSearch('search', 'tbl');
@@ -114,15 +120,44 @@
                 const m = managers.find(x => x.id == b.dataset.edit);
                 UI.formModal({
                     title: 'تعديل مدير المركز', submitText: 'حفظ التعديلات', fields: editFields(m),
+                    onMount: (form) => {
+                        // رقم مدير المركز للعرض فقط — يولّده النظام ولا يُعدَّل
+                        const box = document.createElement('div');
+                        box.style.cssText = 'margin-bottom:14px;';
+                        box.innerHTML = `<label class="mq-label">رقم مدير المركز</label>
+                          <div style="display:flex;align-items:center;gap:8px;">
+                            <span class="mq-code">${UI.escapeHtml(m.display_code || '—')}</span>
+                            <span style="font-size:12px;color:#7A8F82;">رقم ثابت يولّده النظام — غير قابل للتعديل</span>
+                          </div>`;
+                        form.insertBefore(box, form.firstChild);
+                    },
                     onSubmit: async (v, h) => { await API.put('/admin/managers/' + m.id, v); UI.toast('تم التحديث'); h.close(); load(); }
                 });
             });
-            pc.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
-                const m = managers.find(x => x.id == b.dataset.del);
-                UI.confirmDelete(
-                    'حذف مدير المركز «' + (m?.name || '') + '».\n\nستؤول طلبات مركزه الداخلية المعلّقة لمدير النظام فوراً.\n\nتأكيد الحذف؟',
-                    async () => { const r = await API.del('/admin/managers/' + m.id); UI.toast(r.message || 'تم الحذف'); load(); }
-                );
+            // تفعيل/تعطيل — بديل الحذف: البيانات والارتباطات التاريخية تبقى
+            pc.querySelectorAll('[data-toggle]').forEach(b => b.onclick = async () => {
+                const m = managers.find(x => x.id == b.dataset.toggle);
+                const deact = !!m.is_active;
+                const centerName = UI.escapeHtml(m.center?.name || 'مركزه');
+                const html = deact
+                    ? `تعطيل حساب <strong>${UI.escapeHtml(m.name)}</strong>؟<br>`
+                      + `<span style="color:#B23A48;font-weight:700;">لن يستطيع تسجيل الدخول، وتُنهى جلساته فوراً.</span>`
+                      // القاعدة: مدير واحد لكل مركز — فالتعطيل يترك المركز بلا مدير نشط دائماً
+                      + `<div style="margin-top:10px;background:rgba(212,175,55,.16);border:1.5px solid #D4AF37;border-radius:10px;padding:10px 13px;font-size:13px;color:#9A7A1E;font-weight:700;">`
+                      + `⚠ سيبقى مركز «${centerName}» <u>بلا مدير نشط</u> — وتؤول طلبات النقل الداخلية المعلّقة والجديدة إلى مدير النظام.</div>`
+                      + `<span style="color:#7A8F82;font-size:13px;">تبقى كل بياناته وارتباطاته التاريخية كما هي، ويمكن إعادة تفعيله لاحقاً.</span>`
+                    : `تفعيل حساب <strong>${UI.escapeHtml(m.name)}</strong>؟<br>`
+                      + `<span style="color:#7A8F82;">سيعود لإدارة مركز «${centerName}» وتُوجَّه إليه طلباته الداخلية من جديد.</span>`;
+                const ok = await UI.confirmAction({
+                    title: deact ? 'تعطيل حساب مدير المركز' : 'تفعيل حساب مدير المركز',
+                    html, okText: deact ? 'تأكيد التعطيل' : 'تأكيد التفعيل', cancelText: 'إلغاء',
+                });
+                if (!ok) return;
+                try {
+                    const r = await API.put('/admin/managers/' + m.id + '/status', { is_active: !m.is_active });
+                    UI.toast(r.message || 'تم تحديث الحالة');
+                    load();
+                } catch (e) { UI.toast(e.message, 'danger'); }
             });
         } catch (e) { UI.toast(e.message, 'danger'); }
     }
