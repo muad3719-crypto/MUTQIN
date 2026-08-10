@@ -154,30 +154,23 @@
             const cRes = await API.get('/centers?all=1');
             centers = cRes.data.data || cRes.data || [];
             const centerName = (id) => (centers.find(c => c.id == id) || {}).name || '—';
-            const centerFilterOpts = '<option value="">كل المراكز</option>' +
-                centers.map(c => `<option value="${c.id}">${UI.escapeHtml(c.name)}</option>`).join('');
 
             pc.innerHTML = `
                 <div class="mq-toolbar">
-                  <div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="ابحث باسم المعلم..."></div>
+                  <div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="ابحث بالاسم أو الكود (T5) أو اسم المركز..."></div>
                   <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
                     <span id="tea-counter" style="font-size:13px;color:#7A8F82;font-weight:600;white-space:nowrap;"></span>
-                    <div style="display:flex;align-items:center;gap:8px;">
-                      <label class="mq-label" style="margin:0;font-size:13px;white-space:nowrap;">المركز:</label>
-                      <select class="mq-input" id="center-filter" style="max-width:230px;">${centerFilterOpts}</select>
-                    </div>
-                    <button class="mq-btn mq-btn--primary" id="add">${UI.ic('plus', 17)} معلم جديد</button>
+                    <button class="mq-btn mq-btn--primary" id="add">${UI.ic('plus', 17)} محفّظ جديد</button>
                   </div>
                 </div>
                 <div class="mq-card"><table class="mq-table" id="tbl">
-                  <thead><tr><th>المعلم</th><th style="width:80px;">الكود</th><th>المركز</th><th style="width:150px;">الإجراءات</th></tr></thead>
-                  <tbody id="tea-body"><tr><td colspan="4" style="text-align:center;color:#7A8F82;padding:30px;">جارٍ التحميل...</td></tr></tbody>
+                  <thead><tr><th>المحفّظ</th><th style="width:80px;">الكود</th><th>المركز</th><th style="width:110px;text-align:center;">الحالة</th><th style="width:150px;">الإجراءات</th></tr></thead>
+                  <tbody id="tea-body"><tr><td colspan="5" style="text-align:center;color:#7A8F82;padding:30px;">جارٍ التحميل...</td></tr></tbody>
                 </table></div>
                 <div style="text-align:center;margin-top:16px;">
                   <button class="mq-btn mq-btn--secondary" id="load-more" style="display:none;">عرض المزيد ↓</button>
                 </div>`;
 
-            const centerFilter = document.getElementById('center-filter');
             const searchInput = document.getElementById('search');
             const counter = document.getElementById('tea-counter');
             const loadMoreBtn = document.getElementById('load-more');
@@ -193,16 +186,26 @@
                     const eb = body.querySelector(`[data-edit="${t.id}"]`);
                     if (eb) eb.onclick = () => UI.formModal({ title: 'تعديل المعلم', submitText: 'حفظ التعديلات', fields: editFields(t), onMount: wireSinglePrimary(t.id),
                         onSubmit: async (v, h) => { await API.put('/teachers/' + t.id, v); UI.toast('تم التحديث'); h.close(); renderTeachers(true); } });
-                    const db = body.querySelector(`[data-del="${t.id}"]`);
-                    if (db) db.onclick = async () => {
-                        // تحذير بالأثر: نجلب عدد الطلاب والسجلّات التاريخية قبل الحذف
-                        let info = {};
-                        try { info = (await API.get('/teachers/' + t.id)).data || {}; } catch (e) { /* نكمل بتحذير عام */ }
-                        const sc = info.students_count ?? 0, rc = info.records_count ?? 0;
-                        const msg = 'حذف المحفّظ «' + (info.name || '') + '».\n\n'
-                            + 'المرتبط به: ' + sc + ' طالباً و ' + rc + ' سجلّاً تاريخياً (حضور/حفظ/اختبارات).\n\n'
-                            + 'سيبقى التاريخ محفوظاً باسم «محفّظ سابق»، ويُفكّ ارتباط طلابه (يمكن إسنادهم لمحفّظ آخر لاحقاً).\n\nتأكيد الحذف؟';
-                        UI.confirmDelete(msg, async () => { await API.del('/teachers/' + t.id); UI.toast('تم الحذف'); renderTeachers(true); });
+                    // تفعيل/تعطيل الحساب — بديل الحذف: التاريخ يبقى كاملاً
+                    const tb = body.querySelector(`[data-toggle="${t.id}"]`);
+                    if (tb) tb.onclick = async () => {
+                        const deact = !!t.is_active; // نحن على وشك التعطيل؟
+                        const html = deact
+                            ? `تعطيل حساب <strong>${UI.escapeHtml(t.name)}</strong>؟<br>`
+                              + `<span style="color:#B23A48;font-weight:700;">لن يستطيع تسجيل الدخول، وتُبطَل جلساته فوراً.</span><br>`
+                              + `<span style="color:#7A8F82;">تبقى كل بياناته وسجلّاته وطلابه كما هي — ويمكن إعادة تفعيله لاحقاً.</span>`
+                            : `تفعيل حساب <strong>${UI.escapeHtml(t.name)}</strong>؟<br>`
+                              + `<span style="color:#7A8F82;">سيتمكّن من تسجيل الدخول مجدداً.</span>`;
+                        const ok = await UI.confirmAction({
+                            title: deact ? 'تعطيل الحساب' : 'تفعيل الحساب',
+                            html, okText: deact ? 'تأكيد التعطيل' : 'تأكيد التفعيل', cancelText: 'إلغاء',
+                        });
+                        if (!ok) return;
+                        try {
+                            const res = await API.put('/teachers/' + t.id + '/status', { is_active: !t.is_active });
+                            UI.toast(res.message || 'تم تحديث الحالة');
+                            renderTeachers(true);
+                        } catch (e) { UI.toast(e.message, 'danger'); }
                     };
                 });
             }
@@ -212,13 +215,12 @@
                 if (reset) { page = 1; loadedCount = 0; }
                 const seq = ++fetchSeq;
                 const body = document.getElementById('tea-body');
-                if (reset) body.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#7A8F82;padding:20px;">جارٍ التحميل...</td></tr>`;
+                if (reset) body.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#7A8F82;padding:20px;">جارٍ التحميل...</td></tr>`;
                 loadMoreBtn.disabled = true;
                 try {
                     const p = new URLSearchParams({ page });
                     const q = searchInput.value.trim();
-                    if (q) p.set('q', q);
-                    if (centerFilter.value) p.set('center_id', centerFilter.value);
+                    if (q) p.set('q', q); // بحث موحّد: اسم / كود / اسم المركز
                     const res = await API.get('/teachers?' + p.toString());
                     if (seq !== fetchSeq) return; // ردود متأخرة لا تكتب فوق الأحدث
                     const pg = res.data;
@@ -232,20 +234,28 @@
                             <div style="font-size:12px;color:#9DB3A6;direction:ltr;text-align:right;">${UI.escapeHtml(t.email)}</div></div></div></td>
                           <td>${t.display_code ? `<span class="mq-code">${UI.escapeHtml(t.display_code)}</span>` : '—'}</td>
                           <td>${UI.badge(UI.escapeHtml(centerName(t.center_id)), 'info')}</td>
+                          <td style="text-align:center;">${t.is_active
+                              ? UI.badge('نشط', 'success')
+                              : UI.badge('غير نشط', 'danger')}</td>
                           <td><div class="mq-actions">
                             ${UI.actionBtn('view', `data-details="${t.id}" title="تفاصيل"`)}
                             ${UI.actionBtn('edit', `data-edit="${t.id}" title="تعديل"`)}
-                            ${UI.actionBtn('del', `data-del="${t.id}" title="حذف"`)}
+                            <button class="mq-btn ${t.is_active ? 'mq-btn--quiet-danger' : 'mq-btn--quiet'} mq-btn--icon mq-btn--sm"
+                                    data-toggle="${t.id}" title="${t.is_active ? 'تعطيل الحساب' : 'تفعيل الحساب'}">
+                              ${t.is_active
+                                ? '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>'
+                                : '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg>'}
+                            </button>
                           </div></td>
                         </tr>`).join('');
-                    if (reset) body.innerHTML = batch.length ? rows : `<tr><td colspan="4" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد معلمون مطابقون</td></tr>`;
+                    if (reset) body.innerHTML = batch.length ? rows : `<tr><td colspan="5" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد معلمون مطابقون</td></tr>`;
                     else body.insertAdjacentHTML('beforeend', rows);
                     loadedCount += batch.length;
                     bindRowActions(batch);
                     counter.textContent = total ? `عرض ${loadedCount} من ${total}` : '';
                     loadMoreBtn.style.display = page < lastPage ? '' : 'none';
                 } catch (e) {
-                    if (reset) body.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#B23A48;padding:20px;">${UI.escapeHtml(e.message)}</td></tr>`;
+                    if (reset) body.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#B23A48;padding:20px;">${UI.escapeHtml(e.message)}</td></tr>`;
                 } finally { loadMoreBtn.disabled = false; }
             }
 
@@ -258,7 +268,6 @@
                 searchTimer = setTimeout(() => renderTeachers(true), 300);
             });
 
-            centerFilter.onchange = () => renderTeachers(true);
             document.getElementById('add').onclick = () => UI.formModal({
                 title: 'إضافة معلم', fields: addFields(), onMount: wireSinglePrimary(null),
                 onSubmit: async (v, h) => { await API.post('/teachers', v); UI.toast('تم إضافة المعلم'); h.close(); renderTeachers(true); }
