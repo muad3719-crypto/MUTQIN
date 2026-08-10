@@ -74,7 +74,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // مسارات المدير فقط (Admin Only)
     Route::middleware('admin')->group(function () {
-        Route::apiResource('teachers', TeacherController::class);
+        // لا حذف للمحفّظ إطلاقاً (قرار معتمد) — بديله تفعيل/تعطيل الحساب
+        Route::apiResource('teachers', TeacherController::class)->except(['destroy']);
+        Route::put('/teachers/{id}/status', [TeacherController::class, 'toggleStatus']); // تفعيل/تعطيل (مدير النظام فقط)
         Route::get('/centers/{id}/has-primary', [TeacherController::class, 'hasPrimary']); // هل للمركز محفّظ أساسي؟
         Route::apiResource('centers', CenterController::class);
         Route::post('/students', [StudentController::class, 'store']); // نقل مسار إضافة طالب ليكون للمدير فقط

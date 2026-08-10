@@ -161,20 +161,40 @@ class TeacherController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    /**
+     * تفعيل/تعطيل حساب المحفّظ — بديل الحذف نهائياً (قرار معتمد: لا يُحذف
+     * محفّظ إطلاقاً كي لا يُفقد أي ارتباط تاريخي: طلابه، التسميع، الدرجات).
+     * المعطَّل يُمنع من الدخول (فحص في AuthController)، وتوكناته تُبطَل فوراً
+     * هنا — لا يكفي منعه في الدخول التالي. مقصور على مدير النظام (بوابة admin).
+     */
+    public function toggleStatus(Request $request, $id)
     {
+        $request->validate([
+            'is_active' => 'required|boolean',
+        ], ['is_active.required' => 'الحالة مطلوبة']);
+
         $teacher = User::where('role', 'teacher')->findOrFail($id);
+        $active  = $request->boolean('is_active');
 
-        // قبل الحذف: نختم اسم المحفّظ على طلابه ليظهر «محفّظ سابق: فلان»
-        // (teacher_id سيصير null بالحذف — D1 — فلا يبقى تمييز بينه وبين «بدون معلم»)
-        \App\Models\Student::where('teacher_id', $teacher->id)
-            ->update(['former_teacher_name' => $teacher->name]);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($teacher, $active, $request) {
+            $teacher->update([
+                'is_active'         => $active,
+                'status_changed_by' => $request->user()->id,
+                'status_changed_at' => now(),
+            ]);
 
-        $teacher->delete();
+            // التعطيل يبطل كل توكناته فوراً (نفس آلية S1 عند تغيير كلمة المرور)
+            if (!$active) {
+                $teacher->tokens()->delete();
+            }
+        });
 
         return response()->json([
             'success' => true,
-            'message' => 'تم حذف المعلم بنجاح'
+            'message' => $active
+                ? "تم تفعيل حساب المحفّظ «{$teacher->name}»"
+                : "تم تعطيل حساب المحفّظ «{$teacher->name}» — لن يستطيع تسجيل الدخول",
+            'data' => ['id' => $teacher->id, 'is_active' => $teacher->is_active],
         ]);
     }
 

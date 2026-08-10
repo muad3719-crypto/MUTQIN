@@ -33,6 +33,16 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
 
         if ($user && Hash::check($request->password, $user->password)) {
+            // الحساب المعطَّل يُمنع من الدخول (بديل الحذف — التاريخ يبقى محفوظاً).
+            // الفحص بعد التحقق من كلمة المرور كي لا يكشف حالة الحسابات لمن يخمّن.
+            if (!$user->is_active) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'هذا الحساب غير نشط، راجع إدارة المركز',
+                    'errors'  => ['email' => ['هذا الحساب غير نشط، راجع إدارة المركز']],
+                ], 403);
+            }
+
             // قدرات التوكن حسب الدور: ولي الأمر 'parent'، مدير المركز 'manager'،
             // المدير/المعلم '*' — الفحص المزدوج (دور+قدرة) يمنع تصعيد التوكن المسروق.
             $abilities = $user->isParent() ? ['parent']

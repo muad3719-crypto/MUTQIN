@@ -24,6 +24,9 @@ class User extends Authenticatable
         'nationality_type',
         'nationality_name',
         'id_number',
+        'is_active',
+        'status_changed_by',
+        'status_changed_at',
     ];
 
     // كود العرض يُحجز تلقائياً عند الإنشاء حسب الدور: محفّظ T1..، مدير مركز CA1..
@@ -49,6 +52,8 @@ class User extends Authenticatable
             'password' => 'hashed',
             'password_last_changed_at' => 'datetime',
             'password_changed_count' => 'integer',
+            'is_active' => 'boolean',
+            'status_changed_at' => 'datetime',
         ];
     }
 
