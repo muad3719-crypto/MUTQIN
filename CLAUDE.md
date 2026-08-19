@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **MUTQEN (مُتقِن)** — a management system for Quran-memorization centers. Arabic/RTL throughout. Two decoupled parts that talk only over HTTP/JSON:
 
-- `backend/` — Laravel 11 REST API (no Blade views for the app), MySQL database `mutqin_db`, served on port **9090**.
+- `backend/` — Laravel 11 REST API, MySQL database `mutqin_db`, served on port **9090**. **The UI has no Blade** — the only Blade left in the project is the seven PDF report templates (see PDF reports below).
 - `frontend-html/` — a standalone vanilla **HTML + CSS + JS + Bootstrap 5 RTL** client (no PHP, no build step) that consumes the API. Served as static files from any web server.
 
 This is a Windows/XAMPP setup, versioned as a **single unified git repository** (backend + frontend together; a stale nested `backend/.git` was retired and backed up).
@@ -134,7 +134,7 @@ Every protected page is a small IIFE that does: `Auth.requireAuth([roles])` → 
 
 ### PDF reports
 
-`ReportPdfController` uses **mPDF**. Render numbers with **Western digits** — Arabic-Indic digits show as empty boxes in the default font. The manager PDF endpoints (`managerCenter`, `managerAtRisk`, `managerTeachers`) reuse the admin templates with `center_id` taken from the account.
+`ReportPdfController::render()` renders a **Blade** template to HTML (`view($view, ...)->render()`) and feeds it to **mPDF**. These are the project's only Blade files — `resources/views/pdf/`: `layout.blade.php` (shared shell), `student`, `teacher-group`, and `admin/{center,teachers,at-risk,overview}`. Editing a report means editing Blade; nothing else in the system does. Render numbers with **Western digits** — Arabic-Indic digits show as empty boxes in the default font. The manager PDF endpoints (`managerCenter`, `managerAtRisk`, `managerTeachers`) reuse the admin templates with `center_id` taken from the account.
 
 ### Later-added subsystems (beyond the base CRUD)
 
