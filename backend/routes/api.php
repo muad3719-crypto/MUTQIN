@@ -43,6 +43,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('parent')->group(function () {
         Route::get('/parent/children', [StudentController::class, 'parentChildren']);
         Route::get('/parent/students/{id}', [StudentController::class, 'parentStudentDetails']);
+        // مراسلة محفّظ الابن — مقيّدة بأبنائه حصراً (الفحص داخل MessageController)
+        Route::get('/parent/messages', [\App\Http\Controllers\Api\MessageController::class, 'threads']);
+        Route::get('/parent/messages/{student}', [\App\Http\Controllers\Api\MessageController::class, 'thread']);
+        Route::post('/parent/messages/{student}', [\App\Http\Controllers\Api\MessageController::class, 'send']);
     });
 
     // مسارات مدير المركز (center_manager) — كلها مضيَّقة بمركزه حصراً
@@ -121,6 +125,11 @@ Route::middleware('auth:sanctum')->group(function () {
         // لا حذف للطالب إطلاقاً (قرار معتمد) — الحذف كان يمحو حضوره وحفظه
         // واختباراته بـ cascade؛ بديله الإيقاف عبر /students/{id}/status
         Route::apiResource('students', StudentController::class)->except(['store', 'destroy']);
+
+        // مراسلة أولياء أمور طلابه — المحفّظ الفعلي للطالب حصراً (الأدمن يُرفض داخل المتحكم)
+        Route::get('/teacher/messages', [\App\Http\Controllers\Api\MessageController::class, 'threads']);
+        Route::get('/teacher/messages/{student}', [\App\Http\Controllers\Api\MessageController::class, 'thread']);
+        Route::post('/teacher/messages/{student}', [\App\Http\Controllers\Api\MessageController::class, 'send']);
 
         // طلبات الطلاب — إنشاء/متابعة من المحفّظ (لا تغيير فعلي على students؛ ينتظر موافقة الأدمن)
         Route::get('/student-requests', [StudentRequestController::class, 'index']);          // طلباتي

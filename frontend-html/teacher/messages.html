@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الرسائل | مُتقِن</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+<link href="../css/theme.css" rel="stylesheet">
+</head>
+<body>
+<div id="app-shell"></div>
+
+<script src="../js/config.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/layout.js"></script>
+<script>
+(function () {
+    const user = Auth.requireAuth(['teacher']);
+    if (!user) return;
+    const pc = Layout.mount({ user, active: 'messages', title: 'الرسائل' });
+
+    const BASE = '/teacher/messages';      // نظير ولي الأمر: /parent/messages
+    const OTHER_LABEL = 'ولي الأمر';
+    let currentId = null;
+
+    pc.innerHTML = `
+        <div class="msg-layout">
+          <div class="mq-card" style="overflow:hidden;">
+            <div class="mq-card-header"><h3 class="mq-card-title" style="font-size:18px;">💬 المحادثات</h3></div>
+            <div id="threads"><div style="padding:20px;text-align:center;color:#7A8F82;">جارٍ التحميل...</div></div>
+          </div>
+          <div class="mq-card" style="overflow:hidden;">
+            <div class="mq-card-header"><h3 class="mq-card-title" style="font-size:18px;" id="thread-title">اختر محادثة</h3></div>
+            <div class="msg-box">
+              <div class="msg-scroll" id="scroll"><div style="margin:auto;color:#9DB3A6;">اختر طالباً من القائمة لمراسلة ولي أمره</div></div>
+              <form class="msg-compose" id="compose" style="display:none;">
+                <textarea class="mq-input" id="body" rows="2" maxlength="2000" placeholder="اكتب رسالتك..."></textarea>
+                <button type="submit" class="mq-btn mq-btn--primary">إرسال</button>
+              </form>
+            </div>
+          </div>
+        </div>`;
+
+    const el = id => document.getElementById(id);
+
+    async function loadThreads() {
+        try {
+            const res = await API.get(BASE);
+            const items = res.data || [];
+            el('threads').innerHTML = items.length ? items.map(t => `
+                <div class="msg-thread-item ${t.student_id === currentId ? 'active' : ''}" data-id="${t.student_id}">
+                  <span class="mq-avatar">${UI.initial(t.student_name)}</span>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-weight:700;color:#04361F;font-size:14px;">${UI.escapeHtml(t.student_name)}</div>
+                    <div style="font-size:12px;color:#7A8F82;">${OTHER_LABEL}: ${UI.escapeHtml(t.other_name || '—')}</div>
+                    ${t.last_body ? `<div style="font-size:12px;color:#9DB3A6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${UI.escapeHtml(t.last_body)}</div>` : ''}
+                  </div>
+                  ${t.unread ? `<span class="msg-unread">${t.unread}</span>` : ''}
+                </div>`).join('')
+                : '<div style="padding:22px;text-align:center;color:#9DB3A6;font-size:13px;">لا طلاب مرتبطون بأولياء أمور بعد</div>';
+            el('threads').querySelectorAll('.msg-thread-item').forEach(item =>
+                item.onclick = () => openThread(+item.dataset.id));
+        } catch (e) {
+            el('threads').innerHTML = `<div style="padding:20px;text-align:center;color:#B23A48;font-size:13px;">${UI.escapeHtml(e.message)}</div>`;
+        }
+    }
+
+    async function openThread(id) {
+        currentId = id;
+        el('scroll').innerHTML = '<div style="margin:auto;color:#9DB3A6;">جارٍ التحميل...</div>';
+        try {
+            const res = await API.get(BASE + '/' + id);
+            const d = res.data;
+            el('thread-title').textContent = `${d.student.name} — ${OTHER_LABEL}: ${d.other}`;
+            el('scroll').innerHTML = (d.messages || []).length
+                ? d.messages.map(m => `
+                    <div class="msg-bubble ${m.mine ? 'mine' : 'theirs'}">
+                      ${UI.escapeHtml(m.body)}
+                      <div class="msg-time">${UI.fmtDate(m.created_at)}${m.mine && m.read_at ? ' · قُرئت ✓' : ''}</div>
+                    </div>`).join('')
+                : '<div style="margin:auto;color:#9DB3A6;">لا رسائل بعد — ابدأ المحادثة</div>';
+            el('scroll').scrollTop = el('scroll').scrollHeight;
+            el('compose').style.display = '';
+            loadThreads(); // تحديث شارات غير المقروء بعد الفتح
+        } catch (e) {
+            el('scroll').innerHTML = `<div style="margin:auto;color:#B23A48;">${UI.escapeHtml(e.message)}</div>`;
+            el('compose').style.display = 'none';
+        }
+    }
+
+    el('compose').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const body = el('body').value.trim();
+        if (!body || !currentId) return;
+        const btn = e.target.querySelector('button');
+        btn.disabled = true;
+        try {
+            await API.post(BASE + '/' + currentId, { body });
+            el('body').value = '';
+            await openThread(currentId);
+        } catch (err) { UI.toast(err.message, 'danger'); }
+        finally { btn.disabled = false; }
+    });
+    // Enter يرسل، Shift+Enter سطر جديد
+    el('body').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); el('compose').requestSubmit(); }
+    });
+
+    loadThreads().then(() => {
+        const pre = new URLSearchParams(location.search).get('student');
+        if (pre) openThread(+pre); // وصول من إشعار «رسالة جديدة»
+    });
+})();
+</script>
+</body>
+</html>

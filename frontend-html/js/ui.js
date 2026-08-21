@@ -427,6 +427,7 @@
         upload: '<path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>',
         report: '<path d="M4 19V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v14"/><path d="M8 16v-4M12 16V8M16 16v-6"/>',
         requests: '<path d="M4 13h4l2 3h4l2-3h4"/><path d="M4 13l2-8h12l2 8v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>',
+        messages: '<path d="M21 11.5a8.4 8.4 0 0 1-8.4 8.3c-1.5 0-2.9-.4-4.1-1L3.5 20l1.2-4.6a8.3 8.3 0 1 1 16.3-3.9z"/><path d="M8.5 10.5h7M8.5 13.5h4.5"/>',
     };
     function ic(name, size = 18, stroke = 'currentColor', sw = 1.8) {
         return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[name] || ''}</svg>`;

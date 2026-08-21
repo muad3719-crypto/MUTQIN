@@ -28,6 +28,7 @@
             ['attendance',  'الحضور والغياب', 'attendance', 'teacher/attendance.html'],
             ['memorization','تتبّع الحفظ', 'memo', 'teacher/memorization.html'],
             ['tests',       'الاختبارات الأسبوعية', 'tests', 'teacher/weekly-tests.html'],
+            ['messages',    'الرسائل', 'messages', 'teacher/messages.html'],
             ['reports',     'التقارير', 'report', 'teacher/reports.html'],
         ],
         center_manager: [
@@ -41,6 +42,7 @@
         ],
         parent: [
             ['dashboard', 'أبنائي', 'students', 'parent/dashboard.html'],
+            ['messages',  'الرسائل', 'messages', 'parent/messages.html'],
         ],
     };
 
