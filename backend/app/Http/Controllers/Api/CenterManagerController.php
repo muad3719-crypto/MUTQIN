@@ -162,6 +162,15 @@ class CenterManagerController extends Controller
             ->withCount('students')
             ->latest();
 
+        // فلتر الحالة الاختياري — الافتراضي «الكل» (بلا تغيير سلوك للمستهلكين
+        // القائمين: قوائم الفلاتر في مراجعة الحضور تحتاج المعطَّلين لسجلّاتهم التاريخية)
+        $status = $request->input('status');
+        if ($status === 'active') {
+            $query->where('is_active', true);
+        } elseif ($status === 'inactive') {
+            $query->where('is_active', false);
+        }
+
         if (($q = trim((string) $request->get('q', ''))) !== '') {
             $norm = ArabicText::normalize($q);
             $query->whereRaw(ArabicText::sqlNormalize('name') . ' LIKE ?', ['%' . $norm . '%']);
@@ -250,6 +259,62 @@ class CenterManagerController extends Controller
             'success' => true,
             'message' => 'تم تحديث بيانات المحفظ بنجاح',
             'data' => $teacher,
+        ]);
+    }
+
+    /**
+     * تفعيل/تعطيل محفّظ من مركزه — بديل الحذف (القرار المعتمد: لا حذف صلب).
+     * الفحص الحاسم في الباك:
+     *  - غير موجود / ليس بدور teacher / من مركز آخر → 403 موحّدة (نمط correctAttendance).
+     *  - إيقاف المحفّظ الأساسي مرفوض 422: قاعدة PrimaryTeacherRule «أساسي واحد
+     *    لكل مركز» تعني أنه الأساسي الوحيد، وإيقافه يترك المركز بلا أساسي نشط —
+     *    يُعيَّن بديل أولاً (تعديل الأنواع) ثم يوقَف.
+     *  - التعطيل يبطل توكناته فوراً (آلية S1) ويسجّل status_changed_by/at.
+     */
+    public function toggleTeacherStatus(Request $request, $id)
+    {
+        $request->validate([
+            'is_active' => 'required|boolean',
+        ], ['is_active.required' => 'الحالة مطلوبة']);
+
+        $manager = $request->user();
+        $teacher = User::find($id);
+
+        // خارج النطاق (غير موجود أو ليس محفّظاً أو من مركز آخر) → 403 موحّد
+        if (!$teacher || !$teacher->isTeacher() || (int) $teacher->center_id !== (int) $manager->center_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'خارج نطاق صلاحيتك',
+            ], 403);
+        }
+
+        $active = $request->boolean('is_active');
+
+        if (!$active && $teacher->type === 'محفظ أساسي' && $teacher->is_active) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'is_active' => ['لا يمكن إيقاف المحفّظ الأساسي الوحيد للمركز — عيّن محفّظاً أساسياً بديلاً أولاً أو راجع مدير النظام'],
+            ]);
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($teacher, $active, $manager) {
+            $teacher->update([
+                'is_active'         => $active,
+                'status_changed_by' => $manager->id,
+                'status_changed_at' => now(),
+            ]);
+
+            // التعطيل يبطل كل توكناته فوراً — لا يكفي منعه في الدخول التالي
+            if (!$active) {
+                $teacher->tokens()->delete();
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => $active
+                ? "تم تفعيل حساب المحفّظ «{$teacher->name}»"
+                : "تم تعطيل حساب المحفّظ «{$teacher->name}» — لن يستطيع تسجيل الدخول",
+            'data' => ['id' => $teacher->id, 'is_active' => $teacher->is_active],
         ]);
     }
 

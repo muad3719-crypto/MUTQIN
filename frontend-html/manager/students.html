@@ -26,14 +26,22 @@
     pc.innerHTML = `
         <div class="mq-toolbar">
           <div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="ابحث بالاسم أو الرقم الوطني أو الهاتف..."></div>
-          <div style="display:flex;align-items:center;gap:14px;">
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <label class="mq-label" style="margin:0;font-size:13px;white-space:nowrap;">الحالة:</label>
+              <select class="mq-input" id="status-filter" style="max-width:150px;">
+                <option value="active">النشطون</option>
+                <option value="inactive">الموقوفون</option>
+                <option value="all">الكل</option>
+              </select>
+            </div>
             <span id="counter" style="font-size:13px;color:#7A8F82;font-weight:600;white-space:nowrap;"></span>
             <button class="mq-btn mq-btn--primary" id="add">${UI.ic('plus', 17)} طالب جديد</button>
           </div>
         </div>
         <div class="mq-card"><table class="mq-table" id="tbl">
-          <thead><tr><th>الطالب</th><th style="width:80px;">الكود</th><th>الرقم الوطني</th><th>المحفّظ</th><th>العمر</th></tr></thead>
-          <tbody id="stu-body"><tr><td colspan="5" style="text-align:center;color:#7A8F82;padding:30px;">جارٍ التحميل...</td></tr></tbody>
+          <thead><tr><th>الطالب</th><th style="width:80px;">الكود</th><th>الرقم الوطني</th><th>المحفّظ</th><th>العمر</th><th style="width:100px;text-align:center;">الحالة</th><th style="width:80px;">الإجراءات</th></tr></thead>
+          <tbody id="stu-body"><tr><td colspan="7" style="text-align:center;color:#7A8F82;padding:30px;">جارٍ التحميل...</td></tr></tbody>
         </table></div>
         <div style="text-align:center;margin-top:16px;">
           <button class="mq-btn mq-btn--secondary" id="load-more" style="display:none;">عرض المزيد ↓</button>
@@ -42,18 +50,47 @@
     const searchInput = document.getElementById('search');
     const counter = document.getElementById('counter');
     const loadMoreBtn = document.getElementById('load-more');
+    const statusFilter = document.getElementById('status-filter');
     let page = 1, lastPage = 1, total = 0, loadedCount = 0, fetchSeq = 0;
+
+    // إيقاف/تفعيل الطالب — بديل الحذف (نفس نمط صفحة طلاب مدير النظام)
+    function bindRowActions(batch) {
+        const body = document.getElementById('stu-body');
+        batch.forEach(s => {
+            const tb = body.querySelector(`[data-toggle="${s.id}"]`);
+            if (tb) tb.onclick = async () => {
+                const deact = !!s.is_active;
+                const html = deact
+                    ? `إيقاف الطالب <strong>${UI.escapeHtml(s.name)}</strong>؟<br>`
+                      + `<span style="color:#B23A48;font-weight:700;">يخرج من قوائم الحضور والبصمة والتقارير.</span><br>`
+                      + `<span style="color:#7A8F82;">يبقى سجلّه كاملاً (الحضور والحفظ والاختبارات) — ويمكن إعادة تفعيله لاحقاً.</span>`
+                    : `تفعيل الطالب <strong>${UI.escapeHtml(s.name)}</strong>؟<br>`
+                      + `<span style="color:#7A8F82;">يعود إلى قوائم الحضور والبصمة والتقارير.</span>`;
+                const ok = await UI.confirmAction({
+                    title: deact ? 'إيقاف الطالب' : 'تفعيل الطالب',
+                    html, okText: deact ? 'تأكيد الإيقاف' : 'تأكيد التفعيل', cancelText: 'إلغاء',
+                });
+                if (!ok) return;
+                try {
+                    const res = await API.put('/manager/students/' + s.id + '/status', { is_active: !s.is_active });
+                    UI.toast(res.message || 'تم تحديث الحالة');
+                    render(true);
+                } catch (e) { UI.toast(e.message, 'danger'); }
+            };
+        });
+    }
 
     async function render(reset = true) {
         if (reset) { page = 1; loadedCount = 0; }
         const seq = ++fetchSeq;
         const body = document.getElementById('stu-body');
-        if (reset) body.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#7A8F82;padding:20px;">جارٍ التحميل...</td></tr>`;
+        if (reset) body.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#7A8F82;padding:20px;">جارٍ التحميل...</td></tr>`;
         loadMoreBtn.disabled = true;
         try {
             const p = new URLSearchParams({ page });
             const q = searchInput.value.trim();
             if (q) p.set('q', q);
+            p.set('status', statusFilter.value); // active (افتراضي) | inactive | all
             const res = await API.get('/manager/students?' + p.toString());
             if (seq !== fetchSeq) return;
             const pg = res.data, batch = pg.data || [];
@@ -74,14 +111,26 @@
                           ? `<span style="color:#9A7A1E;">محفّظ سابق: ${UI.escapeHtml(s.former_teacher_name)}</span>`
                           : '<span style="color:#B23A48;font-weight:700;">— بدون محفّظ —</span>')}</td>
                   <td>${s.age ?? '—'}</td>
+                  <td style="text-align:center;">${s.is_active
+                      ? UI.badge('نشط', 'success')
+                      : UI.badge('موقوف', 'danger')}</td>
+                  <td><div class="mq-actions">
+                    <button class="mq-btn ${s.is_active ? 'mq-btn--quiet-danger' : 'mq-btn--quiet'} mq-btn--icon mq-btn--sm"
+                            data-toggle="${s.id}" title="${s.is_active ? 'إيقاف الطالب' : 'تفعيل الطالب'}">
+                      ${s.is_active
+                        ? '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>'
+                        : '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg>'}
+                    </button>
+                  </div></td>
                 </tr>`).join('');
-            if (reset) body.innerHTML = batch.length ? rows : `<tr><td colspan="5" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد طلاب مطابقون</td></tr>`;
+            if (reset) body.innerHTML = batch.length ? rows : `<tr><td colspan="7" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد طلاب مطابقون</td></tr>`;
             else body.insertAdjacentHTML('beforeend', rows);
             loadedCount += batch.length;
+            bindRowActions(batch);
             counter.textContent = total ? `عرض ${loadedCount} من ${total}` : '';
             loadMoreBtn.style.display = page < lastPage ? '' : 'none';
         } catch (e) {
-            if (reset) body.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#B23A48;padding:20px;">${UI.escapeHtml(e.message)}</td></tr>`;
+            if (reset) body.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#B23A48;padding:20px;">${UI.escapeHtml(e.message)}</td></tr>`;
         } finally { loadMoreBtn.disabled = false; }
     }
 
@@ -321,6 +370,7 @@
         openAddStudent();
     };
     loadMoreBtn.onclick = () => { page++; render(false); };
+    statusFilter.addEventListener('change', () => render(true));
     let st = null;
     searchInput.addEventListener('input', () => { clearTimeout(st); st = setTimeout(() => render(true), 300); });
 

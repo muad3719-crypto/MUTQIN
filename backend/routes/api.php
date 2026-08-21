@@ -58,7 +58,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/manager/teachers/next-code', [\App\Http\Controllers\Api\CenterManagerController::class, 'teacherNextCode']); // معاينة كود المحفّظ (قبل {id})
         Route::get('/manager/teachers/{id}', [\App\Http\Controllers\Api\CenterManagerController::class, 'showTeacher']);
         Route::post('/manager/teachers', [\App\Http\Controllers\Api\CenterManagerController::class, 'storeTeacher']); // إضافة محفّظ — center_id/role مفروضان
-        Route::put('/manager/teachers/{id}', [\App\Http\Controllers\Api\CenterManagerController::class, 'updateTeacher']); // لا حذف — لمدير النظام
+        Route::put('/manager/teachers/{id}', [\App\Http\Controllers\Api\CenterManagerController::class, 'updateTeacher']); // لا حذف إطلاقاً (قرار معتمد) — البديل التفعيل/التعطيل أدناه
+        Route::put('/manager/teachers/{id}/status', [\App\Http\Controllers\Api\CenterManagerController::class, 'toggleTeacherStatus']); // تفعيل/تعطيل محفّظي مركزه — مضيَّق بمركزه، والأساسي الوحيد لا يُوقَف
         Route::post('/manager/attendance/import', [\App\Http\Controllers\Api\AttendanceImportController::class, 'import']); // مضيَّق بمركزه داخل المتحكم
         Route::get('/manager/attendance', [\App\Http\Controllers\Api\CenterManagerController::class, 'attendanceIndex']); // سجل الحضور للمراجعة (مرقّم + فلاتر)
         Route::put('/manager/attendance/{id}/status', [\App\Http\Controllers\Api\CenterManagerController::class, 'correctAttendance']); // تصحيح حالة سجل واحد

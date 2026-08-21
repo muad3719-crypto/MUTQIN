@@ -174,13 +174,21 @@
             <div class="mq-toolbar">
               <div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="ابحث باسم المحفّظ..."></div>
               <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <label class="mq-label" style="margin:0;font-size:13px;white-space:nowrap;">الحالة:</label>
+                  <select class="mq-input" id="status-filter" style="max-width:150px;">
+                    <option value="">الكل</option>
+                    <option value="active">النشطون</option>
+                    <option value="inactive">المعطَّلون</option>
+                  </select>
+                </div>
                 <span id="counter" style="font-size:13px;color:#7A8F82;font-weight:600;white-space:nowrap;"></span>
                 <button class="mq-btn mq-btn--primary" id="add">${UI.ic('plus', 17)} محفّظ جديد</button>
               </div>
             </div>
             <div class="mq-card"><table class="mq-table" id="tbl">
-              <thead><tr><th>المحفّظ</th><th style="width:80px;">الكود</th><th>النوع</th><th>الطلاب</th><th style="width:110px;">الإجراءات</th></tr></thead>
-              <tbody id="tea-body"><tr><td colspan="5" style="text-align:center;color:#7A8F82;padding:30px;">جارٍ التحميل...</td></tr></tbody>
+              <thead><tr><th>المحفّظ</th><th style="width:80px;">الكود</th><th>النوع</th><th>الطلاب</th><th style="width:100px;text-align:center;">الحالة</th><th style="width:110px;">الإجراءات</th></tr></thead>
+              <tbody id="tea-body"><tr><td colspan="6" style="text-align:center;color:#7A8F82;padding:30px;">جارٍ التحميل...</td></tr></tbody>
             </table></div>
             <div style="text-align:center;margin-top:16px;">
               <button class="mq-btn mq-btn--secondary" id="load-more" style="display:none;">عرض المزيد ↓</button>
@@ -189,6 +197,7 @@
         const searchInput = document.getElementById('search');
         const counter = document.getElementById('counter');
         const loadMoreBtn = document.getElementById('load-more');
+        const statusFilter = document.getElementById('status-filter');
         let page = 1, lastPage = 1, total = 0, loadedCount = 0, fetchSeq = 0;
 
         function bindRowActions(batch) {
@@ -199,6 +208,30 @@
                     title: 'تعديل بيانات المحفّظ', submitText: 'حفظ التعديلات', fields: editFields(t),
                     onSubmit: async (v, h) => { await API.put('/manager/teachers/' + t.id, v); UI.toast('تم التحديث'); h.close(); render(true); }
                 });
+                // تفعيل/تعطيل الحساب — بديل الحذف: التاريخ يبقى كاملاً (الفحص الحاسم في الباك)
+                const tb = body.querySelector(`[data-toggle="${t.id}"]`);
+                if (tb) tb.onclick = async () => {
+                    const deact = !!t.is_active;
+                    const html = deact
+                        ? `تعطيل حساب <strong>${UI.escapeHtml(t.name)}</strong>؟<br>`
+                          + `<span style="color:#B23A48;font-weight:700;">لن يستطيع تسجيل الدخول، وتُبطَل جلساته فوراً.</span><br>`
+                          + `<span style="color:#7A8F82;">تبقى كل بياناته وسجلّاته وطلابه كما هي — ويمكن إعادة تفعيله لاحقاً.</span>`
+                        : `تفعيل حساب <strong>${UI.escapeHtml(t.name)}</strong>؟<br>`
+                          + `<span style="color:#7A8F82;">سيتمكّن من تسجيل الدخول مجدداً.</span>`;
+                    const ok = await UI.confirmAction({
+                        title: deact ? 'تعطيل الحساب' : 'تفعيل الحساب',
+                        html, okText: deact ? 'تأكيد التعطيل' : 'تأكيد التفعيل', cancelText: 'إلغاء',
+                    });
+                    if (!ok) return;
+                    try {
+                        const res = await API.put('/manager/teachers/' + t.id + '/status', { is_active: !t.is_active });
+                        UI.toast(res.message || 'تم تحديث الحالة');
+                        render(true);
+                    } catch (e) {
+                        // 422 للأساسي الوحيد: نعرض رسالة الباك العربية كما هي
+                        UI.toast((e.errors && e.errors.is_active && e.errors.is_active[0]) || e.message, 'danger');
+                    }
+                };
             });
         }
 
@@ -206,12 +239,13 @@
             if (reset) { page = 1; loadedCount = 0; }
             const seq = ++fetchSeq;
             const body = document.getElementById('tea-body');
-            if (reset) body.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#7A8F82;padding:20px;">جارٍ التحميل...</td></tr>`;
+            if (reset) body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#7A8F82;padding:20px;">جارٍ التحميل...</td></tr>`;
             loadMoreBtn.disabled = true;
             try {
                 const p = new URLSearchParams({ page });
                 const q = searchInput.value.trim();
                 if (q) p.set('q', q);
+                if (statusFilter.value) p.set('status', statusFilter.value); // بلا قيمة = الكل (سلوك القائمة الأصلي)
                 const res = await API.get('/manager/teachers?' + p.toString());
                 if (seq !== fetchSeq) return;
                 const pg = res.data, batch = pg.data || [];
@@ -225,21 +259,33 @@
                       <td>${t.display_code ? `<span class="mq-code">${UI.escapeHtml(t.display_code)}</span>` : '—'}</td>
                       <td>${UI.escapeHtml(t.type || '—')}</td>
                       <td>${UI.badge((t.students_count ?? 0) + ' طالب', 'primary')}</td>
-                      <td><div class="mq-actions">${UI.actionBtn('edit', `data-edit="${t.id}" title="تعديل"`)}</div></td>
+                      <td style="text-align:center;">${t.is_active
+                          ? UI.badge('نشط', 'success')
+                          : UI.badge('غير نشط', 'danger')}</td>
+                      <td><div class="mq-actions">
+                        ${UI.actionBtn('edit', `data-edit="${t.id}" title="تعديل"`)}
+                        <button class="mq-btn ${t.is_active ? 'mq-btn--quiet-danger' : 'mq-btn--quiet'} mq-btn--icon mq-btn--sm"
+                                data-toggle="${t.id}" title="${t.is_active ? 'تعطيل الحساب' : 'تفعيل الحساب'}">
+                          ${t.is_active
+                            ? '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>'
+                            : '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg>'}
+                        </button>
+                      </div></td>
                     </tr>`).join('');
-                if (reset) body.innerHTML = batch.length ? rows : `<tr><td colspan="5" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد محفّظون مطابقون</td></tr>`;
+                if (reset) body.innerHTML = batch.length ? rows : `<tr><td colspan="6" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد محفّظون مطابقون</td></tr>`;
                 else body.insertAdjacentHTML('beforeend', rows);
                 loadedCount += batch.length;
                 bindRowActions(batch);
                 counter.textContent = total ? `عرض ${loadedCount} من ${total}` : '';
                 loadMoreBtn.style.display = page < lastPage ? '' : 'none';
             } catch (e) {
-                if (reset) body.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#B23A48;padding:20px;">${UI.escapeHtml(e.message)}</td></tr>`;
+                if (reset) body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#B23A48;padding:20px;">${UI.escapeHtml(e.message)}</td></tr>`;
             } finally { loadMoreBtn.disabled = false; }
         }
 
         loadMoreBtn.onclick = () => { page++; render(false); };
         document.getElementById('add').onclick = () => openAddTeacher(() => render(true));
+        statusFilter.addEventListener('change', () => render(true));
         let t = null;
         searchInput.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => render(true), 300); });
         render(true);
