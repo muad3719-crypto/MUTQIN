@@ -23,20 +23,27 @@
     let students = [];
     const today = UI.todayStr();
 
-    // نافذة إضافة اختبار (أثمان ديناميكية)
-    function openAdd() {
+    // نافذة موحّدة: إضافة اختبار جديد أو تعديل اختبار قائم (أثمان ديناميكية).
+    // في التعديل: الطالب ثابت (لا يُرسل)، والأثمان السابقة تُحمَّل قابلة للتغيير
+    // وقلب النتيجة، والحفظ عبر PUT — الحذف أُلغي نهائياً (قرار معتمد).
+    function openTestModal(existing) {
+        const isEdit = !!existing;
         const overlay = document.createElement('div');
         overlay.style.cssText = 'position:fixed;inset:0;background:rgba(4,54,31,.45);z-index:1500;display:flex;align-items:center;justify-content:center;padding:24px;';
+        const dateVal = isEdit && existing.exam_date ? String(existing.exam_date).slice(0, 10) : today;
         overlay.innerHTML = `
           <div class="mq-card" style="width:100%;max-width:720px;max-height:90vh;overflow:auto;margin:0;">
-            <div class="mq-card-header"><h3 class="mq-card-title">اختبار أسبوعي جديد</h3>
+            <div class="mq-card-header"><h3 class="mq-card-title">${isEdit ? 'تعديل الاختبار الأسبوعي' : 'اختبار أسبوعي جديد'}</h3>
               <button type="button" data-close style="background:none;border:none;font-size:22px;cursor:pointer;color:#7A8F82;">×</button></div>
             <form class="mq-card-body" id="tform">
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
-                <div><label class="mq-label">الطالب *</label>
-                  <select class="mq-input" name="student_id">${students.map(s => `<option value="${s.id}">${UI.escapeHtml(s.name)}</option>`).join('')}</select></div>
+                <div><label class="mq-label">الطالب ${isEdit ? '' : '*'}</label>
+                  ${isEdit
+                    ? `<input class="mq-input" value="${UI.escapeHtml(existing.student?.name || '—')}" readonly disabled style="background:var(--ivory-soft);font-weight:700;color:#04361F;">`
+                    : `<select class="mq-input" name="student_id">${students.map(s => `<option value="${s.id}">${UI.escapeHtml(s.name)}</option>`).join('')}</select>`}
+                </div>
                 <div><label class="mq-label">تاريخ الاختبار *</label>
-                  <input class="mq-input" type="date" name="exam_date" value="${today}"></div>
+                  <input class="mq-input" type="date" name="exam_date" value="${dateVal}"></div>
               </div>
               <div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0;">
                 <strong style="color:#04361F;">الأثمان المختبَرة</strong>
@@ -45,7 +52,7 @@
               <div id="rows"></div>
               <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:16px;">
                 <button type="button" class="mq-btn mq-btn--secondary" data-close>إلغاء</button>
-                <button type="submit" class="mq-btn mq-btn--primary">💾 تسجيل الاختبار</button>
+                <button type="submit" class="mq-btn mq-btn--primary">💾 ${isEdit ? 'حفظ التعديلات' : 'تسجيل الاختبار'}</button>
               </div>
             </form>
           </div>`;
@@ -55,22 +62,27 @@
         overlay.addEventListener('mousedown', e => { if (e.target === overlay) close(); });
 
         const rowsBox = overlay.querySelector('#rows');
-        function addRow() {
+        // صف ثمن — preset لتحميل ثمن قائم (التعديل): بداية الثمن + النتيجة + الخطأ
+        function addRow(preset = {}) {
             const div = document.createElement('div');
             div.className = 'eighth-row';
             div.style.cssText = 'background:#FBF9EE;border:1px solid rgba(4,83,47,.15);border-radius:12px;padding:14px;margin-bottom:10px;position:relative;';
+            const failed = preset.result === 'راسب';
             div.innerHTML = `
               <button type="button" class="rm" style="position:absolute;left:10px;top:8px;background:none;border:none;color:#B23A48;font-size:20px;cursor:pointer;">×</button>
               <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;align-items:end;">
                 <div><label class="mq-label" style="font-size:13px;">بداية الثمن * <span style="color:#9A7A1E;font-weight:600;">(اكتب فيبحث في فهرس الأثمان)</span></label>
-                  <input class="mq-input eighth_start" autocomplete="off" placeholder="اكتب بداية الثمن... مثل: هل جزاء الإحسان">
+                  <input class="mq-input eighth_start" autocomplete="off" placeholder="اكتب بداية الثمن... مثل: هل جزاء الإحسان" value="${UI.escapeHtml(preset.eighth_start || '')}">
                   <div class="thumn-meta" style="display:none;margin-top:7px;font-size:12px;font-weight:700;color:#04532F;background:rgba(4,83,47,.08);border:1px solid rgba(4,83,47,.2);border-radius:8px;padding:6px 11px;"></div></div>
                 <div><label class="mq-label" style="font-size:13px;">النتيجة *</label>
-                  <select class="mq-input result"><option value="ناجح">ناجح</option><option value="راسب">راسب</option></select></div>
+                  <select class="mq-input result">
+                    <option value="ناجح" ${failed ? '' : 'selected'}>ناجح</option>
+                    <option value="راسب" ${failed ? 'selected' : ''}>راسب</option>
+                  </select></div>
               </div>
-              <div class="mistakeBox" style="display:none;margin-top:10px;">
+              <div class="mistakeBox" style="display:${failed ? 'block' : 'none'};margin-top:10px;">
                 <label class="mq-label" style="font-size:13px;color:#B23A48;">تفاصيل الخطأ</label>
-                <textarea class="mq-input mistake" rows="2" placeholder="ما الذي أخطأ فيه الطالب..."></textarea></div>`;
+                <textarea class="mq-input mistake" rows="2" placeholder="ما الذي أخطأ فيه الطالب...">${UI.escapeHtml(preset.mistake || '')}</textarea></div>`;
             rowsBox.appendChild(div);
 
             // إكمال تلقائي من فهرس الأثمان + عرض السورة/الصفحة عند الاختيار
@@ -89,8 +101,14 @@
                 div.querySelector('.mistakeBox').style.display = e.target.value === 'راسب' ? 'block' : 'none';
             };
         }
-        overlay.querySelector('#addrow').onclick = addRow;
-        addRow();
+        overlay.querySelector('#addrow').onclick = () => addRow();
+
+        // التعديل: تحميل الأثمان السابقة قابلة للتغيير — الإضافة: صف فارغ واحد
+        if (isEdit && (existing.questions || []).length) {
+            existing.questions.forEach(q => addRow(q));
+        } else {
+            addRow();
+        }
 
         overlay.querySelector('#tform').onsubmit = async (e) => {
             e.preventDefault();
@@ -102,8 +120,14 @@
             })).filter(q => q.eighth_start);
             if (!questions.length) { UI.toast('أضف ثمنًا واحدًا على الأقل', 'warning'); return; }
             try {
-                await API.post('/weekly-tests', { student_id: f.student_id.value, exam_date: f.exam_date.value, questions });
-                UI.toast('تم تسجيل الاختبار'); close(); load();
+                if (isEdit) {
+                    await API.put('/weekly-tests/' + existing.id, { exam_date: f.exam_date.value, questions });
+                    UI.toast('تم تعديل الاختبار');
+                } else {
+                    await API.post('/weekly-tests', { student_id: f.student_id.value, exam_date: f.exam_date.value, questions });
+                    UI.toast('تم تسجيل الاختبار');
+                }
+                close(); load();
             } catch (err) { UI.toast(err.message, 'danger'); }
         };
     }
@@ -122,7 +146,7 @@
                   <td>${UI.fmtDate(t.exam_date)}</td>
                   <td style="font-size:12px;max-width:300px;">${eighths}</td>
                   <td>${UI.resultBadge(t.result)}</td>
-                  <td><div class="mq-actions">${UI.actionBtn('del', `data-del="${t.id}"`)}</div></td></tr>`;
+                  <td><div class="mq-actions">${UI.actionBtn('edit', `data-edit="${t.id}" title="تعديل الاختبار"`)}</div></td></tr>`;
             }).join('') || `<tr><td colspan="5" style="text-align:center;color:#7A8F82;padding:30px;">لا توجد اختبارات</td></tr>`;
 
             pc.innerHTML = `
@@ -130,13 +154,16 @@
                   <div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="بحث باسم الطالب..."></div>
                   <button class="mq-btn mq-btn--primary" id="add">${UI.ic('plus', 17)} اختبار جديد</button></div>
                 <div class="mq-card"><table class="mq-table" id="tbl">
-                  <thead><tr><th>الطالب</th><th>التاريخ</th><th>الأثمان</th><th>النتيجة</th><th>حذف</th></tr></thead>
+                  <thead><tr><th>الطالب</th><th>التاريخ</th><th>الأثمان</th><th>النتيجة</th><th>تعديل</th></tr></thead>
                   <tbody>${rows}</tbody></table></div>`;
 
             UI.bindTableSearch('search', 'tbl');
-            document.getElementById('add').onclick = openAdd;
-            pc.querySelectorAll('[data-del]').forEach(b => b.onclick = () =>
-                UI.confirmDelete('حذف هذا الاختبار؟', async () => { await API.del('/weekly-tests/' + b.dataset.del); UI.toast('تم الحذف'); load(); }));
+            document.getElementById('add').onclick = () => openTestModal(null);
+            // تعديل بدل الحذف: يفتح النافذة محمّلة بالأثمان السابقة (الحذف أُلغي — قرار معتمد)
+            pc.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => {
+                const t = tests.find(x => String(x.id) === b.dataset.edit);
+                if (t) openTestModal(t);
+            });
         } catch (e) { UI.toast(e.message, 'danger'); }
     }
     load();

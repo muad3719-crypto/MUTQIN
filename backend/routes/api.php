@@ -136,7 +136,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/memorizations/students-progress', [MemorizationController::class, 'studentsProgress']); // تقدّم الطلاب حسب الجزء
         Route::apiResource('memorizations', MemorizationController::class)->only(['index', 'store', 'destroy']);
 
-        Route::apiResource('weekly-tests', WeeklyTestController::class)->only(['index', 'store', 'destroy', 'show']); // تفعيل مسار عرض تفاصيل الاختبار الفردي للأثمان
+        // لا حذف للاختبار (قرار معتمد — DELETE يعيد 405)؛ بديله التعديل الكامل
+        // للأثمان وقلب النتائج عبر update
+        Route::apiResource('weekly-tests', WeeklyTestController::class)->only(['index', 'store', 'show', 'update']);
 
         Route::get('/reports/weekly', [ReportController::class, 'weekly']);
         Route::get('/reports/student/{id}', [ReportController::class, 'student']);

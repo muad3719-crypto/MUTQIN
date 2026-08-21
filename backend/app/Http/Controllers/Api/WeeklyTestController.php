@@ -107,24 +107,64 @@ class WeeklyTestController extends Controller
         ], 201);
     }
 
-    public function destroy(Request $request, $id)
+    /**
+     * تعديل اختبار قائم — بديل الحذف (القرار المعتمد: لا حذف صلب، وأُلغي مسار
+     * destroy فصار DELETE يعيد 405). يعدّل التاريخ والأثمان: الأسئلة تُستبدل
+     * كلياً (حذف وإعادة إدراج) داخل transaction واحدة — فشل جزئي يُرجع كل شيء —
+     * والنتيجة الكلية يعاد حسابها (قلب ناجح↔راسب وارد لكل ثمن).
+     * الملكية: المحفّظ يعدّل اختباراته هو فقط (teacher_id) — غيرها 403.
+     */
+    public function update(Request $request, $id)
     {
         $user = $request->user();
         $test = WeeklyTest::findOrFail($id);
-        $student = Student::findOrFail($test->student_id);
 
-        if (!$user->isAdmin() && $student->teacher_id !== $user->id) {
+        if (!$user->isAdmin() && $test->teacher_id !== $user->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'غير مصرح لك بحذف هذا الاختبار'
+                'message' => 'غير مصرح لك بتعديل هذا الاختبار'
             ], 403);
         }
 
-        $test->delete();
+        $request->validate([
+            'exam_date'                => 'required|date',
+            'questions'                => 'required|array|min:1',
+            'questions.*.eighth_start' => 'required|string',
+            'questions.*.result'       => 'required|in:ناجح,راسب',
+            'questions.*.mistake'      => 'nullable|string',
+        ], [
+            'exam_date.required'                => 'اختر تاريخ الاختبار',
+            'questions.required'                => 'يجب إضافة ثمن واحد على الأقل للاختبار',
+            'questions.*.eighth_start.required' => 'يجب تحديد بداية الثمن المختبر',
+            'questions.*.result.required'       => 'يجب تحديد نتيجة كل ثمن',
+        ]);
+
+        // نفس قاعدة الاحتساب في الإنشاء: راسب إذا رسب ثمن واحد على الأقل
+        $overallResult = collect($request->questions)->contains('result', 'راسب') ? 'راسب' : 'ناجح';
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($request, $test, $overallResult) {
+            $test->update([
+                'exam_date' => $request->exam_date,
+                'result'    => $overallResult,
+            ]);
+
+            // استبدال كلي للأثمان — الطالب يبقى طالب الاختبار نفسه (لا يُقبل من العميل)
+            $test->questions()->delete();
+            foreach ($request->questions as $q) {
+                WeeklyTestQuestion::create([
+                    'weekly_test_id' => $test->id,
+                    'student_id'     => $test->student_id,
+                    'eighth_start'   => $q['eighth_start'],
+                    'result'         => $q['result'],
+                    'mistake'        => $q['mistake'] ?? null,
+                ]);
+            }
+        });
 
         return response()->json([
             'success' => true,
-            'message' => 'تم الحذف بنجاح'
+            'message' => 'تم تعديل الاختبار الأسبوعي بنجاح',
+            'data' => $test->fresh()->load('questions'),
         ]);
     }
 
