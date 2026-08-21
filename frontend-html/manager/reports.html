@@ -6,13 +6,6 @@
 <title>التقارير | مُتقِن</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
 <link href="../css/theme.css" rel="stylesheet">
-<style>
-  .rp-period{display:flex;gap:12px;align-items:end;flex-wrap:wrap;}
-  .rp-period > div{min-width:120px;}
-  .rp-lbl{font-size:12.5px;color:#7A8F82;font-weight:700;margin-bottom:5px;display:block;}
-  .rp-section-title{font-family:'Amiri',serif;font-size:24px;color:#04361F;margin:0 0 4px;}
-  .rp-section-sub{font-size:13px;color:#7A8F82;margin:0 0 18px;}
-</style>
 </head>
 <body>
 <div id="app-shell"></div>
@@ -42,13 +35,15 @@
           </div>
         </div></div>
 
-        <!-- المجموعة 1 -->
-        <h2 class="rp-section-title">📊 تقارير النظام — مركزي</h2>
-        <p class="rp-section-sub">التقارير العامة مقيّدة على مركزك: الحضور والتقدّم والمتعثّرون.</p>
-        <div id="g1"><div class="mq-card"><div class="mq-card-body">جارٍ التحميل...</div></div></div>
-
-        <!-- المجموعة 2 (تُملأ في المرحلة التالية) -->
-        <div id="g2-wrap" style="margin-top:34px;"></div>`;
+        <!-- القسمان جنباً إلى جنب على سطح المكتب، عمودياً على ≤1024px -->
+        <div class="rp-grid">
+          <section>
+            <h2 class="rp-section-title">📊 تقارير النظام — مركزي</h2>
+            <p class="rp-section-sub">التقارير العامة مقيّدة على مركزك: الحضور والتقدّم والمتعثّرون.</p>
+            <div id="g1"><div class="mq-card"><div class="mq-card-body">جارٍ التحميل...</div></div></div>
+          </section>
+          <section id="g2-wrap"></section>
+        </div>`;
 
     const el = id => document.getElementById(id);
     const my = () => `month=${el('p-month').value}&year=${el('p-year').value}`;
@@ -75,6 +70,7 @@
             : `<tr><td colspan="6" style="text-align:center;color:#04532F;padding:20px;">✓ لا يوجد طلاب متعثّرون</td></tr>`;
 
         el('g1').innerHTML = `
+          <div class="rp-stack">
             <div class="mq-stats">
               ${statCard(s.studentsCount, 'الطلاب', 'green')}
               ${statCard(s.teachersCount, 'المحفّظون', 'gold')}
@@ -84,17 +80,18 @@
               ${statCard(pr.avgCompletedJuz, 'متوسّط الأجزاء المكتملة', 'blue')}
             </div>
 
-            <div class="mq-card" style="margin-bottom:16px;">
+            <div class="mq-card">
               <div class="mq-card-header"><h3 class="mq-card-title">⚠️ الطلاب المتعثّرون (${risk.length})</h3>
                 <button class="mq-btn mq-btn--secondary mq-btn--sm" id="pdf-atrisk">${UI.ic('report',15)} PDF</button></div>
-              <div style="overflow-x:auto;"><table class="mq-table">
+              <div class="rp-scroll"><table class="mq-table">
                 <thead><tr><th>الكود</th><th>الطالب</th><th>المحفّظ</th><th style="text-align:center;">الحضور</th><th style="text-align:center;">مرات الرسوب</th><th>السبب</th></tr></thead>
                 <tbody>${riskRows}</tbody></table></div>
             </div>
 
-            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <div class="rp-actions">
               <button class="mq-btn mq-btn--gold mq-btn--sm" id="pdf-center">${UI.ic('report',15)} تقرير المركز الشامل (PDF)</button>
-            </div>`;
+            </div>
+          </div>`;
 
         el('pdf-atrisk').onclick = () => UI.openPdf('/manager/reports/at-risk/pdf?' + my());
         el('pdf-center').onclick = () => UI.openPdf('/manager/reports/center/pdf?' + my());
@@ -129,15 +126,16 @@
         // طلاب بلا محفّظ
         const nt = d.noTeacher;
         const ntBlock = nt.count ? `
-            <div class="mq-card" style="margin-bottom:16px;">
+            <div class="mq-card">
               <div class="mq-card-header"><h3 class="mq-card-title" style="color:#B23A48;">⚠️ طلاب بلا محفّظ (${nt.count})</h3></div>
-              <div class="mq-card-body"><div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <div class="mq-card-body"><div class="rp-actions" style="gap:8px;">
                 ${nt.rows.map(s => `<span class="mq-badge mq-badge-danger">${s.display_code ? UI.escapeHtml(s.display_code)+' · ' : ''}${UI.escapeHtml(s.name)}</span>`).join('')}
               </div></div>
             </div>`
-            : `<div class="mq-card" style="margin-bottom:16px;"><div class="mq-card-body" style="color:#04532F;font-weight:600;">✓ كل طلاب المركز مرتبطون بمحفّظين.</div></div>`;
+            : `<div class="mq-card"><div class="mq-card-body" style="color:#04532F;font-weight:600;">✓ كل طلاب المركز مرتبطون بمحفّظين.</div></div>`;
 
         el('g2').innerHTML = `
+          <div class="rp-stack">
             <div class="mq-stats">
               ${statCard(d.summary.teachersCount, 'المحفّظون', 'gold')}
               ${statCard(d.summary.studentsCount, 'الطلاب النشطون', 'green')}
@@ -145,15 +143,16 @@
               ${statCard(nt.count, 'طلاب بلا محفّظ', nt.count ? 'red' : 'green')}
             </div>
 
-            <div class="mq-card" style="margin-bottom:16px;">
+            <div class="mq-card">
               <div class="mq-card-header"><h3 class="mq-card-title">👨‍🏫 أداء المحفّظين وتوزيع الطلاب</h3>
                 <button class="mq-btn mq-btn--secondary mq-btn--sm" id="pdf-teachers">${UI.ic('report',15)} PDF</button></div>
-              <div style="overflow-x:auto;"><table class="mq-table">
+              <div class="rp-scroll"><table class="mq-table">
                 <thead><tr><th>المحفّظ</th><th>النوع</th><th>عدد الطلاب</th><th style="text-align:center;">متوسّط الحضور</th><th style="text-align:center;">متوسّط الأجزاء</th><th style="text-align:center;">أكملوا القرآن</th></tr></thead>
                 <tbody>${perfRows}</tbody></table></div>
             </div>
 
-            ${ntBlock}`;
+            ${ntBlock}
+          </div>`;
 
         el('pdf-teachers').onclick = () => UI.openPdf('/manager/reports/teachers/pdf?' + my());
     }
