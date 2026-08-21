@@ -348,9 +348,15 @@ a { text-decoration:none; }
 .rp-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
 .rp-actions { display:flex; gap:10px; flex-wrap:wrap; }
 
-/* تابلت 768–1024px وأسفل: القسمان يتكدّسان عمودياً */
+/* صفحة ولي الأمر: سجلات الابن الثلاثة (حفظ/حضور/اختبارات) متجاورة على سطح المكتب */
+.pc-records { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; align-items:start; }
+.pc-records > * { min-width:0; } /* حتى تتمرّر الجداول داخل بطاقاتها لا توسّع الصفحة */
+.pc-more { text-align:center; padding:12px 14px; border-top:1px solid var(--line); }
+
+/* تابلت 768–1024px وأسفل: الأقسام تتكدّس عمودياً */
 @media (max-width:1024px){
     .rp-grid { grid-template-columns:1fr; gap:20px; }
+    .pc-records { grid-template-columns:1fr; gap:16px; }
 }
 /* موبايل: عناوين أصغر وفواصل أضيق */
 @media (max-width:767.98px){

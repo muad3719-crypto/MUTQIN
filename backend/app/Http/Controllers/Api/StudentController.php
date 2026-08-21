@@ -474,13 +474,17 @@ class StudentController extends Controller
     }
 
     /**
-     * جلب تفاصيل طالب واحد لولي الأمر
+     * جلب تفاصيل طالب واحد لولي الأمر.
+     * السجلات الثلاثة (حفظ/حضور/اختبارات) مرقّمة من الخادم — 5 لكل صفحة بمعاملات
+     * مستقلة (memo_page / att_page / tests_page) حتى «عرض المزيد» في كل سجل وحده.
+     * الملخّصات تُحسب على كل السجلات باستعلامات تجميعية، لا على الصفحة الظاهرة.
+     * فحص ملكية ولي الأمر يسبق أي استعلام سجلات — ابن غيره → 403.
      */
     public function parentStudentDetails(Request $request, $id)
     {
         $student = Student::with(['center', 'teacher'])->findOrFail($id);
 
-        // التحقق من أن الطالب من أبناء ولي الأمر الحالي
+        // التحقق من أن الطالب من أبناء ولي الأمر الحالي (قبل أي جلب سجلات)
         if ($student->parent_id !== $request->user()->id) {
             return response()->json([
                 'success' => false,
@@ -488,53 +492,46 @@ class StudentController extends Controller
             ], 403);
         }
 
-        // سجل الحفظ الكامل
+        // سجل الحفظ — مرقّم (الأحدث أولاً)
         $memorizations = Memorization::where('student_id', $student->id)
-            ->latest('date')
-            ->get()
-            ->map(function ($m) {
-                return [
-                    'surah_name' => $m->surah_name,
-                    'quality' => $m->quality,
-                    'date' => $m->date,
-                    'notes' => $m->notes,
-                    'page_from' => $m->page_from,
-                    'page_to' => $m->page_to,
-                ];
-            });
+            ->latest('date')->latest('id')
+            ->paginate(5, ['*'], 'memo_page')
+            ->through(fn ($m) => [
+                'surah_name' => $m->surah_name,
+                'quality' => $m->quality,
+                'date' => $m->date,
+                'notes' => $m->notes,
+                'page_from' => $m->page_from,
+                'page_to' => $m->page_to,
+            ]);
 
-        // سجل الحضور الكامل
+        // سجل الحضور — مرقّم
+        $statusMap = ['present' => 'حاضر', 'absent' => 'غائب', 'late' => 'متأخر'];
+        $dayNames = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
         $attendances = Attendance::where('student_id', $student->id)
-            ->latest('date')
-            ->get()
-            ->map(function ($a) {
-                $statusMap = [
-                    'present' => 'حاضر',
-                    'absent' => 'غائب',
-                    'late' => 'متأخر',
-                ];
-                $dayNames = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+            ->latest('date')->latest('id')
+            ->paginate(5, ['*'], 'att_page')
+            ->through(fn ($a) => [
+                'date' => $a->date,
+                'day' => $dayNames[\Carbon\Carbon::parse($a->date)->dayOfWeek] ?? '--',
+                'status' => $statusMap[$a->status] ?? $a->status,
+                'status_raw' => $a->status,
+                'notes' => $a->notes,
+            ]);
 
-                return [
-                    'date' => $a->date,
-                    'day' => $dayNames[\Carbon\Carbon::parse($a->date)->dayOfWeek] ?? '--',
-                    'status' => $statusMap[$a->status] ?? $a->status,
-                    'status_raw' => $a->status,
-                    'notes' => $a->notes,
-                ];
-            });
+        // ملخص الحضور على كل السجلات (استعلام تجميعي واحد — لا يتأثر بالترقيم)
+        $att = Attendance::where('student_id', $student->id)
+            ->selectRaw('COUNT(*) AS total, SUM(status = "present") AS present, SUM(status = "absent") AS absent, SUM(status = "late") AS late')
+            ->first();
+        $totalAttendance = (int) ($att->total ?? 0);
+        $presentCount = (int) ($att->present ?? 0);
 
-        // ملخص الحضور
-        $totalAttendance = $attendances->count();
-        $presentCount = $attendances->where('status_raw', 'present')->count();
-        $attendancePercent = Percentage::of($presentCount, $totalAttendance);
-
-        // سجل الاختبارات الأسبوعية (نموذج الأثمان: نتيجة كلية + سؤال لكل ثمن)
+        // سجل الاختبارات الأسبوعية — مرقّم (نموذج الأثمان: نتيجة كلية + سؤال لكل ثمن)
         $weeklyTests = \App\Models\WeeklyTest::with('questions')
             ->where('student_id', $student->id)
-            ->latest('exam_date')
-            ->get()
-            ->map(fn ($t) => [
+            ->latest('exam_date')->latest('id')
+            ->paginate(5, ['*'], 'tests_page')
+            ->through(fn ($t) => [
                 'date'            => $t->exam_date,
                 'result'          => $t->result,
                 'notes'           => $t->notes,
@@ -564,19 +561,21 @@ class StudentController extends Controller
                     'enrollment_date' => $student->enrollment_date,
                     'is_active' => $student->is_active, // موقوف: يُعرض لولي الأمر بشارة، وسجلّه كامل
                 ],
+                // كائنات ترقيم: data + current_page/last_page/total
                 'memorizations' => $memorizations,
                 'attendances' => $attendances,
                 'weekly_tests' => $weeklyTests,
                 'tests_summary' => [
-                    'total'       => $weeklyTests->count(),
-                    'last_result' => $weeklyTests->first()['result'] ?? null, // الأحدث أولاً
+                    'total'       => \App\Models\WeeklyTest::where('student_id', $student->id)->count(),
+                    'last_result' => \App\Models\WeeklyTest::where('student_id', $student->id)
+                        ->latest('exam_date')->latest('id')->value('result'), // الأحدث دائماً
                 ],
                 'attendance_summary' => [
                     'total' => $totalAttendance,
                     'present' => $presentCount,
-                    'absent' => $attendances->where('status_raw', 'absent')->count(),
-                    'late' => $attendances->where('status_raw', 'late')->count(),
-                    'percent' => $attendancePercent,
+                    'absent' => (int) ($att->absent ?? 0),
+                    'late' => (int) ($att->late ?? 0),
+                    'percent' => Percentage::of($presentCount, $totalAttendance),
                 ],
             ]
         ]);

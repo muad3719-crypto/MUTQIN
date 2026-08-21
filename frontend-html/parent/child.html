@@ -27,27 +27,45 @@
     const stat = (v, l, k) => `<div class="mq-stat ${k}"><div><div class="mq-stat-val">${v}</div><div class="mq-stat-lbl">${l}</div></div></div>`;
     const info = (lbl, val) => `<div style="padding:12px;background:#FBF9EE;border-radius:8px;"><div style="font-size:11px;color:#7A8F82;">${lbl}</div><div style="font-weight:700;">${UI.escapeHtml(val ?? '—')}</div></div>`;
 
+    // ===== حالة الترقيم: صفحة مستقلة لكل سجل (5 صفوف من الخادم لكل صفحة) =====
+    const pages = { memo: 1, att: 1, tests: 1 };
+    const loaded = { memo: 0, att: 0, tests: 0 };
+
+    const fetchDetails = () =>
+        API.get(`/parent/students/${id}?memo_page=${pages.memo}&att_page=${pages.att}&tests_page=${pages.tests}`);
+
+    // صفوف كل سجل (نفس الأعمدة السابقة)
+    const memoRow = (m) => `
+        <tr><td>${UI.fmtDate(m.date)}</td><td style="font-weight:600;">${UI.escapeHtml(m.surah_name)}</td>
+        <td>${m.page_from && m.page_to ? m.page_from + '–' + m.page_to : '—'}</td><td>${UI.qualityBadge(m.quality)}</td></tr>`;
+    const attRow = (a) => `
+        <tr><td>${UI.fmtDate(a.date)}</td><td>${UI.escapeHtml(a.day || '—')}</td><td>${UI.attendanceBadge(a.status_raw)}</td></tr>`;
+    const testRow = (t) => `
+        <tr><td>${UI.fmtDate(t.date)}</td>
+        <td>${UI.resultBadge(t.result)}</td>
+        <td>${t.questions_count} ثُمن (<span style="color:#04532F;">${t.passed_count} ناجح</span>${t.failed_count ? ` · <span style="color:#B23A48;">${t.failed_count} راسب</span>` : ''})</td>
+        <td>${UI.escapeHtml(t.notes || '—')}</td></tr>`;
+
+    // إلحاق دفعة صفوف في سجل + تحديث العدّاد وزر «عرض المزيد»
+    function applyBatch(key, pg, rowFn, emptyMsg) {
+        const body = document.getElementById(key + '-body');
+        const batch = pg.data || [];
+        if (pages[key] === 1) {
+            loaded[key] = 0;
+            body.innerHTML = '';
+        }
+        if (batch.length) body.insertAdjacentHTML('beforeend', batch.map(rowFn).join(''));
+        loaded[key] += batch.length;
+        if (!loaded[key]) body.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#7A8F82;padding:24px;">${emptyMsg}</td></tr>`;
+        const total = pg.total ?? loaded[key];
+        document.getElementById(key + '-counter').textContent = total ? `عرض ${loaded[key]} من ${total}` : '';
+        document.getElementById(key + '-more').style.display = (pg.current_page ?? 1) < (pg.last_page ?? 1) ? '' : 'none';
+    }
+
     try {
-        const res = await API.get('/parent/students/' + id);
+        const res = await fetchDetails();
         const d = res.data, s = d.student, sum = d.attendance_summary || {};
-
-        const memos = (d.memorizations || []).map(m => `
-            <tr><td>${UI.fmtDate(m.date)}</td><td style="font-weight:600;">${UI.escapeHtml(m.surah_name)}</td>
-            <td>${m.page_from && m.page_to ? m.page_from + '–' + m.page_to : '—'}</td><td>${UI.qualityBadge(m.quality)}</td></tr>`).join('')
-            || `<tr><td colspan="4" style="text-align:center;color:#7A8F82;padding:24px;">لا توجد سجلات حفظ</td></tr>`;
-
-        const atts = (d.attendances || []).map(a => `
-            <tr><td>${UI.fmtDate(a.date)}</td><td>${UI.escapeHtml(a.day || '—')}</td><td>${UI.attendanceBadge(a.status_raw)}</td></tr>`).join('')
-            || `<tr><td colspan="3" style="text-align:center;color:#7A8F82;padding:24px;">لا توجد سجلات حضور</td></tr>`;
-
-        // سجل الاختبارات الأسبوعية (نموذج الأثمان: نتيجة كلية + عدد الأثمان الناجح/الراسب)
         const tsum = d.tests_summary || {};
-        const tests = (d.weekly_tests || []).map(t => `
-            <tr><td>${UI.fmtDate(t.date)}</td>
-            <td>${UI.resultBadge(t.result)}</td>
-            <td>${t.questions_count} ثُمن (<span style="color:#04532F;">${t.passed_count} ناجح</span>${t.failed_count ? ` · <span style="color:#B23A48;">${t.failed_count} راسب</span>` : ''})</td>
-            <td>${UI.escapeHtml(t.notes || '—')}</td></tr>`).join('')
-            || `<tr><td colspan="4" style="text-align:center;color:#7A8F82;padding:24px;">لا توجد اختبارات مسجّلة</td></tr>`;
 
         pc.innerHTML = `
             <a class="mq-btn mq-btn--secondary mq-btn--sm" href="dashboard.html" style="margin-bottom:18px;">→ العودة للأبناء</a>
@@ -55,7 +73,10 @@
             <div class="mq-card" style="margin-bottom:24px;"><div class="mq-card-body">
               <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px;">
                 <span class="mq-avatar" style="width:60px;height:60px;font-size:26px;">${UI.initial(s.name)}</span>
-                <h2 style="font-family:'Amiri',serif;margin:0;color:#04361F;">${UI.escapeHtml(s.name)}</h2></div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                  <h2 style="font-family:'Amiri',serif;margin:0;color:#04361F;">${UI.escapeHtml(s.name)}</h2>
+                  ${s.is_active ? '' : UI.badge('موقوف', 'danger')}
+                </div></div>
               <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;">
                 ${info('العمر', (s.age ?? '—') + ' سنة')}${info('المركز', s.center)}${info('المدينة', s.center_city)}
                 ${info('المحفّظ', s.teacher_name)}${info('هاتف ولي الأمر', s.guardian_phone)}${info('تاريخ الالتحاق', UI.fmtDate(s.enrollment_date))}
@@ -70,22 +91,58 @@
               ${stat((sum.percent ?? 0) + '%', 'نسبة الحضور', 'gold')}
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
-              <div class="mq-card"><div class="mq-card-header"><h3 class="mq-card-title">📖 سجل الحفظ</h3></div>
-                <table class="mq-table"><thead><tr><th>التاريخ</th><th>السورة</th><th>الصفحات</th><th>الجودة</th></tr></thead><tbody>${memos}</tbody></table></div>
-              <div class="mq-card"><div class="mq-card-header"><h3 class="mq-card-title">📋 سجل الحضور</h3></div>
-                <table class="mq-table"><thead><tr><th>التاريخ</th><th>اليوم</th><th>الحالة</th></tr></thead><tbody>${atts}</tbody></table></div>
-            </div>
-
-            <div class="mq-card" style="margin-top:24px;">
-              <div class="mq-card-header">
-                <h3 class="mq-card-title">📝 سجل الاختبارات</h3>
-                <span style="font-size:12.5px;color:#7A8F82;font-weight:600;">
-                  ${tsum.total ?? 0} اختباراً${tsum.last_result ? ' · آخر نتيجة: ' + UI.resultBadge(tsum.last_result) : ''}
-                </span>
+            <!-- السجلات الثلاثة متجاورة على سطح المكتب، عمود واحد على ≤1024px -->
+            <div class="pc-records">
+              <div class="mq-card">
+                <div class="mq-card-header"><h3 class="mq-card-title">📖 سجل الحفظ</h3>
+                  <span id="memo-counter" style="font-size:12.5px;color:#7A8F82;font-weight:600;"></span></div>
+                <div class="rp-scroll"><table class="mq-table"><thead><tr><th>التاريخ</th><th>السورة</th><th>الصفحات</th><th>الجودة</th></tr></thead><tbody id="memo-body"></tbody></table></div>
+                <div class="pc-more"><button class="mq-btn mq-btn--secondary mq-btn--sm" id="memo-more" style="display:none;">عرض المزيد ↓</button></div>
               </div>
-              <table class="mq-table"><thead><tr><th>التاريخ</th><th>النتيجة</th><th>الأثمان</th><th>ملاحظات</th></tr></thead><tbody>${tests}</tbody></table>
+
+              <div class="mq-card">
+                <div class="mq-card-header"><h3 class="mq-card-title">📋 سجل الحضور</h3>
+                  <span id="att-counter" style="font-size:12.5px;color:#7A8F82;font-weight:600;"></span></div>
+                <div class="rp-scroll"><table class="mq-table"><thead><tr><th>التاريخ</th><th>اليوم</th><th>الحالة</th></tr></thead><tbody id="att-body"></tbody></table></div>
+                <div class="pc-more"><button class="mq-btn mq-btn--secondary mq-btn--sm" id="att-more" style="display:none;">عرض المزيد ↓</button></div>
+              </div>
+
+              <div class="mq-card">
+                <div class="mq-card-header">
+                  <h3 class="mq-card-title">📝 سجل الاختبارات</h3>
+                  <span style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
+                    <span id="tests-counter" style="font-size:12.5px;color:#7A8F82;font-weight:600;"></span>
+                    <span style="font-size:12px;color:#7A8F82;">${tsum.total ?? 0} اختباراً${tsum.last_result ? ' · آخر نتيجة: ' + UI.resultBadge(tsum.last_result) : ''}</span>
+                  </span>
+                </div>
+                <div class="rp-scroll"><table class="mq-table"><thead><tr><th>التاريخ</th><th>النتيجة</th><th>الأثمان</th><th>ملاحظات</th></tr></thead><tbody id="tests-body"></tbody></table></div>
+                <div class="pc-more"><button class="mq-btn mq-btn--secondary mq-btn--sm" id="tests-more" style="display:none;">عرض المزيد ↓</button></div>
+              </div>
             </div>`;
+
+        // الدفعة الأولى (الصفحة 1 للسجلات الثلاثة من نفس الرد)
+        applyBatch('memo', d.memorizations || {}, memoRow, 'لا توجد سجلات حفظ');
+        applyBatch('att', d.attendances || {}, attRow, 'لا توجد سجلات حضور');
+        applyBatch('tests', d.weekly_tests || {}, testRow, 'لا توجد اختبارات مسجّلة');
+
+        // «عرض المزيد» — يجلب الصفحة التالية لهذا السجل وحده ويُلحق صفوفها
+        const wireMore = (key, dataKey, rowFn, emptyMsg) => {
+            const btn = document.getElementById(key + '-more');
+            btn.onclick = async () => {
+                btn.disabled = true;
+                try {
+                    pages[key]++;
+                    const r = await fetchDetails();
+                    applyBatch(key, r.data[dataKey] || {}, rowFn, emptyMsg);
+                } catch (e) {
+                    pages[key]--; // فشل الجلب: تراجع حتى تُعاد المحاولة
+                    UI.toast(e.message, 'danger');
+                } finally { btn.disabled = false; }
+            };
+        };
+        wireMore('memo', 'memorizations', memoRow, 'لا توجد سجلات حفظ');
+        wireMore('att', 'attendances', attRow, 'لا توجد سجلات حضور');
+        wireMore('tests', 'weekly_tests', testRow, 'لا توجد اختبارات مسجّلة');
     } catch (e) {
         pc.innerHTML = `<div class="mq-empty"><h3>تعذّر عرض البيانات</h3><p>${UI.escapeHtml(e.message)}</p></div>`;
     }
