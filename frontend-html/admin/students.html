@@ -341,14 +341,22 @@
                 <div id="stu-banner"></div>
                 <div class="mq-toolbar">
                   <div class="mq-search">${UI.ic('search', 18, '#9A7A1E')}<input id="search" placeholder="ابحث في أي عمود: الاسم، الرقم الوطني، المركز، المعلم، الجنسية، الهاتف..."></div>
-                  <div style="display:flex;align-items:center;gap:14px;">
+                  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <label class="mq-label" style="margin:0;font-size:13px;white-space:nowrap;">الحالة:</label>
+                      <select class="mq-input" id="status-filter" style="max-width:150px;">
+                        <option value="active">النشطون</option>
+                        <option value="inactive">الموقوفون</option>
+                        <option value="all">الكل</option>
+                      </select>
+                    </div>
                     <span id="stu-counter" style="font-size:13px;color:#7A8F82;font-weight:600;white-space:nowrap;"></span>
                     <button class="mq-btn mq-btn--primary" id="add">${UI.ic('plus', 17)} طالب جديد</button>
                   </div>
                 </div>
                 <div class="mq-card"><table class="mq-table" id="tbl">
-                  <thead><tr><th>الطالب</th><th style="width:80px;">الكود</th><th>الرقم الوطني</th><th>الجنسية</th><th>المركز</th><th>المعلم</th><th>العمر</th><th>الإجراءات</th></tr></thead>
-                  <tbody id="stu-body"><tr><td colspan="8" style="text-align:center;color:#7A8F82;padding:30px;">جارٍ التحميل...</td></tr></tbody>
+                  <thead><tr><th>الطالب</th><th style="width:80px;">الكود</th><th>الرقم الوطني</th><th>الجنسية</th><th>المركز</th><th>المعلم</th><th>العمر</th><th style="width:100px;text-align:center;">الحالة</th><th>الإجراءات</th></tr></thead>
+                  <tbody id="stu-body"><tr><td colspan="9" style="text-align:center;color:#7A8F82;padding:30px;">جارٍ التحميل...</td></tr></tbody>
                 </table></div>
                 <div style="text-align:center;margin-top:16px;">
                   <button class="mq-btn mq-btn--secondary" id="load-more" style="display:none;">عرض المزيد ↓</button>
@@ -375,11 +383,19 @@
                               ? `<span style="color:#9A7A1E;">محفّظ سابق: ${UI.escapeHtml(s.former_teacher_name)}</span>`
                               : '<span style="color:#9DB3A6;">— بدون معلم —</span>')}</td>
                       <td>${s.age ?? '—'}</td>
+                      <td style="text-align:center;">${s.is_active
+                          ? UI.badge('نشط', 'success')
+                          : UI.badge('موقوف', 'danger')}</td>
                       <td><div class="mq-actions">
                         ${UI.actionBtn('edit', `data-edit="${s.id}"`)}
-                        ${UI.actionBtn('del', `data-del="${s.id}"`)}
+                        <button class="mq-btn ${s.is_active ? 'mq-btn--quiet-danger' : 'mq-btn--quiet'} mq-btn--icon mq-btn--sm"
+                                data-toggle="${s.id}" title="${s.is_active ? 'إيقاف الطالب' : 'تفعيل الطالب'}">
+                          ${s.is_active
+                            ? '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>'
+                            : '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg>'}
+                        </button>
                       </div></td>
-                    </tr>`).join('') || `<tr><td colspan="8" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد طلاب مطابقون للفلاتر</td></tr>`;
+                    </tr>`).join('') || `<tr><td colspan="9" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد طلاب مطابقون للفلاتر</td></tr>`;
             }
 
             // لافتة الأوقاف: العدد الإجمالي للطلاب بلا رقم وطني (استعلام خفيف — نقرأ total فقط)
@@ -402,8 +418,27 @@
                     if (eb) eb.onclick = () => UI.formModal({ title: 'تعديل / نقل الطالب', submitText: 'حفظ', fields: editFields(s),
                         onMount: (form) => { wireEditNat(form); wireTeacherByCenter(form, s.teacher_id); },
                         onSubmit: async (v, h) => { await API.put('/students/' + s.id, v); UI.toast('تم التحديث'); h.close(); renderStudents(true); } });
-                    const db = body.querySelector(`[data-del="${s.id}"]`);
-                    if (db) db.onclick = () => UI.confirmDelete('حذف هذا الطالب؟', async () => { await API.del('/students/' + s.id); UI.toast('تم الحذف'); renderStudents(true); });
+                    // إيقاف/تفعيل الطالب — بديل الحذف: السجل التاريخي يبقى كاملاً
+                    const tb = body.querySelector(`[data-toggle="${s.id}"]`);
+                    if (tb) tb.onclick = async () => {
+                        const deact = !!s.is_active; // نحن على وشك الإيقاف؟
+                        const html = deact
+                            ? `إيقاف الطالب <strong>${UI.escapeHtml(s.name)}</strong>؟<br>`
+                              + `<span style="color:#B23A48;font-weight:700;">يخرج من قوائم الحضور والبصمة والتقارير.</span><br>`
+                              + `<span style="color:#7A8F82;">يبقى سجلّه كاملاً (الحضور والحفظ والاختبارات) — ويمكن إعادة تفعيله لاحقاً.</span>`
+                            : `تفعيل الطالب <strong>${UI.escapeHtml(s.name)}</strong>؟<br>`
+                              + `<span style="color:#7A8F82;">يعود إلى قوائم الحضور والبصمة والتقارير.</span>`;
+                        const ok = await UI.confirmAction({
+                            title: deact ? 'إيقاف الطالب' : 'تفعيل الطالب',
+                            html, okText: deact ? 'تأكيد الإيقاف' : 'تأكيد التفعيل', cancelText: 'إلغاء',
+                        });
+                        if (!ok) return;
+                        try {
+                            const res = await API.put('/students/' + s.id + '/status', { is_active: !s.is_active });
+                            UI.toast(res.message || 'تم تحديث الحالة');
+                            renderStudents(true);
+                        } catch (e) { UI.toast(e.message, 'danger'); }
+                    };
                 });
             }
 
@@ -413,11 +448,13 @@
             const loadMoreBtn = document.getElementById('load-more');
             const counter = document.getElementById('stu-counter');
             const searchInput = document.getElementById('search');
+            const statusFilter = document.getElementById('status-filter');
 
             function buildParams() {
                 const p = new URLSearchParams({ page });
                 const q = searchInput.value.trim();
                 if (q) p.set('q', q);
+                p.set('status', statusFilter.value); // active (افتراضي) | inactive | all
                 return p;
             }
 
@@ -426,7 +463,7 @@
                 if (reset) { page = 1; loadedCount = 0; }
                 const seq = ++fetchSeq; // ردود متأخرة لا تكتب فوق الأحدث
                 const body = document.getElementById('stu-body');
-                if (reset) body.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#7A8F82;padding:20px;">جارٍ التحميل...</td></tr>`;
+                if (reset) body.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#7A8F82;padding:20px;">جارٍ التحميل...</td></tr>`;
                 loadMoreBtn.disabled = true;
                 try {
                     const res = await API.get('/students?' + buildParams().toString());
@@ -435,14 +472,14 @@
                     const batch = pg.data || [];
                     lastPage = pg.last_page ?? 1; total = pg.total ?? batch.length;
                     const rows = rowsHtml(batch);
-                    if (reset) body.innerHTML = batch.length ? rows : `<tr><td colspan="8" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد طلاب مطابقون</td></tr>`;
+                    if (reset) body.innerHTML = batch.length ? rows : `<tr><td colspan="9" style="text-align:center;color:#7A8F82;padding:30px;">لا يوجد طلاب مطابقون</td></tr>`;
                     else body.insertAdjacentHTML('beforeend', rows);
                     loadedCount += batch.length;
                     bindRowActions(batch);
                     counter.textContent = total ? `عرض ${loadedCount} من ${total}` : '';
                     loadMoreBtn.style.display = page < lastPage ? '' : 'none';
                 } catch (e) {
-                    if (reset) body.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#B23A48;padding:20px;">${UI.escapeHtml(e.message)}</td></tr>`;
+                    if (reset) body.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#B23A48;padding:20px;">${UI.escapeHtml(e.message)}</td></tr>`;
                 } finally { loadMoreBtn.disabled = false; }
             }
 
@@ -454,6 +491,7 @@
                 clearTimeout(searchTimer);
                 searchTimer = setTimeout(() => renderStudents(true), 300);
             });
+            statusFilter.addEventListener('change', () => renderStudents(true));
 
             document.getElementById('add').onclick = openAddStudent;
 
