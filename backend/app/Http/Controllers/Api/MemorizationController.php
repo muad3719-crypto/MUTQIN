@@ -31,6 +31,28 @@ class MemorizationController extends Controller
             $query->whereIn('surah_name', SurahReference::namesOfJuz((int) $request->juz));
         }
 
+        // بحث موحّد q: رقم جزء (1-30، حتى بالأرقام العربية «٣٠» أو بصيغة «جزء 5»)
+        // أو اسم جزء شائع (عمّ/تبارك/قد سمع...) أو اسم طالب مطبَّع.
+        // الجزء يُحوَّل لأسماء سوره عبر namesOfJuz — عمود juz المخزّن يبقى غير معتمَد.
+        if (($q = trim((string) $request->get('q', ''))) !== '') {
+            $digits = strtr($q, ['٠' => '0', '١' => '1', '٢' => '2', '٣' => '3', '٤' => '4', '٥' => '5', '٦' => '6', '٧' => '7', '٨' => '8', '٩' => '9']);
+            $digits = trim((string) preg_replace('/^(?:ال)?جزء\s*/u', '', $digits));
+
+            $juzFromQ = (preg_match('/^\d{1,2}$/', $digits) && (int) $digits >= 1 && (int) $digits <= 30)
+                ? (int) $digits
+                : SurahReference::juzFromName($q);
+
+            if ($juzFromQ !== null) {
+                $query->whereIn('surah_name', SurahReference::namesOfJuz($juzFromQ));
+            } else {
+                // ليس جزءاً → بحث باسم الطالب (مطبَّع: «احمد» تطابق «أحمد»)
+                $norm = \App\Support\ArabicText::normalize($q);
+                $query->whereHas('student', fn ($s) => $s->whereRaw(
+                    \App\Support\ArabicText::sqlNormalize('name') . ' LIKE ?', ['%' . $norm . '%']
+                ));
+            }
+        }
+
         $memorizations = $query->paginate(15)->withQueryString();
 
         return response()->json([
