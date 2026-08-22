@@ -48,6 +48,18 @@
 
     const ROLE_LABEL = { admin: 'مدير النظام', teacher: 'معلم', parent: 'ولي أمر', center_manager: 'مدير المركز' };
 
+    // تسمية الدور: لمدير المركز نُظهر «مدير مركز {اسم مركزه}» — ولأن أسماء المراكز
+    // تبدأ غالباً بكلمة «مركز» أصلاً نتجنّب التكرار («مدير مركز عقبة» لا «مدير مركز مركز عقبة»).
+    // جلسة قديمة بلا center_name في التخزين المحلي تعود للتسمية العامة حتى دخولٍ جديد.
+    function roleLabel(u) {
+        if (u.role === 'center_manager' && u.center_name) {
+            return u.center_name.trim().startsWith('مركز')
+                ? 'مدير ' + u.center_name.trim()
+                : 'مدير مركز ' + u.center_name.trim();
+        }
+        return ROLE_LABEL[u.role] || '';
+    }
+
     // شعار النجمة (دائرة عاجية + مربعان ذهبيان)
     const LOGO = `
       <svg viewBox="0 0 200 200" width="46" height="46" aria-hidden="true">
@@ -85,7 +97,7 @@
                     <span class="mq-user-avatar">${UI.initial(user.name)}</span>
                     <div class="mq-user-info">
                         <strong>${UI.escapeHtml(user.name)}</strong>
-                        <small>${ROLE_LABEL[user.role] || ''}</small>
+                        <small>${UI.escapeHtml(roleLabel(user))}</small>
                     </div>
                 </div>
                 <nav class="mq-nav">${nav}</nav>

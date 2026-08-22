@@ -220,13 +220,14 @@ class AuthController extends Controller
     protected function userPayload(User $user): array
     {
         return [
-            'id'        => $user->id,
-            'name'      => $user->name,
-            'email'     => $user->email,
-            'phone'     => $user->phone,
-            'role'      => $user->role,
-            'center_id' => $user->center_id,
-            'type'      => $user->type,
+            'id'          => $user->id,
+            'name'        => $user->name,
+            'email'       => $user->email,
+            'phone'       => $user->phone,
+            'role'        => $user->role,
+            'center_id'   => $user->center_id,
+            'center_name' => $user->center?->name, // لعرض «مدير مركز {الاسم}» في الواجهة
+            'type'        => $user->type,
         ];
     }
 }
