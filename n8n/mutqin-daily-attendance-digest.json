@@ -1,0 +1,294 @@
+{
+    "name": "MUTQEN — ملخّص الحضور اليومي",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "days",
+                            "triggerAtHour": 20,
+                            "triggerAtMinute": 0
+                        }
+                    ]
+                }
+            },
+            "id": "a1000000-0000-4000-8000-000000000001",
+            "name": "كل يوم 8 مساءً",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                -260,
+                0
+            ]
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "cfg-1",
+                            "name": "apiBase",
+                            "value": "http://localhost:9090",
+                            "type": "string"
+                        },
+                        {
+                            "id": "cfg-2",
+                            "name": "email",
+                            "value": "admin@mutqin.ly",
+                            "type": "string"
+                        },
+                        {
+                            "id": "cfg-3",
+                            "name": "password",
+                            "value": "PUT_PASSWORD_HERE",
+                            "type": "string"
+                        },
+                        {
+                            "id": "cfg-4",
+                            "name": "sendTo",
+                            "value": "manager@example.com",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": []
+            },
+            "id": "a1000000-0000-4000-8000-000000000002",
+            "name": "الإعدادات",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                -40,
+                0
+            ],
+            "notes": "بدّل password إلى بيانات اعتماد n8n قبل الإنتاج"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $json.apiBase }}/api/auth/login",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Accept",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "contentType": "json",
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ email: $json.email, password: $json.password }) }}",
+                "options": []
+            },
+            "id": "a1000000-0000-4000-8000-000000000003",
+            "name": "تسجيل الدخول",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                180,
+                0
+            ]
+        },
+        {
+            "parameters": {
+                "url": "={{ $('الإعدادات').item.json.apiBase }}/api/attendance",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "date",
+                            "value": "={{ $now.setZone('Africa/Tripoli').toFormat('yyyy-MM-dd') }}"
+                        }
+                    ]
+                },
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Authorization",
+                            "value": "=Bearer {{ $json.data.token }}"
+                        },
+                        {
+                            "name": "Accept",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "options": []
+            },
+            "id": "a1000000-0000-4000-8000-000000000004",
+            "name": "جلب حضور اليوم",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                400,
+                0
+            ],
+            "notes": "أضف center_id كمعامل استعلام لتضييق النطاق على مركز واحد"
+        },
+        {
+            "parameters": {
+                "jsCode": "const NL = String.fromCharCode(10);\nconst res = $input.first().json;\nconst date = res.data.date;\nconst students = res.data.students || [];\nconst map = res.data.attendances || {};\n\nconst present = [], late = [], absent = [], missing = [];\nfor (const s of students) {\n  const status = map[s.id];\n  if (status === 'present') present.push(s);\n  else if (status === 'late') late.push(s);\n  else if (status === 'absent') absent.push(s);\n  else missing.push(s);\n}\n\nconst total = students.length;\nconst rate = total ? Math.round(((present.length + late.length) / total) * 100) : 0;\nconst line = (s) => '- ' + (s.display_code || '—') + ' — ' + s.name;\n\nconst lines = [];\nlines.push('ملخّص الحضور ليوم ' + date);\nlines.push('');\nlines.push('إجمالي الطلاب النشطين: ' + total);\nlines.push('حاضر: ' + present.length);\nlines.push('متأخر: ' + late.length);\nlines.push('غائب: ' + absent.length);\nlines.push('لم يُسجَّل: ' + missing.length);\nlines.push('نسبة الحضور: ' + rate + '%');\nlines.push('');\n\nif (absent.length) {\n  lines.push('الغائبون:');\n  absent.forEach((s) => lines.push(line(s)));\n} else {\n  lines.push('لا يوجد غياب اليوم.');\n}\n\nif (missing.length) {\n  lines.push('');\n  lines.push('لم تُسجَّل حضورهم:');\n  missing.forEach((s) => lines.push(line(s)));\n}\n\nreturn [{\n  json: {\n    date,\n    total,\n    present: present.length,\n    late: late.length,\n    absent: absent.length,\n    missing: missing.length,\n    rate,\n    needsAttention: absent.length + missing.length > 0,\n    subject: 'تقرير الحضور — ' + date,\n    body: lines.join(NL),\n  },\n}];\n"
+            },
+            "id": "a1000000-0000-4000-8000-000000000005",
+            "name": "تلخيص",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                620,
+                0
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict",
+                        "version": 2
+                    },
+                    "conditions": [
+                        {
+                            "id": "cond-1",
+                            "leftValue": "={{ $json.needsAttention }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "true",
+                                "singleValue": true
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": []
+            },
+            "id": "a1000000-0000-4000-8000-000000000006",
+            "name": "هل هناك غياب؟",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                840,
+                0
+            ]
+        },
+        {
+            "parameters": {
+                "fromEmail": "no-reply@mutqin.ly",
+                "toEmail": "={{ $('الإعدادات').item.json.sendTo }}",
+                "subject": "={{ $json.subject }}",
+                "emailFormat": "text",
+                "text": "={{ $json.body }}",
+                "options": []
+            },
+            "id": "a1000000-0000-4000-8000-000000000007",
+            "name": "إرسال الملخّص",
+            "type": "n8n-nodes-base.emailSend",
+            "typeVersion": 2.1,
+            "position": [
+                1060,
+                -100
+            ],
+            "notes": "يحتاج بيانات اعتماد SMTP في n8n"
+        },
+        {
+            "parameters": [],
+            "id": "a1000000-0000-4000-8000-000000000008",
+            "name": "لا شيء لإرساله",
+            "type": "n8n-nodes-base.noOp",
+            "typeVersion": 1,
+            "position": [
+                1060,
+                100
+            ]
+        }
+    ],
+    "connections": {
+        "كل يوم 8 مساءً": {
+            "main": [
+                [
+                    {
+                        "node": "الإعدادات",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "الإعدادات": {
+            "main": [
+                [
+                    {
+                        "node": "تسجيل الدخول",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "تسجيل الدخول": {
+            "main": [
+                [
+                    {
+                        "node": "جلب حضور اليوم",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "جلب حضور اليوم": {
+            "main": [
+                [
+                    {
+                        "node": "تلخيص",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "تلخيص": {
+            "main": [
+                [
+                    {
+                        "node": "هل هناك غياب؟",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "هل هناك غياب؟": {
+            "main": [
+                [
+                    {
+                        "node": "إرسال الملخّص",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "لا شيء لإرساله",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1",
+        "timezone": "Africa/Tripoli"
+    },
+    "pinData": [],
+    "meta": {
+        "instanceId": "mutqin-local"
+    },
+    "tags": []
+}
